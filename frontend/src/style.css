@@ -1,0 +1,32 @@
+:root {
+  --bg: #f2f3f5;
+  --panel: #ffffff;
+  --text: #1f2937;
+  --subtext: #6b7280;
+  --border: #d5d9df;
+  --brand: #0b5fff;
+  --brand-2: #00a06f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: "Manrope", "Segoe UI", "PingFang SC", sans-serif;
+  background: radial-gradient(circle at 8% 0%, #d9f1ff 0%, transparent 45%), var(--bg);
+  color: var(--text);
+}
+
+.full-page-center {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+}
