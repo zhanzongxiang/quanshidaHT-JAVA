@@ -14,10 +14,13 @@ const viewMap: Record<string, () => Promise<unknown>> = {
   Content: ContentView,
 }
 
+const DEFAULT_HOME_PATH = '/dashboard'
+
 const staticRoutes: RouteRecordRaw[] = [
+  { path: '/', redirect: DEFAULT_HOME_PATH },
   { path: '/login', name: 'login', component: LoginView, meta: { public: true } },
   { path: '/403', name: 'forbidden', component: ForbiddenView, meta: { public: true } },
-  { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFoundView, meta: { public: true } },
+  { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFoundView },
 ]
 
 export const router = createRouter({
@@ -61,7 +64,7 @@ router.beforeEach(async (to) => {
 
   if (to.meta.public) {
     if (to.path === '/login' && auth.isAuthenticated) {
-      return '/'
+      return DEFAULT_HOME_PATH
     }
     return true
   }
@@ -80,6 +83,10 @@ router.beforeEach(async (to) => {
     }
     menusInjected = true
     return to.fullPath
+  }
+
+  if (to.name === 'not-found') {
+    return true
   }
 
   return true

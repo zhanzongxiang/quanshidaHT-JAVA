@@ -1,0 +1,26 @@
+2026-04-07T08:20:44.906465Z 0 [System] [MY-015017] [Server] MySQL Server Initialization - start.
+2026-04-07T08:20:44.912938Z 0 [System] [MY-013169] [Server] C:\Program Files\MySQL\MySQL Server 8.4\bin\mysqld.exe (mysqld 8.4.8) initializing of server in progress as process 37268
+2026-04-07T08:20:45.012464Z 1 [System] [MY-013576] [InnoDB] InnoDB initialization has started.
+2026-04-07T08:20:49.101070Z 1 [System] [MY-013577] [InnoDB] InnoDB initialization has ended.
+2026-04-07T08:21:02.091419Z 6 [Warning] [MY-010453] [Server] root@localhost is created with an empty password ! Please consider switching off the --initialize-insecure option.
+2026-04-07T08:21:15.959202Z 0 [System] [MY-015018] [Server] MySQL Server Initialization - end.
+2026-04-07T08:21:28.075090Z 0 [System] [MY-015015] [Server] MySQL Server - start.
+2026-04-07T08:21:28.185017Z 0 [System] [MY-010116] [Server] C:\Program Files\MySQL\MySQL Server 8.4\bin\mysqld.exe (mysqld 8.4.8) starting as process 9244
+2026-04-07T08:21:28.185078Z 0 [ERROR] [MY-010338] [Server] Can't find error-message file 'C:\Program\share\english\errmsg.sys'. Check error-message file location and 'lc-messages-dir' configuration directive.
+2026-04-07T08:21:28.352208Z 1 [System] [MY-013576] [InnoDB] InnoDB initialization has started.
+2026-04-07T08:21:31.455166Z 1 [System] [MY-013577] [InnoDB] InnoDB initialization has ended.
+2026-04-07T08:21:33.005008Z 0 [Warning] [MY-013829] [Server] Missing data directory for ICU regular expressions: C:\Program\lib\private\.
+2026-04-07T08:21:33.102104Z 0 [Warning] [MY-010068] [Server] CA certificate ca.pem is self signed.
+2026-04-07T08:21:33.102744Z 0 [System] [MY-013602] [Server] Channel mysql_main configured to support TLS. Encrypted connections are now supported for this channel.
+2026-04-07T08:21:33.155666Z 0 [ERROR] [MY-010147] [Server] Too many arguments (first extra is 'Files\MySQL\MySQL').
+2026-04-07T08:21:33.159298Z 0 [ERROR] [MY-010119] [Server] Aborting
+2026-04-07T08:21:34.870591Z 0 [System] [MY-010910] [Server] C:\Program Files\MySQL\MySQL Server 8.4\bin\mysqld.exe: Shutdown complete (mysqld 8.4.8)  MySQL Community Server - GPL.
+2026-04-07T08:21:34.871268Z 0 [System] [MY-015016] [Server] MySQL Server - end.
+2026-04-07T08:22:36.827968Z 0 [System] [MY-015015] [Server] MySQL Server - start.
+2026-04-07T08:22:36.900230Z 0 [System] [MY-010116] [Server] C:\mysql84\bin\mysqld.exe (mysqld 8.4.8) starting as process 27436
+2026-04-07T08:22:36.916461Z 1 [System] [MY-013576] [InnoDB] InnoDB initialization has started.
+2026-04-07T08:22:40.280772Z 1 [System] [MY-013577] [InnoDB] InnoDB initialization has ended.
+2026-04-07T08:22:41.232764Z 0 [Warning] [MY-010068] [Server] CA certificate ca.pem is self signed.
+2026-04-07T08:22:41.233131Z 0 [System] [MY-013602] [Server] Channel mysql_main configured to support TLS. Encrypted connections are now supported for this channel.
+2026-04-07T08:22:41.728477Z 0 [System] [MY-011323] [Server] X Plugin ready for connections. Bind-address: '::' port: 33060
+2026-04-07T08:22:41.728515Z 0 [System] [MY-010931] [Server] C:\mysql84\bin\mysqld.exe: ready for connections. Version: '8.4.8'  socket: ''  port: 3306  MySQL Community Server - GPL.

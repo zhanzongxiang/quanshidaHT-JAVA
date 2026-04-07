@@ -1,16 +1,16 @@
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
 
 spring:
   application:
     name: qsd-admin-backend
   datasource:
-    url: jdbc:mysql://localhost:3306/qsd_admin?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=utf8
-    username: root
-    password: root123456
+    url: ${DB_URL:jdbc:mysql://36.150.237.57:3306/qsd_admin?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=utf8}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root123456}
     driver-class-name: com.mysql.cj.jdbc.Driver
   flyway:
-    enabled: true
+    enabled: ${FLYWAY_ENABLED:true}
     locations: classpath:db/migration
 
 mybatis-plus:
@@ -19,6 +19,6 @@ mybatis-plus:
 
 app:
   jwt:
-    issuer: qsd-admin
-    secret: cXNkLWFkbWluLXNlY3JldC1mb3Itand0LXRva2VuLTIwMjY=
-    expire-minutes: 180
+    issuer: ${JWT_ISSUER:qsd-admin}
+    secret: ${JWT_SECRET:cXNkLWFkbWluLXNlY3JldC1mb3Itand0LXRva2VuLTIwMjY=}
+    expire-minutes: ${JWT_EXPIRE_MINUTES:180}
