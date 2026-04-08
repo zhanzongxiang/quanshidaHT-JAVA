@@ -1,0 +1,39 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="backend" type="MavenRunConfiguration" factoryName="Maven">
+    <option name="delegateBuildToMaven" value="false" />
+    <option name="environmentVariables">
+      <map>
+        <entry key="JAVA_HOME" value="C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot" />
+        <entry key="DB_URL" value="jdbc:mysql://36.150.237.57:3306/qsd_admin?useSSL=false&amp;allowPublicKeyRetrieval=true&amp;serverTimezone=Asia/Shanghai&amp;characterEncoding=utf8" />
+        <entry key="DB_USERNAME" value="root" />
+        <entry key="DB_PASSWORD" value="root123456" />
+        <entry key="FLYWAY_BASELINE_ON_MIGRATE" value="true" />
+        <entry key="JWT_ISSUER" value="qsd-admin" />
+        <entry key="JWT_SECRET" value="cXNkLWFkbWluLXNlY3JldC1mb3Itand0LXRva2VuLTIwMjY=" />
+        <entry key="JWT_EXPIRE_MINUTES" value="180" />
+        <entry key="SERVER_PORT" value="8080" />
+      </map>
+    </option>
+    <MavenSettings>
+      <option name="myGeneralSettings" />
+      <option name="myRunnerSettings" />
+      <option name="myRunnerParameters">
+        <MavenRunnerParameters>
+          <option name="cmdOptions" />
+          <option name="profiles">
+            <set />
+          </option>
+          <option name="goals">
+            <list>
+              <option value="spring-boot:run" />
+            </list>
+          </option>
+          <option name="pomFileName" value="pom.xml" />
+          <option name="workingDirPath" value="$PROJECT_DIR$/backend" />
+          <option name="resolveToWorkspace" value="false" />
+        </MavenRunnerParameters>
+      </option>
+    </MavenSettings>
+    <method v="2" />
+  </configuration>
+</component>

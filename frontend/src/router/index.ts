@@ -14,7 +14,7 @@ const viewMap: Record<string, () => Promise<unknown>> = {
   Content: ContentView,
 }
 
-const DEFAULT_HOME_PATH = '/dashboard'
+export const DEFAULT_HOME_PATH = '/dashboard'
 
 const staticRoutes: RouteRecordRaw[] = [
   { path: '/', redirect: DEFAULT_HOME_PATH },
@@ -37,22 +37,45 @@ function convertMenusToRoutes(menus: AdminMenu[]): RouteRecordRaw[] {
     children: [],
   }
 
-  for (const menu of menus) {
-    const view = viewMap[menu.component]
-    if (!view) {
-      continue
+  function appendRoutes(menuList: AdminMenu[]) {
+    for (const menu of menuList) {
+      const view = viewMap[menu.component]
+      if (view) {
+        parentRoute.children!.push({
+          path: menu.path.startsWith('/') ? menu.path.slice(1) : menu.path,
+          name: `menu-${menu.id}`,
+          component: view as never,
+          meta: {
+            menuName: menu.name,
+          },
+        })
+      }
+
+      if (menu.children.length > 0) {
+        appendRoutes(menu.children)
+      }
     }
-    parentRoute.children!.push({
-      path: menu.path.startsWith('/') ? menu.path.slice(1) : menu.path,
-      name: `menu-${menu.id}`,
-      component: view as never,
-      meta: {
-        menuName: menu.name,
-      },
-    })
   }
 
+  appendRoutes(menus)
   return [parentRoute]
+}
+
+export function ensureMenuRoutes(menus: AdminMenu[]) {
+  if (menusInjected) {
+    return
+  }
+
+  const menuRoutes = convertMenusToRoutes(menus)
+  for (const route of menuRoutes) {
+    router.addRoute(route)
+  }
+
+  menusInjected = true
+}
+
+export function resetMenuRoutes() {
+  menusInjected = false
 }
 
 router.beforeEach(async (to) => {
@@ -77,11 +100,7 @@ router.beforeEach(async (to) => {
   }
 
   if (!menusInjected && auth.me) {
-    const menuRoutes = convertMenusToRoutes(auth.me.menus)
-    for (const route of menuRoutes) {
-      router.addRoute(route)
-    }
-    menusInjected = true
+    ensureMenuRoutes(auth.me.menus)
     return to.fullPath
   }
 

@@ -20,9 +20,20 @@ export const useAuthStore = defineStore('auth', {
   },
   actions: {
     async loginByPassword(username: string, password: string) {
-      const result = await login({ username, password })
-      localStorage.setItem('access_token', result.accessToken)
-      await this.initialize()
+      this.loading = true
+      try {
+        const result = await login({ username, password })
+        localStorage.setItem('access_token', result.accessToken)
+        this.me = await fetchMe()
+        this.initialized = true
+      } catch (error) {
+        localStorage.removeItem('access_token')
+        this.me = null
+        this.initialized = true
+        throw error
+      } finally {
+        this.loading = false
+      }
     },
     async initialize() {
       if (!localStorage.getItem('access_token')) {
@@ -30,6 +41,7 @@ export const useAuthStore = defineStore('auth', {
         this.initialized = true
         return
       }
+
       this.loading = true
       try {
         this.me = await fetchMe()

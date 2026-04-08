@@ -1,42 +1,22 @@
 <template>
-  <div class="dashboard-grid">
-    <el-card>
-      <div class="metric">
-        <div class="label">今日新增线索</div>
-        <div class="value">18</div>
-      </div>
-    </el-card>
-    <el-card>
-      <div class="metric">
-        <div class="label">在途运单</div>
-        <div class="value">246</div>
-      </div>
-    </el-card>
-    <el-card>
-      <div class="metric">
-        <div class="label">待跟进客户</div>
-        <div class="value">31</div>
+  <div class="grid gap-4 md:grid-cols-3">
+    <el-card
+      v-for="item in metrics"
+      :key="item.label"
+      class="rounded-3xl border-0 shadow-panel"
+    >
+      <div class="space-y-2">
+        <p class="m-0 text-sm font-medium text-mist">{{ item.label }}</p>
+        <p class="m-0 text-4xl font-black tracking-tight text-slate-900">{{ item.value }}</p>
       </div>
     </el-card>
   </div>
 </template>
 
-<style scoped>
-.dashboard-grid {
-  display: grid;
-  gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-}
-
-.metric .label {
-  color: var(--subtext);
-  font-size: 13px;
-}
-
-.metric .value {
-  margin-top: 8px;
-  font-size: 28px;
-  font-weight: 800;
-  color: #0f172a;
-}
-</style>
+<script setup lang="ts">
+const metrics = [
+  { label: '今日新增线索', value: 18 },
+  { label: '在途运单', value: 246 },
+  { label: '待跟进客户', value: 31 },
+]
+</script>
