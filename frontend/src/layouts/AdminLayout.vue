@@ -4,20 +4,14 @@
       <div class="mb-4 px-3 text-xl font-extrabold tracking-[0.08em] text-white">QSD Admin</div>
       <el-menu
         :default-active="activeMenu"
+        :default-openeds="openMenuKeys"
         router
         background-color="transparent"
         text-color="#cbd5e1"
         active-text-color="#ffffff"
         class="admin-menu border-r-0"
       >
-        <el-menu-item
-          v-for="menu in menus"
-          :key="menu.id"
-          :index="menu.path"
-          class="rounded-xl"
-        >
-          <span>{{ menu.name }}</span>
-        </el-menu-item>
+        <AdminMenuTreeItem v-for="menu in menus" :key="menu.id" :menu="menu" />
       </el-menu>
     </aside>
 
@@ -45,8 +39,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import AdminMenuTreeItem from '../components/AdminMenuTreeItem.vue'
 import { resetMenuRoutes } from '../router'
 import { useAuthStore } from '../stores/auth'
+import type { AdminMenu } from '../types/auth'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -54,6 +50,25 @@ const router = useRouter()
 
 const menus = computed(() => auth.me?.menus ?? [])
 const activeMenu = computed(() => route.path)
+const openMenuKeys = computed(() => findParentPaths(menus.value, route.path))
+
+function findParentPaths(menuTree: AdminMenu[], currentPath: string, parents: string[] = []): string[] {
+  for (const menu of menuTree) {
+    if (menu.path === currentPath) {
+      return parents
+    }
+
+    if (menu.children.length > 0) {
+      const key = menu.path || `group-${menu.id}`
+      const result = findParentPaths(menu.children, currentPath, [...parents, key])
+      if (result.length > 0) {
+        return result
+      }
+    }
+  }
+
+  return []
+}
 
 function onLogout() {
   auth.logout()

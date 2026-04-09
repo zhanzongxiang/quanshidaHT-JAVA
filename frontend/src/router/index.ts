@@ -8,10 +8,21 @@ const NotFoundView = () => import('../views/NotFoundView.vue')
 const AdminLayout = () => import('../layouts/AdminLayout.vue')
 const DashboardView = () => import('../views/DashboardView.vue')
 const ContentView = () => import('../views/ContentView.vue')
+const NewsView = () => import('../views/NewsView.vue')
+const ServiceLinesView = () => import('../views/ServiceLinesView.vue')
+const NavigationSettingsView = () => import('../views/NavigationSettingsView.vue')
+const FooterSettingsView = () => import('../views/FooterSettingsView.vue')
+const ContactSettingsView = () => import('../views/ContactSettingsView.vue')
 
 const viewMap: Record<string, () => Promise<unknown>> = {
   Dashboard: DashboardView,
   Content: ContentView,
+  HomeContent: ContentView,
+  News: NewsView,
+  ServiceLines: ServiceLinesView,
+  NavigationSettings: NavigationSettingsView,
+  FooterSettings: FooterSettingsView,
+  ContactSettings: ContactSettingsView,
 }
 
 export const DEFAULT_HOME_PATH = '/dashboard'

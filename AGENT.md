@@ -1,159 +1,106 @@
-# qsd Admin AGENT Guide
+﻿# qsd Admin AGENT Guide
 
-## 1. 项目定位
+## 椤圭洰瀹氫綅
 
-这是官网配套的后台管理系统，一期目标是支持官网内容运营、客户线索管理、运单与轨迹维护，不以完整 ERP 为目标。
-后续所有开发与 agent 修改均以本文档为最高优先级约束。
+杩欐槸瀹樼綉閰嶅鐨勫悗鍙扮鐞嗙郴缁燂紝涓€鏈熺洰鏍囨槸鏀寔瀹樼綉鍐呭杩愯惀銆佸鎴风嚎绱㈢鐞嗐€佽繍鍗曚笌杞ㄨ抗缁存姢锛屼笉浠ュ畬鏁?ERP 涓虹洰鏍囥€?
+## 涓€鏈熻寖鍥?
+- 瀹樼綉鍐呭绠＄悊
+- 鏂伴椈绠＄悊
+- 绱犳潗搴撶鐞?- 瀹㈡埛绾跨储绠＄悊
+- 杩愬崟涓庤建杩圭鐞?- 瀹㈡埛妗ｆ绠＄悊
+- 璐﹀彿鏉冮檺绠＄悊
+- 鎿嶄綔鏃ュ織
+- 绯荤粺璁剧疆
 
-## 2. 一期范围
+## 鍓嶇鎶€鏈害鏉?
+- 鍚庡彴鍓嶇鍥哄畾閲囩敤 `Element Plus + Tailwind CSS`
+- Element Plus 璐熻矗琛ㄥ崟銆佹寜閽€佽彍鍗曘€佸崱鐗囥€佸脊绐椼€佹秷鎭彁绀虹瓑浜や簰缁勪欢
+- Tailwind CSS 璐熻矗甯冨眬銆侀棿璺濄€佹帓鐗堛€佸搷搴斿紡鍜屽ぇ閮ㄥ垎瑙嗚鏍峰紡
+- 涓嶅紩鍏ョ浜屽 UI 缁勪欢搴?
+## 棣栭〉鍐呭绠＄悊绾︽潫
 
-- 官网内容管理
-- 新闻管理
-- 素材库管理
-- 客户线索管理
-- 运单与轨迹管理
-- 客户档案管理
-- 账号权限管理
-- 操作日志
-- 系统设置
+- 鍐呭绠＄悊椤靛繀椤诲畬鏁存覆鏌撻《閮ㄦ憳瑕併€佸乏渚ц〃鍗曞尯鍜屽彸渚ч瑙堝尯
+- 褰撳墠闃舵鍏佽浣跨敤鏈湴鎸佷箙鍖?mock锛屼絾鏁版嵁缁撴瀯蹇呴』璐磋繎姝ｅ紡鎺ュ彛
+- 鍐呭缁撴瀯璋冩暣鏃跺繀椤诲吋瀹瑰巻鍙茶崏绋匡紝涓嶈兘鍥犱负鏃ф暟鎹己瀛楁瀵艰嚧椤甸潰娓叉煋澶辫触
+- 褰撳墠琛ㄥ崟鑷冲皯瑕嗙洊锛?  - Banner 鍥剧墖缁?  - 棣栧睆涓绘爣棰樹笌娆¤鍐呭
+  - 涓や釜 CTA 鎸夐挳鐨勫悕绉颁笌璺宠浆閾炬帴
+  - 杩愬崟杩借釜妯″潡
+  - 涓昏惀涓氬姟妯″潡
+  - 涓€绔欏紡鏈嶅姟娴佺▼妯″潡
+  - 鑱旂郴杞寲鍖?  - SEO 璁剧疆
+- Banner 鍥剧墖缁勫繀椤绘敮鎸佷笂浼犮€侀瑙堛€佸垹闄ゅ拰璁句负棣栧浘
+- 杩愬崟杩借釜妯″潡蹇呴』鏀寔鐙珛寮€鍏筹紝鏍囬蹇呴』鍙慨鏀?- 涓昏惀涓氬姟妯″潡蹇呴』鏀寔鐙珛寮€鍏炽€佹爣棰樸€佹弿杩板拰澶氫釜涓氬姟灏忔ā鍧?- 姣忎釜涓昏惀涓氬姟灏忔ā鍧楀繀椤绘敮鎸佸浘鏍囥€佸悕绉般€佹弿杩板拰鏌ョ湅鏇村璺敱
+- 鍙充晶鎬婚瑙堜腑鐨勪富钀ヤ笟鍔″彧灞曠ず鏈€鍚庢坊鍔犵殑涓€涓ā鍧?- 姣忎釜涓昏惀涓氬姟缂栬緫鍗＄墖鍐呭繀椤绘彁渚涗笌褰撳墠妯″潡瀵归綈鐨勫眬閮ㄩ瑙?- 涓€绔欏紡鏈嶅姟娴佺▼妯″潡蹇呴』鏀寔鐙珛寮€鍏炽€佹爣棰樸€佸壇鏍囬鍜屾祦绋嬫楠ょ淮鎶?- 涓€绔欏紡鏈嶅姟娴佺▼鏈€澶氬厑璁?7 涓楠?
+## 甯冨眬绾︽潫
 
-## 3. 一期不做
+- 鍚庡彴涓诲竷灞€蹇呴』淇濇寔宸︿晶鑿滃崟涓庡彸渚у唴瀹瑰尯绛夐珮
+- 椤甸潰婊氬姩鍙厑璁稿彂鐢熷湪鍙充晶鍐呭鍖哄唴閮?- 涓嶄娇鐢ㄥ叏灞€婊氬姩鏉?
+## 璺敱涓庢帴鍙ｇ害鏉?
+- `/` 榛樿閲嶅畾鍚戝埌 `/dashboard`
+- 鏈櫥褰曡闂悗鍙拌矾鐢辨椂缁熶竴璺宠浆鍒?`/login?redirect=褰撳墠鍦板潃`
+- 宸茬櫥褰曡闂?`/login` 鏃惰烦鍥?`/dashboard`
+- 鐧诲綍鎴愬姛鍚庡繀椤诲厛瀹屾垚 `/api/auth/me` 鍜屽姩鎬佽矾鐢辨敞鍏ワ紝鍐嶈繘鍏ョ洰鏍囬〉
+- 鍓嶇璇锋眰缁熶竴浣跨敤 `/api`
+- 寮€鍙戠幆澧冮€氳繃 Vite 浠ｇ悊鍒?`VITE_API_PROXY_TARGET`
 
-- 订单管理
-- 报价管理
-- 财务结算
-- 发票管理
-- 多组织多租户
-- 多仓管理
-- 复杂报表中心
-- 审批流
-- 消息中心
-- 风控系统
-- 自动化工作流平台
+## 楠岃瘉瑕佹眰
 
-## 4. 后台角色
+- 椤圭洰鍙甯告瀯寤?- 鐧诲綍涓庢潈闄愭嫤鎴湁鏁?- 棣栭〉鍐呭绠＄悊鍙姞杞姐€佷繚瀛樿崏绋裤€佸彂甯冦€侀噸缃?- 杩愬崟杩借釜妯″潡鍙紑鍏虫樉绀哄苟淇敼鏍囬
+- 涓昏惀涓氬姟妯″潡鍙紑鍏虫樉绀恒€佺淮鎶ゅ涓笟鍔℃ā鍧楋紝鍙充晶鍙瑙堟渶鍚庢坊鍔犵殑妯″潡
+- 涓€绔欏紡鏈嶅姟娴佺▼鍙紑鍏虫樉绀猴紝鍙淮鎶ゆ渶澶?7 涓楠?- 鍚庡彴甯冨眬鍙湪鍙充晶鍐呭鍖烘粴鍔?
+## 2026-04-09 Preview Rules
 
-- 超级管理员：拥有全部菜单和权限
-- 运营：负责官网内容、新闻、素材和部分线索维护
-- 客服：负责线索跟进、运单维护、轨迹更新和客户信息补充
+- 首页内容管理页的预览必须全部放在右侧列，左侧只保留填报和配置表单。
+- 右侧预览必须按 Banner、运单查询、主营业务、一站式服务、联系转化、SEO 的顺序拆成独立卡片。
+- 右侧预览块的顺序必须和左侧模块顺序一致，保证编辑与预览一一对应。
+- 主营业务右侧总预览只显示最后新增的一个业务模块，并让该卡片占满预览块宽度。
+- 主营业务右侧总预览中不得直接显示路由值，按钮文案始终固定为“查看更多”。
 
-权限控制至少覆盖：
+## 2026-04-09 Home Content API
 
-- 页面访问权限
-- 菜单可见性
-- 关键写操作权限
+- Backend now provides `GET /api/content/home`, `PUT /api/content/home/draft`, and `PUT /api/content/home/publish`.
+- Home content is persisted in MySQL table `site_content_page` created by `backend/src/main/resources/db/migration/V3__create_site_content_page.sql`.
+- Frontend `src/api/content.ts` no longer uses localStorage and must call the backend APIs above.
 
-## 5. 菜单边界
+## 2026-04-09 Home Content Seed
 
-- 工作台
-- 内容管理
-- 新闻管理
-- 素材库
-- 线索管理
-- 运单管理
-- 客户管理
-- 账号权限
-- 操作日志
-- 系统设置
+- Manual seed SQL for homepage content is stored at `backend/sql/home_content_seed.sql`.
+- The seed SQL targets table `site_content_page` and can be imported directly after Flyway migration `V3`.
 
-## 6. 前端技术约束
+## 2026-04-09 Promise Section
 
-后台前端固定采用 `Element Plus + Tailwind CSS` 混合方案。
+- Homepage content form no longer renders right-side preview cards.
+- Added `promiseSection` for the fixed six-item 我们承诺 block.
+- Each promise item stores `iconUrl`, `title`, and `subtitle`, and items are fixed in count and order.
 
-- Element Plus 负责表单、按钮、菜单、表格、卡片、弹窗、消息提示等交互组件
-- Tailwind CSS 负责布局、间距、排版、响应式和大部分视觉样式
-- `scoped CSS` 仅用于 Tailwind 不方便覆盖的组件内部细节
-- 不再回退到“纯 Element Plus + 大量手写 CSS”模式
-- 不引入第二套 UI 组件库
+## 2026-04-09 News Module
 
-## 7. 首页内容管理约束
+- Homepage content management no longer includes the contact section.
+- Added backend news CRUD endpoints under `/api/news` and a new admin menu component `News`.
+- Added Flyway migration `backend/src/main/resources/db/migration/V4__create_news_article_and_menu.sql`.
+- Vite dev server now binds to `0.0.0.0` and supports LAN hot reload via `.env.development` HMR settings.
 
-在正式后端接口完成前，首页内容管理遵循以下规则：
+## 2026-04-09 Block News Form
 
-- 首页内容表单先在前端完整实现，不等待后端接口
-- 当前阶段允许使用本地持久化 mock，但数据结构必须贴近正式接口
-- 内容管理页必须完整渲染表单区和右侧预览区，不允许只显示顶部摘要卡
-- 当前表单至少覆盖：
-  - Banner 图片组
-  - 首屏主标题与次要内容
-  - 两个 CTA 按钮的名称与跳转链接
-  - Banner 下方的运单追踪模块
-  - 主营业务模块
-  - 联系转化区
-  - SEO 设置
-- Banner 图片组必须支持上传、预览、删除和“设为首图”
-- 首图之上必须叠加主标题、次要内容和两个按钮
-- 两个按钮的显示名称与跳转链接必须可在后台修改
-- 运单追踪模块必须支持独立开关控制是否显示，且模块标题必须可修改
-- “核心卖点”改为“主营业务”，模块标题和描述必须可修改
-- 主营业务模块必须支持独立开关控制是否显示
-- 主营业务必须支持添加多个业务小模块
-- 每个业务小模块必须支持独立维护图标、业务名称、业务描述和“查看更多”跳转路由
-- 后台主布局必须保持左侧菜单与右侧内容区等高，页面滚动只能发生在右侧内容区内部，不使用全局滚动条
-- 内容数据结构发生调整时，必须兼容已存在的本地草稿或缓存数据，不能因为旧数据缺字段而导致页面下半区渲染失败
-- 后续接入后端时，优先替换 `frontend/src/api/content.ts`，不推翻现有表单结构
+- News management uses a block-based editor instead of a single content textarea.
+- Supported news block types: paragraph, heading, image, image_caption.
+- Frontend stores blocks in typed structures and serializes them into backend field `content`.
 
-## 8. 前端路由约束
+## 2026-04-09 Menu Restructure
 
-- `/` 默认重定向到 `/dashboard`
-- 未登录访问任意后台路由时，统一跳转到 `/login?redirect=当前地址`
-- 未登录访问 `/dashboard` 时，必须跳转到 `/login`
-- 已登录访问 `/login` 时，必须重定向到 `/dashboard`
-- `404` 不能作为公开路由绕过权限拦截
-- 动态菜单路由注入后，需要重新匹配当前地址；只有仍然无法匹配时才显示 `404`
-- 登录成功后，必须先完成 `/api/auth/me` 拉取和动态菜单路由注入，再跳转到目标页
-- 退出登录时，必须清理本地认证信息并重置动态路由注入状态
+- Admin sidebar now supports nested menu groups.
+- New menu tree: Dashboard, Page Management (Home Config, Service Lines, News), Global Settings (Navigation, Footer, Contact).
+- Backend menu migration is `backend/src/main/resources/db/migration/V5__restructure_admin_menus.sql`.
+- Users need to re-login after running V5 so `/api/auth/me` returns the new menu tree.
 
-## 9. 接口访问约束
+## 2026-04-09 Menu Localization
 
-- 前端代码中不写死 `http://localhost:8080` 之类的后端绝对地址
-- 前端请求统一使用相对路径 `/api`
-- 开发环境通过 Vite `server.proxy` 代理 `/api` 到后端
-- 代理目标通过 `VITE_API_PROXY_TARGET` 配置，不直接散落在业务代码中
-- 登录成功的判断标准不是只拿到 token，而是必须成功获取 `/api/auth/me`
+- Added backend migration `V6__localize_admin_menu_names.sql` to convert admin menu names and related permission labels to Chinese.
+- Service Lines page is currently a template management entry, not a line-content editor yet.
 
-## 10. 技术栈与语言约束
+## 2026-04-09 Backend Startup
 
-- 前端：Vue 3、TypeScript、Vite、Vue Router、Pinia、Element Plus、Tailwind CSS
-- 后端：Java 21、Spring Boot 3
-- 数据库：MySQL 8
-- 缓存：Redis
-- 接口风格：REST API
+- Backend development startup must use backend/start-dev.ps1 or backend/start-dev.cmd on Windows.
+- The startup script auto-selects JDK 21 from QSD_JAVA21_HOME, JAVA21_HOME, JAVA_HOME, or the default Temurin 21 install path.
+- Applied Flyway migration files must be treated as immutable. New menu or permission localization changes must be added in a new migration instead of editing V3+ files that may already exist in the database.
 
-语言约束：
-
-- 文档说明使用中文
-- 代码注释使用中文
-- 提交说明使用中文
-- 表名、字段名、接口路径、类名、方法名、变量名使用英文
-
-## 11. 实现原则
-
-- 先打通登录、路由和权限，再做业务页面
-- 先保证 CRUD 可用，再做高级筛选、导出和批量操作
-- 菜单、权限、页面路由结构必须一致
-- 后台接口必须围绕真实数据模型设计，不能直接把 mock 结构当正式接口
-- 前端继续使用 Element Plus 组件，但优先用 Tailwind 组织页面结构和视觉层次
-- 后端一期保持单体优先，不主动拆分微服务
-
-## 12. 验证要求
-
-- 项目可以正常构建
-- 登录页可用
-- 权限拦截有效
-- 未登录访问 `/` 会跳转到 `/login`
-- 未登录访问 `/dashboard` 会跳转到 `/login`
-- 已登录访问 `/login` 会跳转到 `/dashboard`
-- 登录成功后无需刷新即可进入 `/dashboard` 或 `redirect` 指向的目标页
-- 已登录访问真实不存在的地址时才显示 `404`
-- 开发环境接口请求走 `/api`，代理目标由 `VITE_API_PROXY_TARGET` 控制
-- Tailwind utility class 可以在 `.vue` 组件中正常生效
-- 首页内容管理表单可加载、可保存草稿、可发布、可重置
-- 内容管理页打开后必须可见完整表单区域与右侧预览区域
-- Banner 图片组可上传、预览、删除、设为首图
-- 运单追踪模块可开关显示并可修改标题
-- 主营业务模块可修改标题与描述，可新增多个业务小模块
-- 主营业务模块可独立开关显示
-- 业务小模块可修改图标、名称、描述和查看更多路由
-- 两个按钮名称与链接修改后可在预览区即时反映
-- 关键写操作有明确反馈

@@ -1,66 +1,90 @@
-# qsd Admin Backend
+﻿# qsd Admin Backend
 
-## 项目概况
+## 椤圭洰姒傚喌
 
-这是 `qsd-gw` 官网配套的后台管理系统。一期优先支持官网内容运营、客户线索和运单轨迹维护，不以完整 ERP 为目标。
-项目边界和实现约束以 [AGENT.md](/F:/work/quanshidaHT-JAVA/AGENT.md) 为准。
-
-## 当前结构
+杩欐槸 `qsd-gw` 瀹樼綉閰嶅鐨勫悗鍙扮鐞嗙郴缁熴€備竴鏈熶紭鍏堟敮鎸佸畼缃戝唴瀹硅繍钀ャ€佸鎴风嚎绱㈠拰杩愬崟杞ㄨ抗缁存姢锛屼笉浠ュ畬鏁?ERP 涓虹洰鏍囥€?
+## 褰撳墠缁撴瀯
 
 - `frontend`
   - Vue 3 + TypeScript + Vite + Vue Router + Pinia
-  - UI 方案：Element Plus + Tailwind CSS
-  - 已实现登录页、后台布局、路由守卫、动态菜单注入
-  - 已实现首页内容管理表单，当前保存/发布使用本地存储 mock
+  - UI 鏂规锛欵lement Plus + Tailwind CSS
+  - 宸插疄鐜扮櫥褰曢〉銆佸悗鍙板竷灞€銆佽矾鐢卞畧鍗€佸姩鎬佽彍鍗曟敞鍏?  - 宸插疄鐜伴椤靛唴瀹圭鐞嗚〃鍗曪紝鏈湴淇濆瓨/鍙戝竷浣跨敤 localStorage mock
 - `backend`
   - Spring Boot 3 + JWT + MyBatis-Plus + Flyway
-  - 已实现 `/api/health`、`/api/auth/login`、`/api/auth/me`
-- `infra/docker-compose.yml`
-  - 本地依赖：MySQL 8 + Redis 7.2
+  - 宸插疄鐜?`/api/health`銆乣/api/auth/login`銆乣/api/auth/me`
 
-## 前端关键约定
+## 棣栭〉鍐呭绠＄悊
 
-- `/` 默认重定向到 `/dashboard`
-- 未登录访问后台路由时，统一跳转到 `/login?redirect=当前地址`
-- 已登录访问 `/login` 时，自动回到 `/dashboard`
-- 登录成功后先完成 `/api/auth/me` 和动态路由注入，再进入目标页
-- 开发环境接口统一走 `/api`，由 Vite 代理到 `VITE_API_PROXY_TARGET`
+褰撳墠棣栭〉鍐呭绠＄悊浣嶄簬 `frontend/src/views/ContentView.vue`锛屾暟鎹粨鏋勫畾涔夊湪 `frontend/src/types/content.ts`锛屾湰鍦?mock 鍦?`frontend/src/api/content.ts`銆?
+褰撳墠瑕嗙洊锛?
+- Banner 鍥剧墖缁?- 杩愬崟杩借釜妯″潡
+- 涓昏惀涓氬姟妯″潡
+- 涓€绔欏紡鏈嶅姟娴佺▼妯″潡
+- 鑱旂郴杞寲鍖?- SEO 璁剧疆
 
-## 首页内容管理
+瑙勫垯锛?
+- 涓昏惀涓氬姟妯″潡鏈夌嫭绔嬪紑鍏?- 涓昏惀涓氬姟鍙充晶鎬婚瑙堝彧鏄剧ず鏈€鍚庢坊鍔犵殑涓€涓笟鍔℃ā鍧?- 姣忎釜涓昏惀涓氬姟缂栬緫鍗＄墖鍐呴儴甯﹀眬閮ㄩ瑙?- 涓€绔欏紡鏈嶅姟娴佺▼鏈夌嫭绔嬪紑鍏炽€佹爣棰樸€佸壇鏍囬
+- 涓€绔欏紡鏈嶅姟娴佺▼鏈€澶?7 涓楠?- 鍚庡彴鍙粴鍔ㄥ彸渚у唴瀹瑰尯锛屼笉婊氬姩鏁翠釜椤甸潰
 
-当前首页内容管理位于 `frontend/src/views/ContentView.vue`，数据结构定义在 `frontend/src/types/content.ts`，本地 mock 读写在 `frontend/src/api/content.ts`。
+## 鏈湴鍚姩
 
-已实现内容：
-
-- Banner 图片组上传、预览、删除、设为首图
-- 首图主标题、次要内容
-- 两个 CTA 按钮名称与跳转链接
-- 运单追踪模块开关与标题
-- 主营业务模块开关、标题、描述和多个业务小模块
-- 联系转化区
-- SEO 设置
-- 草稿保存、发布、重置
-- 右侧 Banner 预览摘要
-
-约束：
-
-- 内容管理页必须完整显示顶部摘要、左侧表单区和右侧预览区
-- 内容结构升级时必须兼容浏览器中已有的历史草稿数据
-- 后台布局使用右侧内容区内部滚动，避免整页全局滚动
-- 后续接入后端时，优先替换 `frontend/src/api/content.ts`
-
-## 本地启动
-
-1. 启动依赖服务
+1. 鍚姩渚濊禆鏈嶅姟
    - `docker compose -f infra/docker-compose.yml up -d`
-2. 启动后端
+2. 鍚姩鍚庣
    - `mvn -f backend/pom.xml spring-boot:run`
-3. 启动前端
+3. 鍚姩鍓嶇
    - `npm --prefix frontend run dev`
 
-如果修改了 `frontend/vite.config.ts`、`frontend/postcss.config.js`、`frontend/tailwind.config.js` 或 `.env` 文件，需要重启前端开发服务。
+濡傛灉淇敼浜?`frontend/vite.config.ts`銆乣frontend/postcss.config.js`銆乣frontend/tailwind.config.js` 鎴?`.env`锛岄渶瑕侀噸鍚墠绔紑鍙戞湇鍔°€?
+## 2026-04-09 Preview Rules
 
-## 默认测试账号
+- 首页内容管理右侧预览改为按模块逐块展示，左侧只负责填报。
+- 右侧预览顺序与左侧模块顺序保持一致，便于对照编辑。
+- 主营业务右侧总预览只显示最后新增的一项，且按钮文案固定为“查看更多”。
 
-- 用户名：`admin`
-- 密码：`admin123`
+## 2026-04-09 Home Content API
+
+- Added backend endpoints: `GET /api/content/home`, `PUT /api/content/home/draft`, `PUT /api/content/home/publish`.
+- Added Flyway migration `backend/src/main/resources/db/migration/V3__create_site_content_page.sql`.
+- Frontend `src/api/content.ts` has been switched from localStorage mock to real backend requests.
+
+## 2026-04-09 Home Content Seed
+
+- Added manual import SQL: `backend/sql/home_content_seed.sql`.
+- Import this file after `site_content_page` has been created to preview homepage content immediately.
+
+## 2026-04-09 Promise Section
+
+- Removed all right-side preview modules from homepage content management.
+- Added fixed six-item promise section editing with icon, title and subtitle fields.
+- Updated backend seed SQL to include the promise section.
+
+## 2026-04-09 News Module
+
+- Removed the homepage contact conversion section from content management.
+- Added news management frontend and backend with menu route `/news`.
+- Added Vite LAN dev access and HMR-related env settings in `frontend/.env.development`.
+
+## 2026-04-09 Block News Form
+
+- News editing now uses block-based content instead of one raw content textarea.
+- Supported block types are paragraph, heading, image and image caption.
+
+## 2026-04-09 Menu Restructure
+
+- Sidebar menus were restructured into grouped sections.
+- Added routes for `/pages/home`, `/pages/service-lines`, `/news`, `/settings/navigation`, `/settings/footer`, `/settings/contact`.
+- Run backend migration V5 and re-login to load the new menu tree.
+
+## 2026-04-09 Menu Localization
+
+- Added migration V6 to localize admin menus into Chinese.
+- Service Lines page currently explains the template scope and next editing target instead of editing line content directly.
+
+## 2026-04-09 Backend Startup
+
+- Added backend/start-dev.ps1 and backend/start-dev.cmd for Windows development startup.
+- The script forces backend startup to use JDK 21 and avoids Maven picking an older global JDK.
+- If 8080 is occupied, run backend/start-dev.ps1 -Port 8081.
+- Do not modify Flyway migrations that have already been applied to a database. Add a new migration instead.
+

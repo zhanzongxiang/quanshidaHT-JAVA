@@ -1,75 +1,73 @@
-# qsd Admin Backend TODO
+﻿# qsd Admin Backend TODO
 
-## 基础设施
+## 鍐呭绠＄悊
 
-- 固化前后端技术栈和目录结构
-- 保持唯一的后台 UI 方案：Element Plus + Tailwind CSS
-- 建立统一请求层、错误处理和消息反馈机制
-- 补齐 403、404、空状态、加载状态等基础页面
+- 灏嗛椤靛唴瀹圭鐞嗕粠鏈湴瀛樺偍 mock 鎺ュ叆姝ｅ紡鍚庣鎺ュ彛
+- 鏄庣‘ Banner 鍥剧墖缁勭殑鎺ュ彛缁撴瀯
+- 鏄庣‘杩愬崟杩借釜妯″潡寮€鍏充笌瀛楁
+- 鏄庣‘涓昏惀涓氬姟妯″潡寮€鍏炽€佹ā鍧楅厤缃笌涓氬姟灏忔ā鍧楃殑鎺ュ彛缁撴瀯
+- 鏄庣‘涓€绔欏紡鏈嶅姟娴佺▼妯″潡寮€鍏炽€佹爣棰樸€佸壇鏍囬鍜屾楠ょ粨鏋?- 璁捐涓氬姟鍥炬爣璧勬簮鐨勫瓨鍌ㄤ笌寮曠敤鏂瑰紡
+- 鍥炲綊楠岃瘉涓昏惀涓氬姟鎬婚瑙堝彧鏄剧ず鏈€鍚庢坊鍔犳ā鍧?- 鍥炲綊楠岃瘉涓€绔欏紡鏈嶅姟娴佺▼姝ラ涓婇檺涓?7
 
-## 权限系统
+## 鍩虹璁炬柦
 
-- 设计用户、角色、权限数据模型
-- 明确菜单权限和关键写操作权限的控制方式
-- 建立用户管理、角色管理、菜单权限页面
-- 梳理超级管理员、运营、客服三类角色的默认权限集
+- 鍥哄寲鍓嶅悗绔妧鏈爤鍜岀洰褰曠粨鏋?- 瀹屽杽缁熶竴璇锋眰灞傘€侀敊璇鐞嗗拰娑堟伅鍙嶉鏈哄埗
+- 琛ラ綈 403銆?04銆佺┖鐘舵€併€佸姞杞界姸鎬侀〉闈?- 鍥炲綊楠岃瘉鍚庡彴甯冨眬鍙粴鍔ㄥ彸渚у唴瀹瑰尯
 
-## 内容管理
+## 涓氬姟妯″潡
 
-- 将首页内容管理从本地存储 mock 接入正式后端接口
-- 明确首页内容的数据模型和接口契约
-- 设计 Banner 图片组的后端存储结构
-- 设计运单追踪模块的接口字段和展示开关
-- 设计主营业务模块开关、模块配置与业务小模块的接口结构
-- 设计业务图标资源的存储与引用方式
-- 设计两个 CTA 按钮名称与链接的接口字段
-- 补充更多官网页面的内容表单
-- 回归验证内容管理页渲染完整性，避免再次出现“只有顶部摘要，表单区域消失”的问题
-- 回归验证旧版本地草稿迁移，避免结构升级后因字段缺失导致渲染异常
-- 回归验证后台布局滚动行为，确保只滚动右侧内容区
+- 鏂伴椈绠＄悊
+- 绱犳潗搴?- 绾跨储绠＄悊
+- 杩愬崟绠＄悊
+- 瀹㈡埛绠＄悊
+- 鏃ュ織涓庤缃?
+## 2026-04-09 Done
 
-## 新闻管理
+- 首页内容管理预览全部收敛到右侧。
+- 右侧预览拆分为 Banner、运单查询、主营业务、一站式服务、联系转化、SEO 独立块。
+- 主营业务预览固定显示“查看更多”按钮，不直接显示路由值。
+- 主营业务预览仅显示最后新增模块，并占满预览块宽度。
 
-- 设计新闻文章对象结构
-- 支持标题、摘要、封面图、正文或外链、发布时间、状态、排序
-- 评估是否需要分类和标签
+## 2026-04-09 Done
 
-## 素材库
+- Added backend home content controller, service, mapper, entity, DTO and migration.
+- Added endpoints for fetch, draft save and publish.
+- Switched frontend home content API from localStorage to backend `/api/content/home*`.
 
-- 设计素材上传和分类模型
-- 支持内容管理与新闻管理复用素材
-- 记录素材 URL、类型、大小、上传时间和引用关系
+## 2026-04-09 Done
 
-## 线索管理
+- Added manual seed SQL file `backend/sql/home_content_seed.sql`.
 
-- 设计线索对象和跟进记录对象
-- 明确线索来源、状态、负责人、备注结构
-- 支持线索分配、跟进、状态流转
+## 2026-04-09 Done
 
-## 运单管理
+- Removed homepage content preview blocks.
+- Added fixed six-item promise section editing.
+- Updated homepage seed SQL with promise section defaults.
 
-- 设计运单对象和轨迹节点对象
-- 明确运单状态、异常状态、签收状态枚举
-- 支持轨迹时间线编辑
-- 支持异常件标记与说明
+## 2026-04-09 Done
 
-## 客户管理
+- Removed contact section from homepage content management.
+- Added news management page, API client, backend controller/service/mapper/entity and migration.
+- Added Vite LAN host and HMR dev settings.
 
-- 设计客户基础资料对象
-- 建立客户与线索、运单的关联关系
-- 支持客户详情查看历史信息
+## 2026-04-09 Done
 
-## 日志与设置
+- Switched news editor from single textarea to block-based form.
+- Added block parsing and serialization in `frontend/src/api/news.ts`.
 
-- 设计登录日志与操作日志结构
-- 明确关键写操作的审计范围
-- 建立站点设置、上传设置、基础字典页面
+## 2026-04-09 Done
 
-## 验证与质量
+- Added nested admin menu rendering.
+- Added page management and global settings route pages.
+- Added backend migration V5 for new menu structure.
 
-- 补充路由回归验证
-- 补充登录链路回归验证
-- 补充 `/api` 代理配置回归验证
-- 补充首页内容管理表单回归验证
-- 补充 Banner 图片组操作回归验证
-- 评估是否补充前端组件级测试
+## 2026-04-09 Done
+
+- Added Chinese menu localization migration V6.
+- Clarified Service Lines page as a template entry page instead of a completed editor.
+
+## 2026-04-09 Done
+
+- Added Windows backend startup scripts backend/start-dev.ps1 and backend/start-dev.cmd.
+- Fixed Flyway startup failure by moving menu localization into V6 and keeping applied migrations immutable.
+

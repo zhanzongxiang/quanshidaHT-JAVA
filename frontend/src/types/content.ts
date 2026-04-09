@@ -30,6 +30,19 @@ export interface HomeServiceItem {
   link: string
 }
 
+export interface HomeProcessStepItem {
+  id: string
+  title: string
+  description: string
+}
+
+export interface HomePromiseItem {
+  id: string
+  iconUrl: string
+  title: string
+  subtitle: string
+}
+
 export interface HomeServicesSection {
   enabled: boolean
   title: string
@@ -37,11 +50,17 @@ export interface HomeServicesSection {
   items: HomeServiceItem[]
 }
 
-export interface HomeContactContent {
+export interface HomeProcessSection {
+  enabled: boolean
   title: string
-  description: string
-  phone: string
-  email: string
+  subtitle: string
+  steps: HomeProcessStepItem[]
+}
+
+export interface HomePromiseSection {
+  title: string
+  subtitle: string
+  items: HomePromiseItem[]
 }
 
 export interface HomeSeoContent {
@@ -54,7 +73,8 @@ export interface HomeContentForm {
   hero: HomeHeroContent
   tracking: HomeTrackingContent
   servicesSection: HomeServicesSection
-  contact: HomeContactContent
+  processSection: HomeProcessSection
+  promiseSection: HomePromiseSection
   seo: HomeSeoContent
 }
 

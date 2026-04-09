@@ -1,117 +1,85 @@
-# qsd Admin Backend Plan
+﻿# qsd Admin Backend Plan
 
-## 目标
-
-以可控范围快速交付一套可用后台，优先打通登录、权限、路由和官网内容运营链路。
-
-## 阶段 0：项目基础壳子
-
-交付内容：
+## 闃舵 0锛氬熀纭€澹冲瓙
 
 - Vue 3 + TypeScript + Vite + Vue Router + Pinia + Element Plus + Tailwind CSS
 - Java 21 + Spring Boot 3
-- 登录页
-- 后台主布局
-- 路由守卫
-- 动态菜单
-- `/api` 开发代理
+- 鐧诲綍椤?- 鍚庡彴涓诲竷灞€
+- 璺敱瀹堝崼
+- 鍔ㄦ€佽彍鍗?- `/api` 寮€鍙戜唬鐞?
+## 闃舵 1锛氳处鍙锋潈闄?
+- 鐢ㄦ埛绠＄悊
+- 瑙掕壊绠＄悊
+- 鑿滃崟鏉冮檺閰嶇疆
 
-验收点：
+## 闃舵 2锛氬伐浣滃彴
 
-- 未登录无法访问后台页
-- 登录后无需刷新即可进入目标页
-- `404` 只在动态路由注入后无法匹配时显示
+- 鏁版嵁姒傝鍗＄墖
+- 寰呭姙浜嬮」
+- 鏈€杩戞搷浣滆褰?
+## 闃舵 3锛氬唴瀹圭鐞?
+- 棣栭〉鍐呭绠＄悊琛ㄥ崟
+- Banner 鍥剧墖缁勭鐞?- 杩愬崟杩借釜妯″潡閰嶇疆
+- 涓昏惀涓氬姟妯″潡閰嶇疆
+- 涓昏惀涓氬姟灏忔ā鍧楀浘鏍囥€佸悕绉般€佹弿杩般€佽矾鐢遍厤缃?- 涓€绔欏紡鏈嶅姟娴佺▼妯″潡閰嶇疆
+- 鑱旂郴杞寲鍖洪厤缃?- SEO 閰嶇疆
+- 鑽夌淇濆瓨涓庡彂甯冩祦绋?
+楠屾敹鐐癸細
 
-## 阶段 1：账号权限
+- 鍐呭绠＄悊椤靛畬鏁村睍绀?- 涓昏惀涓氬姟鎬婚瑙堝彧鏄剧ず鏈€鍚庢坊鍔犵殑涓€涓ā鍧?- 涓€绔欏紡鏈嶅姟娴佺▼鏈€澶氱淮鎶?7 涓楠?- 鍚庡彴鍙粴鍔ㄥ彸渚у唴瀹瑰尯
 
-交付内容：
+## 鍚庣画闃舵
 
-- 用户管理
-- 角色管理
-- 菜单权限配置
-- 基础写操作权限控制
+- 鏂伴椈绠＄悊
+- 绱犳潗搴?- 绾跨储绠＄悊
+- 杩愬崟绠＄悊
+- 瀹㈡埛绠＄悊
+- 鏃ュ織涓庣郴缁熻缃?
+## 2026-04-09 Preview Alignment
 
-## 阶段 2：工作台
+- 首页内容管理继续沿用左侧表单、右侧预览的双栏结构。
+- 右侧预览按模块拆卡并与左侧模块顺序对齐。
+- 主营业务总预览保留最后新增模块的满宽展示。
 
-交付内容：
+## 2026-04-09 Content Backend
 
-- 数据概览卡片
-- 待办事项
-- 最近操作记录
+- Persist homepage content JSON in backend table `site_content_page`.
+- Keep current API scope to home page draft and publish operations.
+- Continue using frontend form structure as the stored JSON document shape.
 
-## 阶段 3：内容管理
+## 2026-04-09 Seed Data
 
-交付内容：
+- Provide a reusable SQL seed file for homepage content preview and manual testing.
 
-- 首页内容管理表单
-- Banner 图片组管理
-- 首屏主标题与次要内容配置
-- 两个 CTA 按钮名称与链接配置
-- Banner 下方运单追踪模块配置
-- 主营业务模块开关配置
-- 主营业务模块配置
-- 主营业务小模块图标、名称、描述和跳转路由配置
-- 联系转化区配置
-- SEO 配置
-- 草稿保存与发布流程
-- 接口未完成前使用本地存储 mock
+## 2026-04-09 Promise Section
 
-验收点：
+- Keep homepage content management as a pure form editing page without preview cards.
+- Persist a fixed six-item promise section in the same homepage JSON document.
 
-- 内容管理页可以完整展示顶部摘要、表单区和右侧预览区
-- Banner 图片组可上传、预览、删除、设为首图
-- 运单追踪模块可开关显示并可修改标题
-- 主营业务模块可新增多个小模块
-- 主营业务模块可独立开关显示
-- 每个业务小模块可维护图标、名称、描述和查看更多路由
-- 首图切换后预览区同步变化
-- 两个按钮的名称和链接修改后可即时预览
-- 草稿保存后刷新仍可恢复
-- 发布后状态和发布时间可见
-- 后续可通过替换 `frontend/src/api/content.ts` 平滑接入后端
+## 2026-04-09 News Module
 
-## 阶段 4：新闻管理
+- Continue homepage content management without the contact section.
+- Start the first version of news management as a CRUD admin module.
+- Keep dev environment reachable on LAN with hot reload enabled.
 
-- 新闻列表
-- 新建/编辑新闻
-- 发布状态
-- 发布时间
-- 封面图和排序
+## 2026-04-09 Block News Form
 
-## 阶段 5：素材库
+- Keep backend news table unchanged and serialize block content into `content`.
+- Continue evolving admin news editing around ordered content blocks.
 
-- 素材上传
-- 素材列表
-- 分类管理
-- 引用信息
+## 2026-04-09 Menu Restructure
 
-## 阶段 6：线索管理
+- Keep admin navigation aligned with page types instead of a single content menu.
+- Use grouped menus for page management and global settings.
 
-- 线索列表
-- 线索详情
-- 跟进记录
-- 负责人分配
-- 状态流转
+## 2026-04-09 Menu Localization
 
-## 阶段 7：运单管理
+- Keep menu labels Chinese across both fresh migrations and upgraded databases.
+- Treat Service Lines as a management entry page until the dedicated line template editor is implemented.
 
-- 运单列表
-- 运单详情
-- 轨迹节点管理
-- 异常件标记
-- 签收状态维护
+## 2026-04-09 Backend Startup
 
-## 阶段 8：客户管理
+- Standardize backend local startup through backend/start-dev.ps1.
+- Keep Java runtime fixed at 21 during development startup.
+- Keep Flyway migration history append-only after a migration has been applied.
 
-- 客户列表
-- 客户详情
-- 关联线索
-- 关联运单
-
-## 阶段 9：日志与系统设置
-
-- 登录日志
-- 操作日志
-- 站点设置
-- 上传设置
-- 基础字典
