@@ -20,6 +20,9 @@ export interface HomeTrackingContent {
   title: string
   placeholder: string
   buttonText: string
+  emptyText: string
+  notFoundText: string
+  loadingText: string
 }
 
 export interface HomeServiceItem {
@@ -41,6 +44,14 @@ export interface HomePromiseItem {
   iconUrl: string
   title: string
   subtitle: string
+  imageUrl: string
+}
+
+export interface HomeNewsPreviewSection {
+  title: string
+  subtitle: string
+  viewAllText: string
+  viewAllUrl: string
 }
 
 export interface HomeServicesSection {
@@ -75,6 +86,7 @@ export interface HomeContentForm {
   servicesSection: HomeServicesSection
   processSection: HomeProcessSection
   promiseSection: HomePromiseSection
+  newsPreviewSection: HomeNewsPreviewSection
   seo: HomeSeoContent
 }
 

@@ -10,6 +10,7 @@ const DashboardView = () => import('../views/DashboardView.vue')
 const ContentView = () => import('../views/ContentView.vue')
 const NewsView = () => import('../views/NewsView.vue')
 const ServiceLinesView = () => import('../views/ServiceLinesView.vue')
+const ServiceLineEditorView = () => import('../views/ServiceLineEditorView.vue')
 const NavigationSettingsView = () => import('../views/NavigationSettingsView.vue')
 const FooterSettingsView = () => import('../views/FooterSettingsView.vue')
 const ContactSettingsView = () => import('../views/ContactSettingsView.vue')
@@ -31,6 +32,20 @@ const staticRoutes: RouteRecordRaw[] = [
   { path: '/', redirect: DEFAULT_HOME_PATH },
   { path: '/login', name: 'login', component: LoginView, meta: { public: true } },
   { path: '/403', name: 'forbidden', component: ForbiddenView, meta: { public: true } },
+  {
+    path: '/pages/service-lines/:code',
+    component: AdminLayout,
+    children: [
+      {
+        path: '',
+        name: 'service-line-editor',
+        component: ServiceLineEditorView,
+        meta: {
+          menuName: '线路模板编辑',
+        },
+      },
+    ],
+  },
   { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFoundView },
 ]
 

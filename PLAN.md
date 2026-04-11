@@ -83,3 +83,20 @@
 - Keep Java runtime fixed at 21 during development startup.
 - Keep Flyway migration history append-only after a migration has been applied.
 
+
+## 2026-04-10 Service Line Editor
+
+- Service Lines has moved from entry placeholder to an editable fixed-template page module.
+- Keep line-template editing constrained to content fields and repeated module items, not free-form layout assembly.
+
+## 2026-04-11 Contact Module
+
+- Keep global contact settings aligned with a full contact-page module instead of a minimal contact info form.
+- Use 5174 as the default frontend development port.
+
+
+## 2026-04-11 Page Schema Alignment
+
+- Keep admin content persistence aligned with the external frontend page schema instead of ad hoc field groups.
+- Service-line management should continue evolving around the normalized public page data contract.
+

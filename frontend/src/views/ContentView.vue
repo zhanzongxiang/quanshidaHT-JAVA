@@ -137,6 +137,15 @@
             <el-form-item label="查询按钮名称" prop="tracking.buttonText">
               <el-input v-model="form.tracking.buttonText" maxlength="10" show-word-limit :disabled="!canEdit" />
             </el-form-item>
+            <el-form-item label="空状态提示" prop="tracking.emptyText">
+              <el-input v-model="form.tracking.emptyText" maxlength="40" show-word-limit :disabled="!canEdit" />
+            </el-form-item>
+            <el-form-item label="未查到提示" prop="tracking.notFoundText">
+              <el-input v-model="form.tracking.notFoundText" maxlength="40" show-word-limit :disabled="!canEdit" />
+            </el-form-item>
+            <el-form-item label="加载提示" prop="tracking.loadingText">
+              <el-input v-model="form.tracking.loadingText" maxlength="40" show-word-limit :disabled="!canEdit" />
+            </el-form-item>
           </div>
         </el-card>
 
@@ -327,8 +336,35 @@
                 <el-form-item :label="`子标题描述 ${index + 1}`" :prop="`promiseSection.items.${index}.subtitle`">
                   <el-input v-model="item.subtitle" type="textarea" :rows="4" maxlength="120" show-word-limit :disabled="!canEdit" />
                 </el-form-item>
+                <el-form-item :label="`配图链接 ${index + 1}`" :prop="`promiseSection.items.${index}.imageUrl`">
+                  <el-input v-model="item.imageUrl" placeholder="https://example.com/promise.jpg" :disabled="!canEdit" />
+                </el-form-item>
               </div>
             </div>
+          </div>
+        </el-card>
+
+        <el-card class="rounded-3xl border-0 shadow-panel">
+          <template #header>
+            <div>
+              <h3 class="m-0 text-lg font-bold text-ink">新闻预览模块</h3>
+              <p class="m-0 mt-1 text-sm text-mist">维护首页新闻预览区标题、副标题和查看全部按钮。</p>
+            </div>
+          </template>
+
+          <div class="grid gap-4 md:grid-cols-2">
+            <el-form-item label="模块标题" prop="newsPreviewSection.title">
+              <el-input v-model="form.newsPreviewSection.title" maxlength="30" show-word-limit :disabled="!canEdit" />
+            </el-form-item>
+            <el-form-item label="模块副标题" prop="newsPreviewSection.subtitle">
+              <el-input v-model="form.newsPreviewSection.subtitle" maxlength="120" show-word-limit :disabled="!canEdit" />
+            </el-form-item>
+            <el-form-item label="查看全部文案" prop="newsPreviewSection.viewAllText">
+              <el-input v-model="form.newsPreviewSection.viewAllText" maxlength="20" show-word-limit :disabled="!canEdit" />
+            </el-form-item>
+            <el-form-item label="查看全部链接" prop="newsPreviewSection.viewAllUrl">
+              <el-input v-model="form.newsPreviewSection.viewAllUrl" placeholder="/news" :disabled="!canEdit" />
+            </el-form-item>
           </div>
         </el-card>
 
@@ -425,6 +461,7 @@ function createPromiseItem(id: string): HomePromiseItem {
     iconUrl: '',
     title: '',
     subtitle: '',
+    imageUrl: '',
   }
 }
 
@@ -455,6 +492,9 @@ const form = reactive<HomeContentForm>({
     title: '',
     placeholder: '',
     buttonText: '',
+    emptyText: '',
+    notFoundText: '',
+    loadingText: '',
   },
   servicesSection: {
     enabled: true,
@@ -473,6 +513,12 @@ const form = reactive<HomeContentForm>({
     subtitle: '',
     items: createDefaultPromiseItems(),
   },
+  newsPreviewSection: {
+    title: '',
+    subtitle: '',
+    viewAllText: '',
+    viewAllUrl: '',
+  },
   seo: {
     title: '',
     description: '',
@@ -490,12 +536,17 @@ const rules: FormRules = {
   'tracking.title': [{ required: true, message: '请输入运单查询标题', trigger: 'blur' }],
   'tracking.placeholder': [{ required: true, message: '请输入运单号占位文案', trigger: 'blur' }],
   'tracking.buttonText': [{ required: true, message: '请输入查询按钮名称', trigger: 'blur' }],
+  'tracking.notFoundText': [{ required: true, message: '请输入未查到运单提示', trigger: 'blur' }],
+  'tracking.loadingText': [{ required: true, message: '请输入加载提示文案', trigger: 'blur' }],
   'servicesSection.title': [{ required: true, message: '请输入主营业务标题', trigger: 'blur' }],
   'servicesSection.description': [{ required: true, message: '请输入主营业务描述', trigger: 'blur' }],
   'processSection.title': [{ required: true, message: '请输入一站式服务标题', trigger: 'blur' }],
   'processSection.subtitle': [{ required: true, message: '请输入一站式服务副标题', trigger: 'blur' }],
   'promiseSection.title': [{ required: true, message: '请输入我们承诺标题', trigger: 'blur' }],
   'promiseSection.subtitle': [{ required: true, message: '请输入我们承诺副标题', trigger: 'blur' }],
+  'newsPreviewSection.title': [{ required: true, message: '请输入新闻预览标题', trigger: 'blur' }],
+  'newsPreviewSection.viewAllText': [{ required: true, message: '请输入查看全部按钮文案', trigger: 'blur' }],
+  'newsPreviewSection.viewAllUrl': [{ required: true, message: '请输入查看全部链接', trigger: 'blur' }],
   'seo.title': [{ required: true, message: '请输入 SEO 标题', trigger: 'blur' }],
   'seo.description': [{ required: true, message: '请输入 SEO 描述', trigger: 'blur' }],
   'seo.keywords': [{ required: true, message: '请输入 SEO 关键词', trigger: 'blur' }],
@@ -518,6 +569,7 @@ function normalizePromiseItems(items: unknown): HomePromiseItem[] {
       iconUrl: current?.iconUrl || '',
       title: current?.title || '',
       subtitle: current?.subtitle || '',
+      imageUrl: current?.imageUrl || '',
     }
   })
   return normalized
@@ -545,6 +597,7 @@ function applyForm(nextForm: Partial<HomeContentForm>) {
   const nextServices = nextForm.servicesSection ?? form.servicesSection
   const nextProcess = nextForm.processSection ?? form.processSection
   const nextPromise = nextForm.promiseSection ?? form.promiseSection
+  const nextNewsPreview = nextForm.newsPreviewSection ?? form.newsPreviewSection
   const nextSeo = nextForm.seo ?? form.seo
 
   Object.assign(form.hero, {
@@ -563,6 +616,9 @@ function applyForm(nextForm: Partial<HomeContentForm>) {
     title: nextTracking.title ?? '',
     placeholder: nextTracking.placeholder ?? '',
     buttonText: nextTracking.buttonText ?? '',
+    emptyText: nextTracking.emptyText ?? '',
+    notFoundText: nextTracking.notFoundText ?? '',
+    loadingText: nextTracking.loadingText ?? '',
   })
 
   Object.assign(form.servicesSection, {
@@ -584,6 +640,13 @@ function applyForm(nextForm: Partial<HomeContentForm>) {
     subtitle: nextPromise.subtitle ?? '',
   })
   replacePromiseItems(normalizePromiseItems(nextPromise.items))
+
+  Object.assign(form.newsPreviewSection, {
+    title: nextNewsPreview.title ?? '',
+    subtitle: nextNewsPreview.subtitle ?? '',
+    viewAllText: nextNewsPreview.viewAllText ?? '',
+    viewAllUrl: nextNewsPreview.viewAllUrl ?? '',
+  })
 
   Object.assign(form.seo, {
     title: nextSeo.title ?? '',

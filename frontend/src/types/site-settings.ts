@@ -22,10 +22,32 @@ export interface FooterSettings {
 }
 
 export interface ContactSettings {
-  title: string
-  subtitle: string
-  phone: string
-  email: string
-  address: string
-  wechat: string
+  heroBadge: string
+  heroTitle: string
+  heroSubtitle: string
+  hotlineTitle: string
+  hotlineNumber: string
+  hotlineDescription: string
+  emailTitle: string
+  emailAddress: string
+  emailDescription: string
+  wechatTitle: string
+  wechatId: string
+  wechatDescription: string
+  addressTitle: string
+  addressLine: string
+  addressDescription: string
+  officeHoursTitle: string
+  weekdayHours: string
+  weekendHours: string
+  responseCommitment: string
+  visitNotice: string
+  ctaTitle: string
+  ctaSubtitle: string
+  primaryButtonText: string
+  primaryButtonLink: string
+  secondaryButtonText: string
+  secondaryButtonLink: string
+  mapHint: string
+  servicePromises: string
 }

@@ -79,7 +79,7 @@
 ## 2026-04-09 Menu Localization
 
 - Added migration V6 to localize admin menus into Chinese.
-- Service Lines page currently explains the template scope and next editing target instead of editing line content directly.
+- Service Lines page now provides real data cards and enters a dedicated editor for each line.
 
 ## 2026-04-09 Backend Startup
 
@@ -87,4 +87,24 @@
 - The script forces backend startup to use JDK 21 and avoids Maven picking an older global JDK.
 - If 8080 is occupied, run backend/start-dev.ps1 -Port 8081.
 - Do not modify Flyway migrations that have already been applied to a database. Add a new migration instead.
+
+
+## 2026-04-10 Service Line Editor
+
+- Added backend endpoints GET /api/content/service-lines, GET /api/content/service-lines/{code}, PUT /api/content/service-lines/{code}/draft and PUT /api/content/service-lines/{code}/publish.
+- Added frontend route /pages/service-lines/:code and a dedicated fixed-template editor page.
+- Service Lines list page is now backed by real data instead of a placeholder explanation card.
+
+## 2026-04-11 Contact Module
+
+- Expanded the contact settings module into a richer fixed-form editor with hero, contact cards, office hours, promises and CTA content.
+- Current contact module persistence still uses frontend local settings storage.
+- Frontend development port is now 5174.
+
+
+## 2026-04-11 Page Schema Alignment
+
+- Calibrated backend /api/content/home responses to a schema-aligned form structure and kept frontend admin mapping compatibility.
+- Calibrated backend /api/content/service-lines responses and the service-line editor to the service-line page schema.
+- Homepage content management now includes news preview section fields required by the schema document.
 

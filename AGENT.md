@@ -96,11 +96,32 @@
 ## 2026-04-09 Menu Localization
 
 - Added backend migration `V6__localize_admin_menu_names.sql` to convert admin menu names and related permission labels to Chinese.
-- Service Lines page is currently a template management entry, not a line-content editor yet.
+- Service Lines page now links to dedicated fixed-template editors for each line.
 
 ## 2026-04-09 Backend Startup
 
 - Backend development startup must use backend/start-dev.ps1 or backend/start-dev.cmd on Windows.
 - The startup script auto-selects JDK 21 from QSD_JAVA21_HOME, JAVA21_HOME, JAVA_HOME, or the default Temurin 21 install path.
 - Applied Flyway migration files must be treated as immutable. New menu or permission localization changes must be added in a new migration instead of editing V3+ files that may already exist in the database.
+
+
+## 2026-04-10 Service Line Editor
+
+- Service line pages now use backend-managed fixed template forms under /api/content/service-lines.
+- Added service line list and single-line editor pages for taiwan, africa and express.
+- Service line fixed template sections are: basic info, hero, advantages, process, coverage, CTA and SEO.
+- Save draft may persist incomplete content; publish must pass required field and module-item validation.
+
+## 2026-04-11 Contact Module
+
+- Contact settings must be treated as a structured page module, not a minimal key-value form.
+- Contact module fields now include hero copy, four contact cards, office hours, service promises and CTA buttons.
+- Local frontend development should run on port 5174 unless explicitly overridden.
+
+
+## 2026-04-11 Page Schema Alignment
+
+- Backend home content form is now normalized to the public schema groups hero, trackingSection, businessSection, processSection, promiseSection and newsPreviewSection.
+- Backend service-line content form is now normalized to key, eyebrow, title, subtitle, description, heroImage, heroTags, metrics, highlights, processSteps, scope, support and cta fields.
+- Admin pages may keep local editing helpers, but persistence and API responses must align to the external page schema document.
 

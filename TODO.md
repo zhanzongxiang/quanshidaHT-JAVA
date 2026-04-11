@@ -71,3 +71,21 @@
 - Added Windows backend startup scripts backend/start-dev.ps1 and backend/start-dev.cmd.
 - Fixed Flyway startup failure by moving menu localization into V6 and keeping applied migrations immutable.
 
+
+## 2026-04-10 Done
+
+- Added backend service-line content APIs backed by site_content_page.
+- Added frontend service-line list data loading and single-line fixed-template editor.
+
+## 2026-04-11 Done
+
+- Expanded the contact settings module into a structured editor with richer default content.
+- Updated the frontend development port to 5174.
+
+
+## 2026-04-11 Done
+
+- Normalized backend home content schema and frontend admin mapping.
+- Normalized backend service-line schema and rewrote the line editor around the aligned fields.
+- Added homepage news preview section fields in admin content management.
+
