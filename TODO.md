@@ -1,91 +1,73 @@
-﻿# qsd Admin Backend TODO
+# qsd Admin TODO
 
-## 鍐呭绠＄悊
+## 待办事项
 
-- 灏嗛椤靛唴瀹圭鐞嗕粠鏈湴瀛樺偍 mock 鎺ュ叆姝ｅ紡鍚庣鎺ュ彛
-- 鏄庣‘ Banner 鍥剧墖缁勭殑鎺ュ彛缁撴瀯
-- 鏄庣‘杩愬崟杩借釜妯″潡寮€鍏充笌瀛楁
-- 鏄庣‘涓昏惀涓氬姟妯″潡寮€鍏炽€佹ā鍧楅厤缃笌涓氬姟灏忔ā鍧楃殑鎺ュ彛缁撴瀯
-- 鏄庣‘涓€绔欏紡鏈嶅姟娴佺▼妯″潡寮€鍏炽€佹爣棰樸€佸壇鏍囬鍜屾楠ょ粨鏋?- 璁捐涓氬姟鍥炬爣璧勬簮鐨勫瓨鍌ㄤ笌寮曠敤鏂瑰紡
-- 鍥炲綊楠岃瘉涓昏惀涓氬姟鎬婚瑙堝彧鏄剧ず鏈€鍚庢坊鍔犳ā鍧?- 鍥炲綊楠岃瘉涓€绔欏紡鏈嶅姟娴佺▼姝ラ涓婇檺涓?7
+### 官网公开接口
 
-## 鍩虹璁炬柦
+- 将 `site`、`about`、`contact` 从后端默认数据改为正式持久化数据
+- 将 `tracking` 从 mock 返回改为真实轨迹查询
+- 为公开接口补充更稳定的 DTO 和字段约束
 
-- 鍥哄寲鍓嶅悗绔妧鏈爤鍜岀洰褰曠粨鏋?- 瀹屽杽缁熶竴璇锋眰灞傘€侀敊璇鐞嗗拰娑堟伅鍙嶉鏈哄埗
-- 琛ラ綈 403銆?04銆佺┖鐘舵€併€佸姞杞界姸鎬侀〉闈?- 鍥炲綊楠岃瘉鍚庡彴甯冨眬鍙粴鍔ㄥ彸渚у唴瀹瑰尯
+### 页面管理
 
-## 涓氬姟妯″潡
+- 完善首页内容发布后的前台联调验证
+- 完善线路模板更多字段与前台展示的联动
+- 增加更多固定模板页面，例如关于我们、联系我们专题页
 
-- 鏂伴椈绠＄悊
-- 绱犳潗搴?- 绾跨储绠＄悊
-- 杩愬崟绠＄悊
-- 瀹㈡埛绠＄悊
-- 鏃ュ織涓庤缃?
-## 2026-04-09 Done
+### 新闻管理
 
-- 首页内容管理预览全部收敛到右侧。
-- 右侧预览拆分为 Banner、运单查询、主营业务、一站式服务、联系转化、SEO 独立块。
-- 主营业务预览固定显示“查看更多”按钮，不直接显示路由值。
-- 主营业务预览仅显示最后新增模块，并占满预览块宽度。
+- 补充新闻分类、标签、推荐位
+- 增加新闻封面和正文素材的统一上传能力
+- 补充新闻发布回滚或版本管理能力
 
-## 2026-04-09 Done
+### 全局配置
 
-- Added backend home content controller, service, mapper, entity, DTO and migration.
-- Added endpoints for fetch, draft save and publish.
-- Switched frontend home content API from localStorage to backend `/api/content/home*`.
+- 将导航、页脚、联系方式从前端本地存储切到后端接口
+- 增加站点 SEO 默认配置
+- 增加联系方式地图与多办公点配置
 
-## 2026-04-09 Done
+### 基础设施
 
-- Added manual seed SQL file `backend/sql/home_content_seed.sql`.
+- 完善统一错误处理和消息提示
+- 完善空状态、404、403 页面
+- 补充更多构建和回归校验
 
-## 2026-04-09 Done
+## 已完成事项
 
-- Removed homepage content preview blocks.
-- Added fixed six-item promise section editing.
-- Updated homepage seed SQL with promise section defaults.
+### 后台管理
 
-## 2026-04-09 Done
+- 登录、鉴权、动态菜单、基础布局已完成
+- 菜单结构已调整为中文分组
+- 后台布局已改为仅右侧内容区滚动
 
-- Removed contact section from homepage content management.
-- Added news management page, API client, backend controller/service/mapper/entity and migration.
-- Added Vite LAN host and HMR dev settings.
+### 首页内容管理
 
-## 2026-04-09 Done
+- 首页内容已接入后端，不再使用 localStorage mock
+- 支持草稿保存和发布
+- 已完成首页 schema 对齐
+- 已完成我们承诺固定六项结构
 
-- Switched news editor from single textarea to block-based form.
-- Added block parsing and serialization in `frontend/src/api/news.ts`.
+### 线路模板管理
 
-## 2026-04-09 Done
+- 已完成线路列表页
+- 已完成单条线路固定模板编辑器
+- 已接入后端持久化
 
-- Added nested admin menu rendering.
-- Added page management and global settings route pages.
-- Added backend migration V5 for new menu structure.
+### 新闻管理
 
-## 2026-04-09 Done
+- 已完成新闻管理后台页面和后端接口
+- 已切换为区块化表单
 
-- Added Chinese menu localization migration V6.
-- Clarified Service Lines page as a template entry page instead of a completed editor.
+### 开发环境
 
-## 2026-04-09 Done
+- 已启用 Vite 代理方案
+- 已启用局域网访问和热更新
+- 前端开发端口已统一到 `5174`
+- 后端 Windows 启动脚本已补齐
 
-- Added Windows backend startup scripts backend/start-dev.ps1 and backend/start-dev.cmd.
-- Fixed Flyway startup failure by moving menu localization into V6 and keeping applied migrations immutable.
+### 数据与接口
 
-
-## 2026-04-10 Done
-
-- Added backend service-line content APIs backed by site_content_page.
-- Added frontend service-line list data loading and single-line fixed-template editor.
-
-## 2026-04-11 Done
-
-- Expanded the contact settings module into a structured editor with richer default content.
-- Updated the frontend development port to 5174.
-
-
-## 2026-04-11 Done
-
-- Normalized backend home content schema and frontend admin mapping.
-- Normalized backend service-line schema and rewrote the line editor around the aligned fields.
-- Added homepage news preview section fields in admin content management.
-
+- 已提供首页示例 SQL
+- 已提供完整业务示例 SQL
+- 已补充官网公开只读接口
+- 已将 Spring Security 放行规则限制在公开接口范围内

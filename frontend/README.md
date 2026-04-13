@@ -1,6 +1,6 @@
-﻿# qsd Admin Frontend
+# qsd Admin Frontend
 
-## 鎶€鏈爤
+## 技术栈
 
 - Vue 3
 - TypeScript
@@ -10,88 +10,81 @@
 - Element Plus
 - Tailwind CSS
 
-## 鏈湴寮€鍙?
-- 瀹夎渚濊禆锛歚npm install`
-- 鍚姩寮€鍙戠幆澧冿細`npm run dev`
-- 鐢熶骇鏋勫缓锛歚npm run build`
+## 本地开发
 
-## 棣栭〉鍐呭绠＄悊
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-- 椤甸潰浣嶇疆锛歚src/views/ContentView.vue`
-- 鏁版嵁缁撴瀯锛歚src/types/content.ts`
-- 鏈湴 mock锛歚src/api/content.ts`
+默认开发地址：
 
-褰撳墠鏀寔锛?
-- Banner 鍥剧墖缁?- 杩愬崟杩借釜妯″潡
-- 涓昏惀涓氬姟妯″潡
-- 涓€绔欏紡鏈嶅姟娴佺▼妯″潡
-- 鑱旂郴杞寲鍖?- SEO 璁剧疆
+- `http://localhost:5174`
 
-瑙勫垯锛?
-- 涓昏惀涓氬姟妯″潡鏈夌嫭绔嬪紑鍏?- 涓昏惀涓氬姟缂栬緫鍗＄墖鍐呴儴鏈夊眬閮ㄩ瑙?- 鍙充晶涓昏惀涓氬姟鎬婚瑙堝彧鏄剧ず鏈€鍚庢坊鍔犵殑涓€涓ā鍧?- 涓€绔欏紡鏈嶅姟娴佺▼鏈夌嫭绔嬪紑鍏炽€佹爣棰樸€佸壇鏍囬
-- 涓€绔欏紡鏈嶅姟娴佺▼鏈€澶?7 涓楠?- 鍚庡彴甯冨眬鍙厑璁稿彸渚у唴瀹瑰尯婊氬姩
+如果修改了以下文件，需要重启前端开发服务：
 
-## 2026-04-09 Preview Rules
+- `vite.config.ts`
+- `.env.development`
+- `postcss.config.js`
+- `tailwind.config.js`
 
-- All previews in `src/views/ContentView.vue` stay in the right column.
-- Right-side previews are split into independent cards by module.
-- Preview card order follows the left-side form module order.
-- Services preview shows only the latest service card and uses a fixed `查看更多` button label.
+## 目录关注点
 
-## 2026-04-09 Home Content API
+- 路由：`src/router`
+- 页面：`src/views`
+- 布局：`src/layouts`
+- API：`src/api`
+- 类型：`src/types`
 
-- `src/api/content.ts` now requests `GET /api/content/home`.
-- Draft save uses `PUT /api/content/home/draft`.
-- Publish uses `PUT /api/content/home/publish`.
-- Backend persistence is provided by `backend/src/main/resources/db/migration/V3__create_site_content_page.sql` and the new `content` module.
+## 页面管理约束
 
-## 2026-04-09 Seed Data
+### 首页配置
 
-- You can import `../backend/sql/home_content_seed.sql` to preload homepage content for UI verification.
+- 页面位于 `src/views/ContentView.vue`
+- 对接后端接口：
+  - `GET /api/content/home`
+  - `PUT /api/content/home/draft`
+  - `PUT /api/content/home/publish`
+- 首页数据结构需要和后端 schema 对齐
 
-## 2026-04-09 Promise Section
+### 线路页面
 
-- `src/views/ContentView.vue` now keeps only form editing cards and no preview column.
-- Added a fixed six-item promise section with icon, title and subtitle fields.
-- `backend/sql/home_content_seed.sql` includes default promise data for quick verification.
+- 列表页位于 `src/views/ServiceLinesView.vue`
+- 编辑页位于 `src/views/ServiceLineEditorView.vue`
+- 使用固定模板表单，不允许自由拼版
 
-## 2026-04-09 News Module
+### 新闻资讯
 
-- Added `src/views/NewsView.vue` and `src/api/news.ts`.
-- Added dynamic route component mapping for `News`.
-- Dev server now listens on `0.0.0.0`; use the Network URL shown by Vite or `http://<your-lan-ip>:5174`.
+- 页面位于 `src/views/NewsView.vue`
+- 使用区块化表单
+- 当前支持的区块类型：
+  - `paragraph`
+  - `heading`
+  - `image`
+  - `image_caption`
 
-## 2026-04-09 Block News Form
+## 全局配置约束
 
-- `src/views/NewsView.vue` now edits ordered content blocks.
-- `src/api/news.ts` serializes blocks into backend `content` and parses them back on read.
+- 导航设置、页脚设置、联系方式属于全局配置
+- 当前联系方式页是结构化表单，不是简单键值输入
+- 全局设置当前部分内容仍可能使用前端本地存储，后续需要逐步迁移到后端
 
-## 2026-04-09 Menu Restructure
+## 接口使用约束
 
-- Admin sidebar now renders nested menu groups.
-- Added frontend pages for Service Lines, Navigation Settings, Footer Settings and Contact Settings.
-- Re-login is required after backend migration V5 so the new menu tree is visible.
+- 管理端继续使用：
+  - `/api/auth/*`
+  - `/api/content/*`
+  - `/api/news/*`
+- 官网前台不要直接调用管理端 JWT 接口
+- 官网前台应使用公开只读接口：
+  - `/api/site`
+  - `/api/pages/*`
+  - `/api/tracking/*`
 
-## 2026-04-09 Menu Localization
+## UI 约束
 
-- Admin menu labels are now localized by backend migration V6.
-
-## 2026-04-10 Service Line Editor
-
-- Added src/api/service-line.ts and src/types/service-line.ts for fixed-template line pages.
-- Added src/views/ServiceLineEditorView.vue and route /pages/service-lines/:code.
-- src/views/ServiceLinesView.vue now loads backend summaries and links into the editor.
-
-## 2026-04-11 Contact Module
-
-- Expanded src/views/ContactSettingsView.vue into a complete contact-page module editor.
-- Contact settings now cover hero copy, contact cards, office hours, service promises and CTA buttons.
-- Frontend dev port is standardized to 5174 in .env.development.
-
-
-## 2026-04-11 Page Schema Alignment
-
-- src/api/content.ts now maps between admin editing fields and the schema-aligned backend home page structure.
-- src/views/ContentView.vue now exposes tracking extra texts, promise imageUrl and news preview section fields.
-- src/views/ServiceLineEditorView.vue is aligned to the external service-line page schema fields.
-
+- 后台统一使用 `Element Plus + Tailwind CSS`
+- 表单、按钮、弹窗、消息提示优先使用 Element Plus
+- 布局、间距、栅格、响应式样式优先使用 Tailwind CSS
+- 后台整体布局只允许右侧内容区域滚动

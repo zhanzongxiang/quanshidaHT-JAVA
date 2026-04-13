@@ -25,4 +25,23 @@ public interface NewsArticleMapper extends BaseMapper<NewsArticle> {
         limit 1
         """)
     NewsArticle selectActiveById(Long id);
+
+    @Select("""
+        select id, title, summary, cover_image_url, content, author, status, published_at, created_at, updated_at, deleted
+        from news_article
+        where deleted = 0
+          and status = 'published'
+        order by published_at desc, id desc
+        """)
+    List<NewsArticle> selectPublishedList();
+
+    @Select("""
+        select id, title, summary, cover_image_url, content, author, status, published_at, created_at, updated_at, deleted
+        from news_article
+        where id = #{id}
+          and deleted = 0
+          and status = 'published'
+        limit 1
+        """)
+    NewsArticle selectPublishedById(Long id);
 }

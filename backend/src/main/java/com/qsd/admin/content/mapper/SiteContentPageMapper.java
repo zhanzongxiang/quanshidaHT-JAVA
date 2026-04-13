@@ -15,4 +15,13 @@ public interface SiteContentPageMapper extends BaseMapper<SiteContentPage> {
         limit 1
         """)
     SiteContentPage selectByPageCode(String pageCode);
+
+    @Select("""
+        select id, page_code, status, form_json, published_at, created_at, updated_at
+        from site_content_page
+        where page_code = #{pageCode}
+          and status = 'published'
+        limit 1
+        """)
+    SiteContentPage selectPublishedByPageCode(String pageCode);
 }

@@ -1,127 +1,109 @@
-﻿# qsd Admin AGENT Guide
+# qsd Admin 项目规范
 
-## 椤圭洰瀹氫綅
+## 项目定位
 
-杩欐槸瀹樼綉閰嶅鐨勫悗鍙扮鐞嗙郴缁燂紝涓€鏈熺洰鏍囨槸鏀寔瀹樼綉鍐呭杩愯惀銆佸鎴风嚎绱㈢鐞嗐€佽繍鍗曚笌杞ㄨ抗缁存姢锛屼笉浠ュ畬鏁?ERP 涓虹洰鏍囥€?
-## 涓€鏈熻寖鍥?
-- 瀹樼綉鍐呭绠＄悊
-- 鏂伴椈绠＄悊
-- 绱犳潗搴撶鐞?- 瀹㈡埛绾跨储绠＄悊
-- 杩愬崟涓庤建杩圭鐞?- 瀹㈡埛妗ｆ绠＄悊
-- 璐﹀彿鏉冮檺绠＄悊
-- 鎿嶄綔鏃ュ織
-- 绯荤粺璁剧疆
+这是企业官网配套的后台管理系统，当前重点是支撑官网内容运营、新闻管理、线路模板管理、基础站点配置和公开数据接口，不以完整 ERP 为目标。
 
-## 鍓嶇鎶€鏈害鏉?
-- 鍚庡彴鍓嶇鍥哄畾閲囩敤 `Element Plus + Tailwind CSS`
-- Element Plus 璐熻矗琛ㄥ崟銆佹寜閽€佽彍鍗曘€佸崱鐗囥€佸脊绐椼€佹秷鎭彁绀虹瓑浜や簰缁勪欢
-- Tailwind CSS 璐熻矗甯冨眬銆侀棿璺濄€佹帓鐗堛€佸搷搴斿紡鍜屽ぇ閮ㄥ垎瑙嗚鏍峰紡
-- 涓嶅紩鍏ョ浜屽 UI 缁勪欢搴?
-## 棣栭〉鍐呭绠＄悊绾︽潫
+## 技术约束
 
-- 鍐呭绠＄悊椤靛繀椤诲畬鏁存覆鏌撻《閮ㄦ憳瑕併€佸乏渚ц〃鍗曞尯鍜屽彸渚ч瑙堝尯
-- 褰撳墠闃舵鍏佽浣跨敤鏈湴鎸佷箙鍖?mock锛屼絾鏁版嵁缁撴瀯蹇呴』璐磋繎姝ｅ紡鎺ュ彛
-- 鍐呭缁撴瀯璋冩暣鏃跺繀椤诲吋瀹瑰巻鍙茶崏绋匡紝涓嶈兘鍥犱负鏃ф暟鎹己瀛楁瀵艰嚧椤甸潰娓叉煋澶辫触
-- 褰撳墠琛ㄥ崟鑷冲皯瑕嗙洊锛?  - Banner 鍥剧墖缁?  - 棣栧睆涓绘爣棰樹笌娆¤鍐呭
-  - 涓や釜 CTA 鎸夐挳鐨勫悕绉颁笌璺宠浆閾炬帴
-  - 杩愬崟杩借釜妯″潡
-  - 涓昏惀涓氬姟妯″潡
-  - 涓€绔欏紡鏈嶅姟娴佺▼妯″潡
-  - 鑱旂郴杞寲鍖?  - SEO 璁剧疆
-- Banner 鍥剧墖缁勫繀椤绘敮鎸佷笂浼犮€侀瑙堛€佸垹闄ゅ拰璁句负棣栧浘
-- 杩愬崟杩借釜妯″潡蹇呴』鏀寔鐙珛寮€鍏筹紝鏍囬蹇呴』鍙慨鏀?- 涓昏惀涓氬姟妯″潡蹇呴』鏀寔鐙珛寮€鍏炽€佹爣棰樸€佹弿杩板拰澶氫釜涓氬姟灏忔ā鍧?- 姣忎釜涓昏惀涓氬姟灏忔ā鍧楀繀椤绘敮鎸佸浘鏍囥€佸悕绉般€佹弿杩板拰鏌ョ湅鏇村璺敱
-- 鍙充晶鎬婚瑙堜腑鐨勪富钀ヤ笟鍔″彧灞曠ず鏈€鍚庢坊鍔犵殑涓€涓ā鍧?- 姣忎釜涓昏惀涓氬姟缂栬緫鍗＄墖鍐呭繀椤绘彁渚涗笌褰撳墠妯″潡瀵归綈鐨勫眬閮ㄩ瑙?- 涓€绔欏紡鏈嶅姟娴佺▼妯″潡蹇呴』鏀寔鐙珛寮€鍏炽€佹爣棰樸€佸壇鏍囬鍜屾祦绋嬫楠ょ淮鎶?- 涓€绔欏紡鏈嶅姟娴佺▼鏈€澶氬厑璁?7 涓楠?
-## 甯冨眬绾︽潫
+- 后台前端统一使用 `Vue 3 + TypeScript + Vite + Vue Router + Pinia`
+- UI 方案固定为 `Element Plus + Tailwind CSS`
+- 后端统一使用 `Java 21 + Spring Boot 3 + Spring Security + JWT + MyBatis-Plus + Flyway`
+- 前端业务请求统一走 `/api`
+- 开发环境通过 Vite 代理转发到 `VITE_API_PROXY_TARGET`
 
-- 鍚庡彴涓诲竷灞€蹇呴』淇濇寔宸︿晶鑿滃崟涓庡彸渚у唴瀹瑰尯绛夐珮
-- 椤甸潰婊氬姩鍙厑璁稿彂鐢熷湪鍙充晶鍐呭鍖哄唴閮?- 涓嶄娇鐢ㄥ叏灞€婊氬姩鏉?
-## 璺敱涓庢帴鍙ｇ害鏉?
-- `/` 榛樿閲嶅畾鍚戝埌 `/dashboard`
-- 鏈櫥褰曡闂悗鍙拌矾鐢辨椂缁熶竴璺宠浆鍒?`/login?redirect=褰撳墠鍦板潃`
-- 宸茬櫥褰曡闂?`/login` 鏃惰烦鍥?`/dashboard`
-- 鐧诲綍鎴愬姛鍚庡繀椤诲厛瀹屾垚 `/api/auth/me` 鍜屽姩鎬佽矾鐢辨敞鍏ワ紝鍐嶈繘鍏ョ洰鏍囬〉
-- 鍓嶇璇锋眰缁熶竴浣跨敤 `/api`
-- 寮€鍙戠幆澧冮€氳繃 Vite 浠ｇ悊鍒?`VITE_API_PROXY_TARGET`
+## 后台前端规范
 
-## 楠岃瘉瑕佹眰
+- 根路由 `/` 默认跳转到 `/dashboard`
+- 未登录访问后台路由时，统一跳转到 `/login?redirect=当前地址`
+- 已登录访问 `/login` 时，直接回到 `/dashboard`
+- 登录成功后，必须先完成 `/api/auth/me` 和动态路由注入，再进入目标页
+- 后台布局保持左侧菜单与右侧内容区等高
+- 只允许右侧内容区内部滚动，不使用全局滚动条
+- 前端开发端口默认使用 `5174`
 
-- 椤圭洰鍙甯告瀯寤?- 鐧诲綍涓庢潈闄愭嫤鎴湁鏁?- 棣栭〉鍐呭绠＄悊鍙姞杞姐€佷繚瀛樿崏绋裤€佸彂甯冦€侀噸缃?- 杩愬崟杩借釜妯″潡鍙紑鍏虫樉绀哄苟淇敼鏍囬
-- 涓昏惀涓氬姟妯″潡鍙紑鍏虫樉绀恒€佺淮鎶ゅ涓笟鍔℃ā鍧楋紝鍙充晶鍙瑙堟渶鍚庢坊鍔犵殑妯″潡
-- 涓€绔欏紡鏈嶅姟娴佺▼鍙紑鍏虫樉绀猴紝鍙淮鎶ゆ渶澶?7 涓楠?- 鍚庡彴甯冨眬鍙湪鍙充晶鍐呭鍖烘粴鍔?
-## 2026-04-09 Preview Rules
+## 首页内容管理规范
 
-- 首页内容管理页的预览必须全部放在右侧列，左侧只保留填报和配置表单。
-- 右侧预览必须按 Banner、运单查询、主营业务、一站式服务、联系转化、SEO 的顺序拆成独立卡片。
-- 右侧预览块的顺序必须和左侧模块顺序一致，保证编辑与预览一一对应。
-- 主营业务右侧总预览只显示最后新增的一个业务模块，并让该卡片占满预览块宽度。
-- 主营业务右侧总预览中不得直接显示路由值，按钮文案始终固定为“查看更多”。
+- 首页内容管理页面位于 `frontend/src/views/ContentView.vue`
+- 首页内容持久化使用后端接口：
+  - `GET /api/content/home`
+  - `PUT /api/content/home/draft`
+  - `PUT /api/content/home/publish`
+- 首页数据存储在 `site_content_page` 表中
+- 首页表单当前按以下结构维护：
+  - `hero`
+  - `trackingSection`
+  - `businessSection`
+  - `processSection`
+  - `promiseSection`
+  - `newsPreviewSection`
+  - `seo`
+- 历史草稿升级时必须做字段兼容，不能因为旧数据缺字段导致页面渲染失败
 
-## 2026-04-09 Home Content API
+## 新闻管理规范
 
-- Backend now provides `GET /api/content/home`, `PUT /api/content/home/draft`, and `PUT /api/content/home/publish`.
-- Home content is persisted in MySQL table `site_content_page` created by `backend/src/main/resources/db/migration/V3__create_site_content_page.sql`.
-- Frontend `src/api/content.ts` no longer uses localStorage and must call the backend APIs above.
+- 新闻管理使用区块化表单，不再使用单一大文本正文
+- 当前支持的正文区块类型：
+  - `paragraph`
+  - `heading`
+  - `image`
+  - `image_caption`
+- 后端新闻管理接口保持在 `/api/news/*`
+- 前端区块数据允许序列化到后端 `content` 字段中保存
 
-## 2026-04-09 Home Content Seed
+## 线路模板管理规范
 
-- Manual seed SQL for homepage content is stored at `backend/sql/home_content_seed.sql`.
-- The seed SQL targets table `site_content_page` and can be imported directly after Flyway migration `V3`.
+- 线路页面使用固定模板表单，不允许自由拼装布局
+- 当前线路模板编辑接口位于 `/api/content/service-lines/*`
+- 当前线路模板结构按以下字段维护：
+  - `key`
+  - `eyebrow`
+  - `title`
+  - `subtitle`
+  - `description`
+  - `heroImage`
+  - `heroTags`
+  - `metrics`
+  - `highlights`
+  - `processSteps`
+  - `scope`
+  - `support`
+  - `cta`
+- 保存草稿允许不完整内容
+- 发布时必须通过必填项和模块完整性校验
 
-## 2026-04-09 Promise Section
+## 站点设置规范
 
-- Homepage content form no longer renders right-side preview cards.
-- Added `promiseSection` for the fixed six-item 我们承诺 block.
-- Each promise item stores `iconUrl`, `title`, and `subtitle`, and items are fixed in count and order.
+- 导航、页脚、联系方式属于全局配置，不挂在单页内容表单中
+- 当前联系方式页面为结构化编辑模块，不是简单键值表单
+- 联系方式模块至少包含：
+  - Hero 文案
+  - 联系卡片
+  - 办公时间
+  - 服务承诺
+  - CTA 按钮
 
-## 2026-04-09 News Module
+## 公开官网接口规范
 
-- Homepage content management no longer includes the contact section.
-- Added backend news CRUD endpoints under `/api/news` and a new admin menu component `News`.
-- Added Flyway migration `backend/src/main/resources/db/migration/V4__create_news_article_and_menu.sql`.
-- Vite dev server now binds to `0.0.0.0` and supports LAN hot reload via `.env.development` HMR settings.
+- 官网公开接口与后台 JWT 管理接口必须分离
+- 公开只读接口统一放在：
+  - `/api/site`
+  - `/api/pages/**`
+  - `/api/tracking/**`
+- 公开接口只允许返回已发布数据，不允许暴露草稿
+- 后台管理接口继续要求登录认证
+- 当前 `site`、`about`、`contact`、`tracking` 仍允许使用后端默认数据或 mock 数据，直到接入正式存储或第三方服务
 
-## 2026-04-09 Block News Form
+## 安全与迁移规范
 
-- News management uses a block-based editor instead of a single content textarea.
-- Supported news block types: paragraph, heading, image, image_caption.
-- Frontend stores blocks in typed structures and serializes them into backend field `content`.
+- Spring Security 仅放行明确声明的公开接口
+- Flyway 已执行迁移必须保持不可变，不能直接修改历史迁移文件
+- 菜单、权限、文案调整如果影响已执行迁移，必须新增迁移文件
+- 本地 Windows 启动后端优先使用 `backend/start-dev.ps1` 或 `backend/start-dev.cmd`
+- 本地开发使用 Java 21，不能回退到旧版 JDK
 
-## 2026-04-09 Menu Restructure
+## 验证要求
 
-- Admin sidebar now supports nested menu groups.
-- New menu tree: Dashboard, Page Management (Home Config, Service Lines, News), Global Settings (Navigation, Footer, Contact).
-- Backend menu migration is `backend/src/main/resources/db/migration/V5__restructure_admin_menus.sql`.
-- Users need to re-login after running V5 so `/api/auth/me` returns the new menu tree.
-
-## 2026-04-09 Menu Localization
-
-- Added backend migration `V6__localize_admin_menu_names.sql` to convert admin menu names and related permission labels to Chinese.
-- Service Lines page now links to dedicated fixed-template editors for each line.
-
-## 2026-04-09 Backend Startup
-
-- Backend development startup must use backend/start-dev.ps1 or backend/start-dev.cmd on Windows.
-- The startup script auto-selects JDK 21 from QSD_JAVA21_HOME, JAVA21_HOME, JAVA_HOME, or the default Temurin 21 install path.
-- Applied Flyway migration files must be treated as immutable. New menu or permission localization changes must be added in a new migration instead of editing V3+ files that may already exist in the database.
-
-
-## 2026-04-10 Service Line Editor
-
-- Service line pages now use backend-managed fixed template forms under /api/content/service-lines.
-- Added service line list and single-line editor pages for taiwan, africa and express.
-- Service line fixed template sections are: basic info, hero, advantages, process, coverage, CTA and SEO.
-- Save draft may persist incomplete content; publish must pass required field and module-item validation.
-
-## 2026-04-11 Contact Module
-
-- Contact settings must be treated as a structured page module, not a minimal key-value form.
-- Contact module fields now include hero copy, four contact cards, office hours, service promises and CTA buttons.
-- Local frontend development should run on port 5174 unless explicitly overridden.
-
-
-## 2026-04-11 Page Schema Alignment
-
-- Backend home content form is now normalized to the public schema groups hero, trackingSection, businessSection, processSection, promiseSection and newsPreviewSection.
-- Backend service-line content form is now normalized to key, eyebrow, title, subtitle, description, heroImage, heroTags, metrics, highlights, processSteps, scope, support and cta fields.
-- Admin pages may keep local editing helpers, but persistence and API responses must align to the external page schema document.
-
+- 前端改动后至少保证 `npm run build` 通过
+- 后端改动后至少保证 `mvn -DskipTests package` 通过
+- 涉及登录、权限、路由、内容发布、公开接口时，需要做对应的功能回归

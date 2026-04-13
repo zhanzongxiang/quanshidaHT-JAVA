@@ -1,110 +1,139 @@
-﻿# qsd Admin Backend
+# qsd Admin
 
-## 椤圭洰姒傚喌
+## 项目简介
 
-杩欐槸 `qsd-gw` 瀹樼綉閰嶅鐨勫悗鍙扮鐞嗙郴缁熴€備竴鏈熶紭鍏堟敮鎸佸畼缃戝唴瀹硅繍钀ャ€佸鎴风嚎绱㈠拰杩愬崟杞ㄨ抗缁存姢锛屼笉浠ュ畬鏁?ERP 涓虹洰鏍囥€?
-## 褰撳墠缁撴瀯
+这是企业官网配套的后台管理系统，当前包含后台登录、菜单权限、首页内容管理、线路模板管理、新闻管理、全局站点设置，以及一组面向官网前台的公开只读接口。
 
-- `frontend`
-  - Vue 3 + TypeScript + Vite + Vue Router + Pinia
-  - UI 鏂规锛欵lement Plus + Tailwind CSS
-  - 宸插疄鐜扮櫥褰曢〉銆佸悗鍙板竷灞€銆佽矾鐢卞畧鍗€佸姩鎬佽彍鍗曟敞鍏?  - 宸插疄鐜伴椤靛唴瀹圭鐞嗚〃鍗曪紝鏈湴淇濆瓨/鍙戝竷浣跨敤 localStorage mock
-- `backend`
-  - Spring Boot 3 + JWT + MyBatis-Plus + Flyway
-  - 宸插疄鐜?`/api/health`銆乣/api/auth/login`銆乣/api/auth/me`
+## 技术栈
 
-## 棣栭〉鍐呭绠＄悊
+### 前端
 
-褰撳墠棣栭〉鍐呭绠＄悊浣嶄簬 `frontend/src/views/ContentView.vue`锛屾暟鎹粨鏋勫畾涔夊湪 `frontend/src/types/content.ts`锛屾湰鍦?mock 鍦?`frontend/src/api/content.ts`銆?
-褰撳墠瑕嗙洊锛?
-- Banner 鍥剧墖缁?- 杩愬崟杩借釜妯″潡
-- 涓昏惀涓氬姟妯″潡
-- 涓€绔欏紡鏈嶅姟娴佺▼妯″潡
-- 鑱旂郴杞寲鍖?- SEO 璁剧疆
+- Vue 3
+- TypeScript
+- Vite
+- Vue Router
+- Pinia
+- Element Plus
+- Tailwind CSS
 
-瑙勫垯锛?
-- 涓昏惀涓氬姟妯″潡鏈夌嫭绔嬪紑鍏?- 涓昏惀涓氬姟鍙充晶鎬婚瑙堝彧鏄剧ず鏈€鍚庢坊鍔犵殑涓€涓笟鍔℃ā鍧?- 姣忎釜涓昏惀涓氬姟缂栬緫鍗＄墖鍐呴儴甯﹀眬閮ㄩ瑙?- 涓€绔欏紡鏈嶅姟娴佺▼鏈夌嫭绔嬪紑鍏炽€佹爣棰樸€佸壇鏍囬
-- 涓€绔欏紡鏈嶅姟娴佺▼鏈€澶?7 涓楠?- 鍚庡彴鍙粴鍔ㄥ彸渚у唴瀹瑰尯锛屼笉婊氬姩鏁翠釜椤甸潰
+### 后端
 
-## 鏈湴鍚姩
+- Java 21
+- Spring Boot 3
+- Spring Security
+- JWT
+- MyBatis-Plus
+- Flyway
 
-1. 鍚姩渚濊禆鏈嶅姟
-   - `docker compose -f infra/docker-compose.yml up -d`
-2. 鍚姩鍚庣
-   - `mvn -f backend/pom.xml spring-boot:run`
-3. 鍚姩鍓嶇
-   - `npm --prefix frontend run dev`
+## 当前主要模块
 
-濡傛灉淇敼浜?`frontend/vite.config.ts`銆乣frontend/postcss.config.js`銆乣frontend/tailwind.config.js` 鎴?`.env`锛岄渶瑕侀噸鍚墠绔紑鍙戞湇鍔°€?
-## 2026-04-09 Preview Rules
+- 工作台
+- 页面管理
+  - 首页配置
+  - 线路页面
+  - 新闻资讯
+- 全局配置
+  - 导航设置
+  - 页脚设置
+  - 联系方式
 
-- 首页内容管理右侧预览改为按模块逐块展示，左侧只负责填报。
-- 右侧预览顺序与左侧模块顺序保持一致，便于对照编辑。
-- 主营业务右侧总预览只显示最后新增的一项，且按钮文案固定为“查看更多”。
+## 管理端接口
 
-## 2026-04-09 Home Content API
+### 认证接口
 
-- Added backend endpoints: `GET /api/content/home`, `PUT /api/content/home/draft`, `PUT /api/content/home/publish`.
-- Added Flyway migration `backend/src/main/resources/db/migration/V3__create_site_content_page.sql`.
-- Frontend `src/api/content.ts` has been switched from localStorage mock to real backend requests.
+- `POST /api/auth/login`
+- `GET /api/auth/me`
+- `GET /api/health`
 
-## 2026-04-09 Home Content Seed
+### 首页内容管理
 
-- Added manual import SQL: `backend/sql/home_content_seed.sql`.
-- Import this file after `site_content_page` has been created to preview homepage content immediately.
+- `GET /api/content/home`
+- `PUT /api/content/home/draft`
+- `PUT /api/content/home/publish`
 
-## 2026-04-09 Promise Section
+### 线路模板管理
 
-- Removed all right-side preview modules from homepage content management.
-- Added fixed six-item promise section editing with icon, title and subtitle fields.
-- Updated backend seed SQL to include the promise section.
+- `GET /api/content/service-lines`
+- `GET /api/content/service-lines/{code}`
+- `PUT /api/content/service-lines/{code}/draft`
+- `PUT /api/content/service-lines/{code}/publish`
 
-## 2026-04-09 News Module
+### 新闻管理
 
-- Removed the homepage contact conversion section from content management.
-- Added news management frontend and backend with menu route `/news`.
-- Added Vite LAN dev access and HMR-related env settings in `frontend/.env.development`.
+- `GET /api/news`
+- `GET /api/news/{id}`
+- `POST /api/news`
+- `PUT /api/news/{id}`
+- `DELETE /api/news/{id}`
 
-## 2026-04-09 Block News Form
+## 官网公开接口
 
-- News editing now uses block-based content instead of one raw content textarea.
-- Supported block types are paragraph, heading, image and image caption.
+以下接口供企业官网前台直接读取，不需要 JWT：
 
-## 2026-04-09 Menu Restructure
+- `GET /api/site`
+- `GET /api/pages/home`
+- `GET /api/pages/about`
+- `GET /api/pages/contact`
+- `GET /api/pages/service-line/{key}`
+- `GET /api/pages/news`
+- `GET /api/pages/news/{id}`
+- `GET /api/tracking/{trackingNo}`
 
-- Sidebar menus were restructured into grouped sections.
-- Added routes for `/pages/home`, `/pages/service-lines`, `/news`, `/settings/navigation`, `/settings/footer`, `/settings/contact`.
-- Run backend migration V5 and re-login to load the new menu tree.
+说明：
 
-## 2026-04-09 Menu Localization
+- 公开接口只返回已发布内容
+- 后台管理接口仍然要求登录
+- 当前 `site`、`about`、`contact`、`tracking` 仍可能由后端默认数据提供
 
-- Added migration V6 to localize admin menus into Chinese.
-- Service Lines page now provides real data cards and enters a dedicated editor for each line.
+## 本地启动
 
-## 2026-04-09 Backend Startup
+### 前端
 
-- Added backend/start-dev.ps1 and backend/start-dev.cmd for Windows development startup.
-- The script forces backend startup to use JDK 21 and avoids Maven picking an older global JDK.
-- If 8080 is occupied, run backend/start-dev.ps1 -Port 8081.
-- Do not modify Flyway migrations that have already been applied to a database. Add a new migration instead.
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
+默认开发地址：
 
-## 2026-04-10 Service Line Editor
+- `http://localhost:5174`
 
-- Added backend endpoints GET /api/content/service-lines, GET /api/content/service-lines/{code}, PUT /api/content/service-lines/{code}/draft and PUT /api/content/service-lines/{code}/publish.
-- Added frontend route /pages/service-lines/:code and a dedicated fixed-template editor page.
-- Service Lines list page is now backed by real data instead of a placeholder explanation card.
+### 后端
 
-## 2026-04-11 Contact Module
+Windows 环境建议使用项目脚本启动：
 
-- Expanded the contact settings module into a richer fixed-form editor with hero, contact cards, office hours, promises and CTA content.
-- Current contact module persistence still uses frontend local settings storage.
-- Frontend development port is now 5174.
+```powershell
+cd F:\work\quanshidaHT-JAVA
+.\backend\start-dev.ps1
+```
 
+如果 `8080` 已占用：
 
-## 2026-04-11 Page Schema Alignment
+```powershell
+.\backend\start-dev.ps1 -Port 8081
+```
 
-- Calibrated backend /api/content/home responses to a schema-aligned form structure and kept frontend admin mapping compatibility.
-- Calibrated backend /api/content/service-lines responses and the service-line editor to the service-line page schema.
-- Homepage content management now includes news preview section fields required by the schema document.
+也可以使用 Maven 打包验证：
 
+```powershell
+cd backend
+mvn -DskipTests package
+```
+
+## 数据与迁移
+
+- 首页和线路模板内容存储在 `site_content_page`
+- 新闻存储在 `news_article`
+- 历史迁移文件必须保持不可变
+- 示例数据文件位于：
+  - `backend/sql/home_content_seed.sql`
+  - `backend/sql/full_business_seed.sql`
+
+## 开发约束
+
+- 前端统一走 `/api`，不要在业务代码中写死后端地址
+- 后台 UI 统一使用 `Element Plus + Tailwind CSS`
+- 固定模板页面不要做成自由拼版
+- 新闻正文统一用区块化表单维护
+- 官网不要直接复用后台 JWT 接口

@@ -1,102 +1,74 @@
-﻿# qsd Admin Backend Plan
+# qsd Admin 开发计划
 
-## 闃舵 0锛氬熀纭€澹冲瓙
+## 阶段 0：基础设施
 
-- Vue 3 + TypeScript + Vite + Vue Router + Pinia + Element Plus + Tailwind CSS
-- Java 21 + Spring Boot 3
-- 鐧诲綍椤?- 鍚庡彴涓诲竷灞€
-- 璺敱瀹堝崼
-- 鍔ㄦ€佽彍鍗?- `/api` 寮€鍙戜唬鐞?
-## 闃舵 1锛氳处鍙锋潈闄?
-- 鐢ㄦ埛绠＄悊
-- 瑙掕壊绠＄悊
-- 鑿滃崟鏉冮檺閰嶇疆
+- 搭建 Vue 3 + TypeScript + Vite 管理端
+- 接入 Element Plus 和 Tailwind CSS
+- 搭建 Spring Boot 3 + Spring Security + JWT + MyBatis-Plus + Flyway
+- 打通登录、鉴权、动态菜单、基础布局
+- 配置前端 `/api` 代理和本地开发环境
 
-## 闃舵 2锛氬伐浣滃彴
+## 阶段 1：后台管理基础能力
 
-- 鏁版嵁姒傝鍗＄墖
-- 寰呭姙浜嬮」
-- 鏈€杩戞搷浣滆褰?
-## 闃舵 3锛氬唴瀹圭鐞?
-- 棣栭〉鍐呭绠＄悊琛ㄥ崟
-- Banner 鍥剧墖缁勭鐞?- 杩愬崟杩借釜妯″潡閰嶇疆
-- 涓昏惀涓氬姟妯″潡閰嶇疆
-- 涓昏惀涓氬姟灏忔ā鍧楀浘鏍囥€佸悕绉般€佹弿杩般€佽矾鐢遍厤缃?- 涓€绔欏紡鏈嶅姟娴佺▼妯″潡閰嶇疆
-- 鑱旂郴杞寲鍖洪厤缃?- SEO 閰嶇疆
-- 鑽夌淇濆瓨涓庡彂甯冩祦绋?
-楠屾敹鐐癸細
+- 用户、角色、菜单、权限
+- 登录态恢复与路由守卫
+- 操作日志与登录日志基础能力
+- 后台菜单结构调整为中文分组
 
-- 鍐呭绠＄悊椤靛畬鏁村睍绀?- 涓昏惀涓氬姟鎬婚瑙堝彧鏄剧ず鏈€鍚庢坊鍔犵殑涓€涓ā鍧?- 涓€绔欏紡鏈嶅姟娴佺▼鏈€澶氱淮鎶?7 涓楠?- 鍚庡彴鍙粴鍔ㄥ彸渚у唴瀹瑰尯
+## 阶段 2：页面管理
 
-## 鍚庣画闃舵
+### 首页配置
 
-- 鏂伴椈绠＄悊
-- 绱犳潗搴?- 绾跨储绠＄悊
-- 杩愬崟绠＄悊
-- 瀹㈡埛绠＄悊
-- 鏃ュ織涓庣郴缁熻缃?
-## 2026-04-09 Preview Alignment
+- 首页表单结构与后端存储对齐
+- 支持草稿保存与发布
+- 支持 Banner、运单查询、主营业务、一站式服务、我们承诺、新闻预览、SEO
 
-- 首页内容管理继续沿用左侧表单、右侧预览的双栏结构。
-- 右侧预览按模块拆卡并与左侧模块顺序对齐。
-- 主营业务总预览保留最后新增模块的满宽展示。
+### 线路页面
 
-## 2026-04-09 Content Backend
+- 使用固定模板表单
+- 支持多条线路独立编辑
+- 支持草稿保存与发布
 
-- Persist homepage content JSON in backend table `site_content_page`.
-- Keep current API scope to home page draft and publish operations.
-- Continue using frontend form structure as the stored JSON document shape.
+### 新闻资讯
 
-## 2026-04-09 Seed Data
+- 使用区块化表单
+- 支持段落、小标题、图片、图片说明
+- 支持列表、详情、发布态管理
 
-- Provide a reusable SQL seed file for homepage content preview and manual testing.
+## 阶段 3：全局配置
 
-## 2026-04-09 Promise Section
+- 导航设置
+- 页脚设置
+- 联系方式设置
+- 站点默认信息维护
 
-- Keep homepage content management as a pure form editing page without preview cards.
-- Persist a fixed six-item promise section in the same homepage JSON document.
+## 阶段 4：官网公开接口
 
-## 2026-04-09 News Module
+- 将官网读取能力与后台管理接口彻底分离
+- 提供以下匿名只读接口：
+  - `/api/site`
+  - `/api/pages/home`
+  - `/api/pages/about`
+  - `/api/pages/contact`
+  - `/api/pages/service-line/{key}`
+  - `/api/pages/news`
+  - `/api/pages/news/{id}`
+  - `/api/tracking/{trackingNo}`
+- 所有公开接口只返回已发布数据
 
-- Continue homepage content management without the contact section.
-- Start the first version of news management as a CRUD admin module.
-- Keep dev environment reachable on LAN with hot reload enabled.
+## 阶段 5：后续扩展
 
-## 2026-04-09 Block News Form
+- 素材库
+- 线索管理
+- 运单管理
+- 客户管理
+- 官网更多固定模板页面
+- 联系方式和站点信息后端持久化
+- 运单查询接入真实第三方轨迹源
 
-- Keep backend news table unchanged and serialize block content into `content`.
-- Continue evolving admin news editing around ordered content blocks.
+## 当前重点
 
-## 2026-04-09 Menu Restructure
-
-- Keep admin navigation aligned with page types instead of a single content menu.
-- Use grouped menus for page management and global settings.
-
-## 2026-04-09 Menu Localization
-
-- Keep menu labels Chinese across both fresh migrations and upgraded databases.
-- Treat Service Lines as a management entry page until the dedicated line template editor is implemented.
-
-## 2026-04-09 Backend Startup
-
-- Standardize backend local startup through backend/start-dev.ps1.
-- Keep Java runtime fixed at 21 during development startup.
-- Keep Flyway migration history append-only after a migration has been applied.
-
-
-## 2026-04-10 Service Line Editor
-
-- Service Lines has moved from entry placeholder to an editable fixed-template page module.
-- Keep line-template editing constrained to content fields and repeated module items, not free-form layout assembly.
-
-## 2026-04-11 Contact Module
-
-- Keep global contact settings aligned with a full contact-page module instead of a minimal contact info form.
-- Use 5174 as the default frontend development port.
-
-
-## 2026-04-11 Page Schema Alignment
-
-- Keep admin content persistence aligned with the external frontend page schema instead of ad hoc field groups.
-- Service-line management should continue evolving around the normalized public page data contract.
-
+- 保持后台管理字段与前台页面 schema 对齐
+- 保持首页、线路模板、新闻三类内容模型清晰分离
+- 保持公开接口与后台 JWT 接口分离
+- 保持 Flyway 迁移追加式演进，不修改历史迁移
