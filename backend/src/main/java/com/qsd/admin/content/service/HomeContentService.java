@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.qsd.admin.content.dto.HomeContentResponse;
 import com.qsd.admin.content.entity.SiteContentPage;
 import com.qsd.admin.content.mapper.SiteContentPageMapper;
+import com.qsd.admin.website.service.PublicWebsiteService;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -22,10 +23,16 @@ public class HomeContentService {
 
     private final SiteContentPageMapper siteContentPageMapper;
     private final ObjectMapper objectMapper;
+    private final PublicWebsiteService publicWebsiteService;
 
-    public HomeContentService(SiteContentPageMapper siteContentPageMapper, ObjectMapper objectMapper) {
+    public HomeContentService(
+        SiteContentPageMapper siteContentPageMapper,
+        ObjectMapper objectMapper,
+        PublicWebsiteService publicWebsiteService
+    ) {
         this.siteContentPageMapper = siteContentPageMapper;
         this.objectMapper = objectMapper;
+        this.publicWebsiteService = publicWebsiteService;
     }
 
     public HomeContentResponse getHomeContent() {
@@ -52,6 +59,9 @@ public class HomeContentService {
             page.setPublishedAt(now);
         }
         siteContentPageMapper.updateById(page);
+        if (STATUS_PUBLISHED.equals(status)) {
+            publicWebsiteService.evictPublishedPageCache(HOME_PAGE_CODE);
+        }
         return page;
     }
 

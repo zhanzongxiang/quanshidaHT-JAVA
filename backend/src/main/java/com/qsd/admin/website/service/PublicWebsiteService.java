@@ -10,32 +10,41 @@ import com.qsd.admin.content.entity.SiteContentPage;
 import com.qsd.admin.content.mapper.SiteContentPageMapper;
 import com.qsd.admin.news.entity.NewsArticle;
 import com.qsd.admin.news.mapper.NewsArticleMapper;
+import com.qsd.admin.waybill.service.WaybillPublicService;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
 
 @Service
 public class PublicWebsiteService {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final String PAGE_CACHE_PREFIX = "page:";
+    private static final String NEWS_LIST_CACHE_PREFIX = "news:list:";
+    private static final String NEWS_DETAIL_CACHE_PREFIX = "news:detail:";
 
     private final SiteContentPageMapper siteContentPageMapper;
     private final NewsArticleMapper newsArticleMapper;
     private final ObjectMapper objectMapper;
+    private final PublicPageCache publicPageCache;
+    private final WaybillPublicService waybillPublicService;
 
     public PublicWebsiteService(
         SiteContentPageMapper siteContentPageMapper,
         NewsArticleMapper newsArticleMapper,
-        ObjectMapper objectMapper
+        ObjectMapper objectMapper,
+        PublicPageCache publicPageCache,
+        WaybillPublicService waybillPublicService
     ) {
         this.siteContentPageMapper = siteContentPageMapper;
         this.newsArticleMapper = newsArticleMapper;
         this.objectMapper = objectMapper;
+        this.publicPageCache = publicPageCache;
+        this.waybillPublicService = waybillPublicService;
     }
 
     public JsonNode getSiteConfig() {
@@ -83,7 +92,7 @@ public class PublicWebsiteService {
     }
 
     public JsonNode getHomePage() {
-        ObjectNode root = readPublishedPage("home");
+        ObjectNode root = publicPageCache.get(PAGE_CACHE_PREFIX + "home", () -> readPublishedPage("home")).deepCopy();
         root.remove("seo");
         return root;
     }
@@ -231,20 +240,44 @@ public class PublicWebsiteService {
     }
 
     public JsonNode getServiceLinePage(String key) {
-        return readPublishedPage(resolveServiceLinePageCode(key));
+        String pageCode = resolveServiceLinePageCode(key);
+        return publicPageCache.get(PAGE_CACHE_PREFIX + pageCode, () -> readPublishedPage(pageCode));
     }
 
     public JsonNode getNewsListPage(String year, Integer page, Integer pageSize) {
-        List<NewsArticle> allArticles = newsArticleMapper.selectPublishedList();
-        List<NewsArticle> filteredArticles = allArticles.stream()
-            .filter(article -> year == null || year.isBlank() || formatDate(article.getPublishedAt()).startsWith(year))
-            .toList();
-
         int safePage = page == null || page < 1 ? 1 : page;
         int safePageSize = pageSize == null || pageSize < 1 ? 10 : Math.min(pageSize, 50);
-        int fromIndex = Math.min((safePage - 1) * safePageSize, filteredArticles.size());
-        int toIndex = Math.min(fromIndex + safePageSize, filteredArticles.size());
-        List<NewsArticle> pageItems = filteredArticles.subList(fromIndex, toIndex);
+        String normalizedYear = normalizeYear(year);
+        String cacheKey = NEWS_LIST_CACHE_PREFIX + normalizedYear + ":" + safePage + ":" + safePageSize;
+        return publicPageCache.get(cacheKey, () -> buildNewsListPage(normalizedYear, safePage, safePageSize));
+    }
+
+    public JsonNode getNewsDetailPage(Long id) {
+        return publicPageCache.get(NEWS_DETAIL_CACHE_PREFIX + id, () -> buildNewsDetailPage(id));
+    }
+
+    public void evictPublishedPageCache(String pageCode) {
+        publicPageCache.evict(PAGE_CACHE_PREFIX + pageCode);
+    }
+
+    public void evictNewsCache() {
+        publicPageCache.evictByPrefix(NEWS_LIST_CACHE_PREFIX);
+        publicPageCache.evictByPrefix(NEWS_DETAIL_CACHE_PREFIX);
+    }
+
+    private JsonNode buildNewsListPage(String year, int page, int pageSize) {
+        LocalDateTime publishedFrom = null;
+        LocalDateTime publishedTo = null;
+        if (!year.isBlank()) {
+            int yearValue = Integer.parseInt(year);
+            publishedFrom = LocalDate.of(yearValue, 1, 1).atStartOfDay();
+            publishedTo = publishedFrom.plusYears(1);
+        }
+
+        int offset = (page - 1) * pageSize;
+        long total = newsArticleMapper.countPublished(publishedFrom, publishedTo);
+        List<NewsArticle> pageItems = newsArticleMapper.selectPublishedPageSummaries(publishedFrom, publishedTo, offset, pageSize);
+        List<Integer> yearsFromDb = newsArticleMapper.selectPublishedYears();
 
         ObjectNode root = objectMapper.createObjectNode();
         ObjectNode hero = objectMapper.createObjectNode();
@@ -254,12 +287,8 @@ public class PublicWebsiteService {
         root.set("hero", hero);
 
         ArrayNode years = objectMapper.createArrayNode();
-        allArticles.stream()
-            .map(NewsArticle::getPublishedAt)
-            .filter(Objects::nonNull)
-            .map(date -> String.valueOf(date.getYear()))
-            .distinct()
-            .sorted(Comparator.reverseOrder())
+        yearsFromDb.stream()
+            .map(String::valueOf)
             .forEach(years::add);
         ObjectNode filters = objectMapper.createObjectNode();
         filters.set("years", years);
@@ -282,16 +311,16 @@ public class PublicWebsiteService {
         root.set("list", list);
 
         ObjectNode pagination = objectMapper.createObjectNode();
-        pagination.put("page", safePage);
-        pagination.put("pageSize", safePageSize);
-        pagination.put("total", filteredArticles.size());
-        pagination.put("hasMore", toIndex < filteredArticles.size());
+        pagination.put("page", page);
+        pagination.put("pageSize", pageSize);
+        pagination.put("total", total);
+        pagination.put("hasMore", (long) offset + pageItems.size() < total);
         root.set("pagination", pagination);
 
         return root;
     }
 
-    public JsonNode getNewsDetailPage(Long id) {
+    private JsonNode buildNewsDetailPage(Long id) {
         NewsArticle article = newsArticleMapper.selectPublishedById(id);
         if (article == null) {
             throw new NotFoundException("published news article not found");
@@ -319,6 +348,11 @@ public class PublicWebsiteService {
         String normalizedNo = trackingNo == null ? "" : trackingNo.trim().toUpperCase(Locale.ROOT);
         if (normalizedNo.isBlank()) {
             throw new NotFoundException("tracking number is required");
+        }
+
+        JsonNode actualResult = waybillPublicService.findTrackingResult(normalizedNo);
+        if (actualResult != null) {
+            return actualResult;
         }
 
         boolean exception = normalizedNo.contains("ERR") || normalizedNo.endsWith("9");
@@ -384,6 +418,21 @@ public class PublicWebsiteService {
             return "国际目的港";
         }
         return "海外目的地";
+    }
+
+    private String normalizeYear(String year) {
+        if (year == null) {
+            return "";
+        }
+
+        String trimmed = year.trim();
+        if (trimmed.isBlank()) {
+            return "";
+        }
+        if (!trimmed.matches("\\d{4}")) {
+            throw new IllegalArgumentException("year must be a 4-digit number");
+        }
+        return trimmed;
     }
 
     private String toContentHtml(String rawContent) {

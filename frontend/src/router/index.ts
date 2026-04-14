@@ -9,6 +9,7 @@ const AdminLayout = () => import('../layouts/AdminLayout.vue')
 const DashboardView = () => import('../views/DashboardView.vue')
 const ContentView = () => import('../views/ContentView.vue')
 const NewsView = () => import('../views/NewsView.vue')
+const WaybillView = () => import('../views/WaybillView.vue')
 const ServiceLinesView = () => import('../views/ServiceLinesView.vue')
 const ServiceLineEditorView = () => import('../views/ServiceLineEditorView.vue')
 const NavigationSettingsView = () => import('../views/NavigationSettingsView.vue')
@@ -20,6 +21,7 @@ const viewMap: Record<string, () => Promise<unknown>> = {
   Content: ContentView,
   HomeContent: ContentView,
   News: NewsView,
+  Waybill: WaybillView,
   ServiceLines: ServiceLinesView,
   NavigationSettings: NavigationSettingsView,
   FooterSettings: FooterSettingsView,

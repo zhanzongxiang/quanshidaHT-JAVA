@@ -4,6 +4,7 @@ import com.qsd.admin.news.dto.NewsArticleResponse;
 import com.qsd.admin.news.dto.NewsArticleSaveRequest;
 import com.qsd.admin.news.entity.NewsArticle;
 import com.qsd.admin.news.mapper.NewsArticleMapper;
+import com.qsd.admin.website.service.PublicWebsiteService;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -17,9 +18,11 @@ public class NewsArticleService {
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final NewsArticleMapper newsArticleMapper;
+    private final PublicWebsiteService publicWebsiteService;
 
-    public NewsArticleService(NewsArticleMapper newsArticleMapper) {
+    public NewsArticleService(NewsArticleMapper newsArticleMapper, PublicWebsiteService publicWebsiteService) {
         this.newsArticleMapper = newsArticleMapper;
+        this.publicWebsiteService = publicWebsiteService;
     }
 
     public List<NewsArticleResponse> list() {
@@ -44,6 +47,7 @@ public class NewsArticleService {
         article.setUpdatedAt(now);
         article.setDeleted(0);
         newsArticleMapper.insert(article);
+        publicWebsiteService.evictNewsCache();
         return toResponse(article);
     }
 
@@ -56,6 +60,7 @@ public class NewsArticleService {
         article.setAuthor(defaultAuthor(request.author()));
         article.setUpdatedAt(LocalDateTime.now());
         newsArticleMapper.updateById(article);
+        publicWebsiteService.evictNewsCache();
         return toResponse(article);
     }
 
@@ -66,6 +71,7 @@ public class NewsArticleService {
         article.setPublishedAt(now);
         article.setUpdatedAt(now);
         newsArticleMapper.updateById(article);
+        publicWebsiteService.evictNewsCache();
         return toResponse(article);
     }
 
@@ -74,6 +80,7 @@ public class NewsArticleService {
         article.setDeleted(1);
         article.setUpdatedAt(LocalDateTime.now());
         newsArticleMapper.updateById(article);
+        publicWebsiteService.evictNewsCache();
     }
 
     private NewsArticle requireArticle(Long id) {

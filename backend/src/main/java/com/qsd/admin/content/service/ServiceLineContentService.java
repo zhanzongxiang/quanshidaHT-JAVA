@@ -9,6 +9,7 @@ import com.qsd.admin.content.dto.ServiceLineContentResponse;
 import com.qsd.admin.content.dto.ServiceLineSummaryResponse;
 import com.qsd.admin.content.entity.SiteContentPage;
 import com.qsd.admin.content.mapper.SiteContentPageMapper;
+import com.qsd.admin.website.service.PublicWebsiteService;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -42,10 +43,16 @@ public class ServiceLineContentService {
 
     private final SiteContentPageMapper siteContentPageMapper;
     private final ObjectMapper objectMapper;
+    private final PublicWebsiteService publicWebsiteService;
 
-    public ServiceLineContentService(SiteContentPageMapper siteContentPageMapper, ObjectMapper objectMapper) {
+    public ServiceLineContentService(
+        SiteContentPageMapper siteContentPageMapper,
+        ObjectMapper objectMapper,
+        PublicWebsiteService publicWebsiteService
+    ) {
         this.siteContentPageMapper = siteContentPageMapper;
         this.objectMapper = objectMapper;
+        this.publicWebsiteService = publicWebsiteService;
     }
 
     public List<ServiceLineSummaryResponse> listServiceLines() {
@@ -108,6 +115,9 @@ public class ServiceLineContentService {
             page.setPublishedAt(now);
         }
         siteContentPageMapper.updateById(page);
+        if (STATUS_PUBLISHED.equals(status)) {
+            publicWebsiteService.evictPublishedPageCache(page.getPageCode());
+        }
         return page;
     }
 
