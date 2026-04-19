@@ -15,6 +15,7 @@ const ServiceLineEditorView = () => import('../views/ServiceLineEditorView.vue')
 const NavigationSettingsView = () => import('../views/NavigationSettingsView.vue')
 const FooterSettingsView = () => import('../views/FooterSettingsView.vue')
 const ContactSettingsView = () => import('../views/ContactSettingsView.vue')
+const DictionarySettingsView = () => import('../views/DictionarySettingsView.vue')
 
 const viewMap: Record<string, () => Promise<unknown>> = {
   Dashboard: DashboardView,
@@ -26,6 +27,7 @@ const viewMap: Record<string, () => Promise<unknown>> = {
   NavigationSettings: NavigationSettingsView,
   FooterSettings: FooterSettingsView,
   ContactSettings: ContactSettingsView,
+  DictionarySettings: DictionarySettingsView,
 }
 
 export const DEFAULT_HOME_PATH = '/dashboard'

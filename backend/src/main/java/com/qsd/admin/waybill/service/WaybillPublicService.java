@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.qsd.admin.dictionary.service.DictionaryService;
 import com.qsd.admin.waybill.entity.WaybillLeg;
 import com.qsd.admin.waybill.entity.WaybillOrder;
 import com.qsd.admin.waybill.entity.WaybillTrackEvent;
@@ -19,10 +20,16 @@ public class WaybillPublicService {
 
     private final WaybillService waybillService;
     private final ObjectMapper objectMapper;
+    private final DictionaryService dictionaryService;
 
-    public WaybillPublicService(WaybillService waybillService, ObjectMapper objectMapper) {
+    public WaybillPublicService(
+        WaybillService waybillService,
+        ObjectMapper objectMapper,
+        DictionaryService dictionaryService
+    ) {
         this.waybillService = waybillService;
         this.objectMapper = objectMapper;
+        this.dictionaryService = dictionaryService;
     }
 
     public JsonNode findTrackingResult(String trackingNo) {
@@ -36,20 +43,20 @@ public class WaybillPublicService {
 
         ObjectNode root = objectMapper.createObjectNode();
         root.put("trackingId", order.getMainTrackingNo());
-        root.put("status", order.getCurrentStatus());
+        root.put("status", dictionaryService.labelOf("waybill_status", order.getCurrentStatus()));
         root.put("origin", defaultText(order.getOriginWarehouse()));
         root.put("destination", buildDestination(order));
-        root.put("isException", "exception".equalsIgnoreCase(order.getCurrentStatus()));
+        root.put("isException", isExceptionStatus(order.getCurrentStatus()));
         root.put("currentNode", defaultText(order.getCurrentNode()));
 
         ArrayNode steps = objectMapper.createArrayNode();
         for (WaybillTrackEvent event : events) {
             ObjectNode step = objectMapper.createObjectNode();
             step.put("time", formatDateTime(event.getEventTime()));
-            step.put("status", defaultText(event.getEventStatus()));
+            step.put("status", dictionaryService.labelOf("waybill_status", event.getEventStatus()));
             step.put("description", defaultText(event.getEventDescription()));
             step.put("location", defaultText(event.getEventLocation()));
-            step.put("isException", "exception".equalsIgnoreCase(event.getEventStatus()));
+            step.put("isException", isExceptionStatus(event.getEventStatus()));
             steps.add(step);
         }
         root.set("steps", steps);
@@ -63,7 +70,7 @@ public class WaybillPublicService {
             legNode.put("trackingNo", defaultText(leg.getTrackingNo()));
             legNode.put("fromNode", defaultText(leg.getFromNode()));
             legNode.put("toNode", defaultText(leg.getToNode()));
-            legNode.put("status", defaultText(leg.getLegStatus()));
+            legNode.put("status", dictionaryService.labelOf("waybill_leg_status", leg.getLegStatus()));
             legNode.put("isTransfer", leg.getTransferFlag() != null && leg.getTransferFlag() == 1);
             legNodes.add(legNode);
         }
@@ -86,5 +93,9 @@ public class WaybillPublicService {
 
     private String defaultText(String value) {
         return value == null ? "" : value;
+    }
+
+    private boolean isExceptionStatus(String value) {
+        return "exception".equalsIgnoreCase(value) || "运输异常".equals(value);
     }
 }

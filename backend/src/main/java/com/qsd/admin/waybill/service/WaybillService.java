@@ -197,7 +197,7 @@ public class WaybillService {
     private WaybillOrder requireWaybill(Long id) {
         WaybillOrder order = waybillOrderMapper.selectActiveById(id);
         if (order == null) {
-            throw new NotFoundException("waybill not found");
+            throw new NotFoundException("运单不存在");
         }
         return order;
     }
@@ -205,7 +205,7 @@ public class WaybillService {
     private void ensureMainTrackingNoAvailable(String mainTrackingNo, Long currentId) {
         WaybillOrder existing = waybillOrderMapper.selectActiveByMainTrackingNo(mainTrackingNo.trim());
         if (existing != null && !existing.getId().equals(currentId)) {
-            throw new IllegalArgumentException("mainTrackingNo already exists");
+            throw new IllegalArgumentException("主运单号已存在");
         }
     }
 
@@ -230,13 +230,13 @@ public class WaybillService {
 
     private void validateRequest(WaybillSaveRequest request) {
         if (request.packageCount() == null || request.packageCount() < 1) {
-            throw new IllegalArgumentException("packageCount must be greater than 0");
+            throw new IllegalArgumentException("包裹数量必须大于 0");
         }
         if (request.legs() == null || request.legs().isEmpty()) {
-            throw new IllegalArgumentException("at least one route leg is required");
+            throw new IllegalArgumentException("至少需要填写一个线路分段");
         }
         if (request.events() == null || request.events().isEmpty()) {
-            throw new IllegalArgumentException("at least one tracking event is required");
+            throw new IllegalArgumentException("至少需要填写一个轨迹事件");
         }
     }
 
@@ -291,7 +291,7 @@ public class WaybillService {
         try {
             return LocalDateTime.parse(trimmed, DATE_TIME_FORMATTER);
         } catch (DateTimeParseException ex) {
-            throw new IllegalArgumentException("datetime format must be yyyy-MM-dd HH:mm:ss");
+            throw new IllegalArgumentException("时间格式必须为 yyyy-MM-dd HH:mm:ss");
         }
     }
 

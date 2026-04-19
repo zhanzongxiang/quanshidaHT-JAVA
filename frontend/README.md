@@ -36,6 +36,7 @@ npm run dev
 - 布局：`src/layouts`
 - API：`src/api`
 - 类型：`src/types`
+- 未使用的脚手架组件和资源应及时删除，避免继续占用构建产物和维护成本
 
 ## 页面管理约束
 
@@ -46,7 +47,6 @@ npm run dev
   - `GET /api/content/home`
   - `PUT /api/content/home/draft`
   - `PUT /api/content/home/publish`
-- 首页数据结构需要和后端 schema 对齐
 
 ### 线路页面
 
@@ -64,11 +64,18 @@ npm run dev
   - `image`
   - `image_caption`
 
-## 全局配置约束
+### 运单管理
 
-- 导航设置、页脚设置、联系方式属于全局配置
-- 当前联系方式页是结构化表单，不是简单键值输入
-- 全局设置当前部分内容仍可能使用前端本地存储，后续需要逐步迁移到后端
+- 页面位于 `src/views/WaybillView.vue`
+- 后端接口位于 `/api/waybills/*`
+- 页面所有用户可见文案统一使用中文
+- 状态和线路类型通过字典接口读取，不再长期硬编码在页面内
+
+### 字典管理
+
+- 页面位于 `src/views/DictionarySettingsView.vue`
+- 后端接口位于 `/api/dictionaries/*`
+- 当前主要用于维护运单状态、线路类型、分段状态等基础字典
 
 ## 接口使用约束
 
@@ -76,6 +83,8 @@ npm run dev
   - `/api/auth/*`
   - `/api/content/*`
   - `/api/news/*`
+  - `/api/waybills/*`
+  - `/api/dictionaries/*`
 - 官网前台不要直接调用管理端 JWT 接口
 - 官网前台应使用公开只读接口：
   - `/api/site`

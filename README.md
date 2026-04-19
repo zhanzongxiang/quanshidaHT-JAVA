@@ -2,7 +2,7 @@
 
 ## 项目简介
 
-这是企业官网配套的后台管理系统，当前包含后台登录、菜单权限、首页内容管理、线路模板管理、新闻管理、全局站点设置，以及一组面向官网前台的公开只读接口。
+这是企业官网配套的后台管理系统，当前包含后台登录、菜单权限、首页内容管理、线路模板管理、新闻管理、运单管理、字典管理、全局站点设置，以及一组面向官网前台的公开只读接口。
 
 ## 技术栈
 
@@ -36,6 +36,7 @@
   - 导航设置
   - 页脚设置
   - 联系方式
+  - 字典管理
 
 ## 管理端接口
 
@@ -66,6 +67,22 @@
 - `PUT /api/news/{id}`
 - `DELETE /api/news/{id}`
 
+### 运单管理
+
+- `GET /api/waybills`
+- `GET /api/waybills/{id}`
+- `POST /api/waybills`
+- `PUT /api/waybills/{id}`
+- `DELETE /api/waybills/{id}`
+
+### 字典管理
+
+- `GET /api/dictionaries`
+- `GET /api/dictionaries/options`
+- `POST /api/dictionaries`
+- `PUT /api/dictionaries/{id}`
+- `DELETE /api/dictionaries/{id}`
+
 ## 官网公开接口
 
 以下接口供企业官网前台直接读取，不需要 JWT：
@@ -83,7 +100,7 @@
 
 - 公开接口只返回已发布内容
 - 后台管理接口仍然要求登录
-- 当前 `site`、`about`、`contact`、`tracking` 仍可能由后端默认数据提供
+- 运单公开查询的状态文案由字典模块统一映射
 
 ## 本地启动
 
@@ -108,7 +125,7 @@ cd F:\work\quanshidaHT-JAVA
 .\backend\start-dev.ps1
 ```
 
-如果 `8080` 已占用：
+如果 `8080` 已被占用：
 
 ```powershell
 .\backend\start-dev.ps1 -Port 8081
@@ -125,10 +142,9 @@ mvn -DskipTests package
 
 - 首页和线路模板内容存储在 `site_content_page`
 - 新闻存储在 `news_article`
+- 运单存储在 `waybill_order`、`waybill_leg`、`waybill_track_event`
+- 字典存储在 `sys_dict_item`
 - 历史迁移文件必须保持不可变
-- 示例数据文件位于：
-  - `backend/sql/home_content_seed.sql`
-  - `backend/sql/full_business_seed.sql`
 
 ## 开发约束
 
@@ -137,3 +153,4 @@ mvn -DskipTests package
 - 固定模板页面不要做成自由拼版
 - 新闻正文统一用区块化表单维护
 - 官网不要直接复用后台 JWT 接口
+- 运单状态、线路类型、分段状态等基础枚举统一由字典模块管理

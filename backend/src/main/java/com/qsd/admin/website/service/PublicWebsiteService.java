@@ -323,7 +323,7 @@ public class PublicWebsiteService {
     private JsonNode buildNewsDetailPage(Long id) {
         NewsArticle article = newsArticleMapper.selectPublishedById(id);
         if (article == null) {
-            throw new NotFoundException("published news article not found");
+            throw new NotFoundException("已发布新闻不存在");
         }
 
         ObjectNode root = objectMapper.createObjectNode();
@@ -347,7 +347,7 @@ public class PublicWebsiteService {
     public JsonNode getTrackingResult(String trackingNo) {
         String normalizedNo = trackingNo == null ? "" : trackingNo.trim().toUpperCase(Locale.ROOT);
         if (normalizedNo.isBlank()) {
-            throw new NotFoundException("tracking number is required");
+            throw new NotFoundException("运单号不能为空");
         }
 
         JsonNode actualResult = waybillPublicService.findTrackingResult(normalizedNo);
@@ -386,24 +386,24 @@ public class PublicWebsiteService {
     private ObjectNode readPublishedPage(String pageCode) {
         SiteContentPage page = siteContentPageMapper.selectPublishedByPageCode(pageCode);
         if (page == null) {
-            throw new NotFoundException("published page not found");
+            throw new NotFoundException("已发布页面不存在");
         }
 
         try {
             JsonNode node = objectMapper.readTree(page.getFormJson());
             if (!node.isObject()) {
-                throw new NotFoundException("page data is invalid");
+                throw new NotFoundException("页面数据格式无效");
             }
             return (ObjectNode) node;
         } catch (JsonProcessingException ex) {
-            throw new NotFoundException("page data is invalid");
+            throw new NotFoundException("页面数据格式无效");
         }
     }
 
     private String resolveServiceLinePageCode(String key) {
         return switch (key) {
             case "taiwan", "feizhou", "international" -> "service-line:" + key;
-            default -> throw new NotFoundException("service line page not found");
+            default -> throw new NotFoundException("线路页面不存在");
         };
     }
 
