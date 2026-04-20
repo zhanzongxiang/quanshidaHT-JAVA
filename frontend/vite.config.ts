@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => {
   const hmrHost = env.VITE_HMR_HOST || undefined
 
   return {
+    base: '/admin/',
     plugins: [vue()],
     server: {
       host: '0.0.0.0',
