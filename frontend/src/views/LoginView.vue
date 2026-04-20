@@ -84,10 +84,6 @@ async function onSubmit() {
     await nextTick()
     await router.replace(target.fullPath)
     await router.isReady()
-
-    if (router.currentRoute.value.fullPath !== target.fullPath) {
-      window.location.replace(target.fullPath)
-    }
   } catch (error) {
     ElMessage.error('登录失败，请检查账号密码或接口状态。')
   } finally {
