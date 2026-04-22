@@ -54,4 +54,19 @@ public interface WaybillOrderMapper extends BaseMapper<WaybillOrder> {
         limit 1
         """)
     WaybillOrder selectActiveByMainTrackingNo(String mainTrackingNo);
+
+    @Select("""
+        select count(1)
+        from waybill_order
+        where deleted = 0
+        """)
+    long countActive();
+
+    @Select("""
+        select count(1)
+        from waybill_order
+        where deleted = 0
+          and current_status = #{status}
+        """)
+    long countByCurrentStatus(String status);
 }
