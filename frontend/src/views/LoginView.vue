@@ -39,14 +39,10 @@
 <script setup lang="ts">
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage } from 'element-plus'
-import { nextTick, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { DEFAULT_HOME_PATH, ensureMenuRoutes } from '../router'
+import { reactive, ref } from 'vue'
 import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
-const router = useRouter()
-const route = useRoute()
 const formRef = ref<FormInstance>()
 const submitting = ref(false)
 const form = reactive({
@@ -73,17 +69,7 @@ async function onSubmit() {
       throw new Error('missing me after login')
     }
 
-    ensureMenuRoutes(auth.me.menus)
-
-    const redirect = typeof route.query.redirect === 'string'
-      ? route.query.redirect
-      : DEFAULT_HOME_PATH
-
-    const target = router.resolve(redirect)
-
-    await nextTick()
-    await router.replace(target.fullPath)
-    await router.isReady()
+    window.location.href = '/admin/dashboard'
   } catch (error) {
     ElMessage.error('登录失败，请检查账号密码或接口状态。')
   } finally {

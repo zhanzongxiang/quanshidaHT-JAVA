@@ -24,4 +24,11 @@ public interface SiteContentPageMapper extends BaseMapper<SiteContentPage> {
         limit 1
         """)
     SiteContentPage selectPublishedByPageCode(String pageCode);
+
+    @Select("""
+        select count(1)
+        from site_content_page
+        where page_code like 'service-line:%'
+        """)
+    int countServiceLinePages();
 }

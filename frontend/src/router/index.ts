@@ -56,7 +56,7 @@ const staticRoutes: RouteRecordRaw[] = [
 ]
 
 export const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory('/admin/'),
   routes: staticRoutes,
 })
 
@@ -117,6 +117,11 @@ router.beforeEach(async (to) => {
     await auth.initialize()
   }
 
+  if (auth.me && !menusInjected) {
+    ensureMenuRoutes(auth.me.menus)
+    return to.fullPath
+  }
+
   if (to.meta.public) {
     if (to.path === '/login' && auth.isAuthenticated) {
       return DEFAULT_HOME_PATH
@@ -129,11 +134,6 @@ router.beforeEach(async (to) => {
       path: '/login',
       query: { redirect: to.fullPath },
     }
-  }
-
-  if (!menusInjected && auth.me) {
-    ensureMenuRoutes(auth.me.menus)
-    return to.fullPath
   }
 
   if (to.name === 'not-found') {

@@ -98,4 +98,11 @@ public interface NewsArticleMapper extends BaseMapper<NewsArticle> {
         limit 1
         """)
     NewsArticle selectPublishedById(Long id);
+
+    @Select("""
+        select count(1)
+        from news_article
+        where deleted = 0
+        """)
+    long countActive();
 }
