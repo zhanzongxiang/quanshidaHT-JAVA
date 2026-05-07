@@ -18,6 +18,7 @@ public class WaybillOrder {
     private String originWarehouse;
     private String destinationCountry;
     private String destinationCity;
+    private Long memberId;
     private String routeType;
     private String currentStatus;
     private String currentNode;
@@ -45,6 +46,8 @@ public class WaybillOrder {
     public void setDestinationCountry(String destinationCountry) { this.destinationCountry = destinationCountry; }
     public String getDestinationCity() { return destinationCity; }
     public void setDestinationCity(String destinationCity) { this.destinationCity = destinationCity; }
+    public Long getMemberId() { return memberId; }
+    public void setMemberId(Long memberId) { this.memberId = memberId; }
     public String getRouteType() { return routeType; }
     public void setRouteType(String routeType) { this.routeType = routeType; }
     public String getCurrentStatus() { return currentStatus; }

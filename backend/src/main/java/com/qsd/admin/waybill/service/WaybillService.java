@@ -151,6 +151,7 @@ public class WaybillService {
             order.getOriginWarehouse(),
             order.getDestinationCountry(),
             order.getDestinationCity(),
+            order.getMemberId(),
             order.getRouteType(),
             order.getCurrentStatus(),
             order.getCurrentNode(),

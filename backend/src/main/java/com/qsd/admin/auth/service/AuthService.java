@@ -38,7 +38,7 @@ public class AuthService {
             throw new IllegalArgumentException("用户名或密码错误");
         }
         List<String> permissions = adminUserMapper.selectPermissionCodes(user.getId());
-        String token = jwtTokenService.createToken(user.getId(), user.getUsername(), permissions);
+        String token = jwtTokenService.createAdminToken(user.getId(), user.getUsername(), permissions);
         return new LoginResponse(token, "Bearer");
     }
 

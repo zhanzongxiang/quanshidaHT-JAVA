@@ -14,7 +14,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,11 +28,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
         throws ServletException, IOException {
+        if (SecurityContextHolder.getContext().getAuthentication() != null) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
+
         String token = authHeader.substring(7);
         Claims claims;
         try {
@@ -42,24 +47,36 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
+
+        Object uidValue = claims.get("uid");
+        Long userId = uidValue instanceof Number number ? number.longValue() : null;
         String username = claims.getSubject();
-        Collection<SimpleGrantedAuthority> authorities = extractAuthorities(claims);
+        String tokenType = claims.get("tokenType", String.class);
+        AuthenticatedUser principal = new AuthenticatedUser(userId, username, tokenType);
+        Collection<SimpleGrantedAuthority> authorities = extractAuthorities(claims, tokenType);
         UsernamePasswordAuthenticationToken authenticationToken =
-            new UsernamePasswordAuthenticationToken(username, null, authorities);
+            new UsernamePasswordAuthenticationToken(principal, null, authorities);
         authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
         SecurityContextHolder.getContext().setAuthentication(authenticationToken);
         filterChain.doFilter(request, response);
     }
 
     @SuppressWarnings("unchecked")
-    private Collection<SimpleGrantedAuthority> extractAuthorities(Claims claims) {
+    private Collection<SimpleGrantedAuthority> extractAuthorities(Claims claims, String tokenType) {
+        if (JwtTokenService.TOKEN_TYPE_MEMBER.equals(tokenType)) {
+            return List.of(new SimpleGrantedAuthority("ROLE_MEMBER"));
+        }
+
         Object permissionObj = claims.get("permissions");
         if (!(permissionObj instanceof List<?> permissions)) {
-            return Collections.emptyList();
+            return List.of(new SimpleGrantedAuthority("ROLE_ADMIN"));
         }
-        return permissions.stream()
+
+        List<SimpleGrantedAuthority> authorities = permissions.stream()
             .map(Object::toString)
             .map(SimpleGrantedAuthority::new)
             .collect(Collectors.toList());
+        authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+        return authorities;
     }
 }

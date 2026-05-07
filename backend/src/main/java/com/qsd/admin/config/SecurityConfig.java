@@ -22,11 +22,13 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/api/health",
                     "/api/auth/login",
+                    "/api/member/auth/**",
                     "/api/site",
                     "/api/pages/**",
                     "/api/tracking/**"
                 ).permitAll()
-                .anyRequest().authenticated())
+                .requestMatchers("/api/member/**").hasRole("MEMBER")
+                .anyRequest().hasRole("ADMIN"))
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .build();
     }

@@ -2,7 +2,14 @@
 
 ## 项目简介
 
-这是企业官网配套的后台管理系统，当前包含后台登录、菜单权限、首页内容管理、线路模板管理、新闻管理、运单管理、字典管理、全局站点设置，以及一组面向官网前台的公开只读接口。
+这是一个面向运单管理与站点运营的后台项目，当前包含后台登录、菜单权限、首页内容管理、线路模板管理、新闻管理、运单管理、字典管理、全局站点设置，以及一组面向官网前台的公开只读接口。
+
+当前版本规划新增“会员系统”，目标是让后台管理端可以管理会员，并让小程序侧通过独立会员接口完成注册、登录、资料维护和会员运单查询。
+
+注意：
+
+- 当前仓库不直接包含小程序页面代码
+- 本次改造会优先交付“小程序可直接接入的后端接口 + 后台会员管理能力”
 
 ## 技术栈
 
@@ -32,6 +39,11 @@
   - 首页配置
   - 线路页面
   - 新闻资讯
+- 运单管理
+- 会员管理
+  - 会员列表
+  - 会员状态维护
+  - 会员绑定运单查看
 - 全局配置
   - 导航设置
   - 页脚设置
@@ -83,9 +95,34 @@
 - `PUT /api/dictionaries/{id}`
 - `DELETE /api/dictionaries/{id}`
 
+### 会员管理
+
+- `GET /api/admin/members`
+- `GET /api/admin/members/{id}`
+- `POST /api/admin/members`
+- `PUT /api/admin/members/{id}`
+- `PUT /api/admin/members/{id}/status`
+
+## 小程序会员接口
+
+以下接口为小程序或其他会员端使用，不能与后台管理员 JWT 混用：
+
+- `POST /api/member/auth/register`
+- `POST /api/member/auth/login`
+- `GET /api/member/profile`
+- `PUT /api/member/profile`
+- `GET /api/member/waybills`
+- `GET /api/member/waybills/{id}`
+
+说明：
+
+- 会员接口只返回当前会员可见数据
+- 管理端接口仍然要求后台登录
+- 后续如切换微信登录，可在现有会员接口层上扩展，不影响后台
+
 ## 官网公开接口
 
-以下接口供企业官网前台直接读取，不需要 JWT：
+以下接口供官网前台直接读取，不需要管理员 JWT：
 
 - `GET /api/site`
 - `GET /api/pages/home`
@@ -121,7 +158,7 @@ npm run dev
 Windows 环境建议使用项目脚本启动：
 
 ```powershell
-cd F:\work\quanshidaHT-JAVA
+cd E:\me\quanshidaHT-JAVA
 .\backend\start-dev.ps1
 ```
 
@@ -144,6 +181,7 @@ mvn -DskipTests package
 - 新闻存储在 `news_article`
 - 运单存储在 `waybill_order`、`waybill_leg`、`waybill_track_event`
 - 字典存储在 `sys_dict_item`
+- 会员系统规划存储在 `member_user`、`member_waybill_relation`
 - 历史迁移文件必须保持不可变
 
 ## 开发约束
@@ -153,4 +191,5 @@ mvn -DskipTests package
 - 固定模板页面不要做成自由拼版
 - 新闻正文统一用区块化表单维护
 - 官网不要直接复用后台 JWT 接口
-- 运单状态、线路类型、分段状态等基础枚举统一由字典模块管理
+- 小程序不要直接复用后台管理员 JWT 接口
+- 运单状态、线路类型、会员状态等基础枚举统一由字典模块管理
