@@ -1,0 +1,16 @@
+{
+  "name": "qsd-miniapp",
+  "appid": "__UNI__QSDMINIAPP",
+  "description": "QSD member mini-program skeleton built with uni-app",
+  "versionName": "0.1.0",
+  "versionCode": "100",
+  "transformPx": false,
+  "mp-weixin": {
+    "appid": "touristappid",
+    "setting": {
+      "urlCheck": false,
+      "es6": true,
+      "minified": true
+    }
+  }
+}

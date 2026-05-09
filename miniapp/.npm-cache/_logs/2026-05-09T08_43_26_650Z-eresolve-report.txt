@@ -1,0 +1,18 @@
+'Log files:
+E:\me\quanshidaHT-JAVA\miniapp\.npm-cache\_logs\2026-05-09T08_43_26_650Z-debug-0.log
+
+# npm resolution error report
+
+While resolving: qsd-miniapp@0.1.0
+Found: vue@3.4.21
+node_modules/vue
+  vue@"3.4.21" from the root project
+
+Could not resolve dependency:
+peer vue@"^2.7.0 || ^3.5.11" from pinia@2.3.1
+node_modules/pinia
+  pinia@"^2.1.7" from the root project
+
+Fix the upstream dependency conflict, or retry
+this command with --force or --legacy-peer-deps
+to accept an incorrect (and potentially broken) dependency resolution.

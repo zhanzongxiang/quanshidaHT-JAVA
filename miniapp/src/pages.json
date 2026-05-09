@@ -1,0 +1,76 @@
+{
+  "globalStyle": {
+    "navigationBarTitleText": "QSD Member",
+    "navigationBarBackgroundColor": "#F7F5EF",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#F4EFE6"
+  },
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "会员中心"
+      }
+    },
+    {
+      "path": "pages/auth/login",
+      "style": {
+        "navigationBarTitleText": "会员登录"
+      }
+    },
+    {
+      "path": "pages/auth/register",
+      "style": {
+        "navigationBarTitleText": "会员注册"
+      }
+    },
+    {
+      "path": "pages/waybill/list",
+      "style": {
+        "navigationBarTitleText": "我的运单"
+      }
+    },
+    {
+      "path": "pages/waybill/detail",
+      "style": {
+        "navigationBarTitleText": "运单详情"
+      }
+    },
+    {
+      "path": "pages/payment/list",
+      "style": {
+        "navigationBarTitleText": "支付记录"
+      }
+    },
+    {
+      "path": "pages/profile/index",
+      "style": {
+        "navigationBarTitleText": "我的资料"
+      }
+    }
+  ],
+  "tabBar": {
+    "color": "#7B756B",
+    "selectedColor": "#0E6B56",
+    "backgroundColor": "#FFFDF8",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/waybill/list",
+        "text": "运单"
+      },
+      {
+        "pagePath": "pages/payment/list",
+        "text": "支付"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的"
+      }
+    ]
+  }
+}
