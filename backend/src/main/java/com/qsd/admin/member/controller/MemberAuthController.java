@@ -4,6 +4,7 @@ import com.qsd.admin.auth.dto.LoginResponse;
 import com.qsd.admin.common.ApiResponse;
 import com.qsd.admin.member.dto.MemberLoginRequest;
 import com.qsd.admin.member.dto.MemberRegisterRequest;
+import com.qsd.admin.member.dto.MemberWechatLoginRequest;
 import com.qsd.admin.member.service.MemberService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -28,5 +29,10 @@ public class MemberAuthController {
     @PostMapping("/login")
     public ApiResponse<LoginResponse> login(@Valid @RequestBody MemberLoginRequest request) {
         return ApiResponse.ok(memberService.login(request));
+    }
+
+    @PostMapping("/wechat-login")
+    public ApiResponse<LoginResponse> wechatLogin(@Valid @RequestBody MemberWechatLoginRequest request) {
+        return ApiResponse.ok(memberService.wechatLogin(request));
     }
 }

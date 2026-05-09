@@ -5,6 +5,9 @@ import java.util.List;
 public record MemberAdminDetailResponse(
     Long id,
     String phone,
+    String wechatOpenid,
+    String wechatUnionid,
+    String wechatBindTime,
     String nickname,
     String fullName,
     String avatarUrl,

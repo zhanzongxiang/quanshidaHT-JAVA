@@ -24,6 +24,7 @@
 
       <el-table :data="members" v-loading="loading" border class="overflow-hidden rounded-2xl">
         <el-table-column prop="phone" label="Phone" min-width="140" />
+        <el-table-column prop="wechatOpenid" label="WeChat OpenID" min-width="180" />
         <el-table-column prop="nickname" label="Nickname" min-width="120" />
         <el-table-column prop="fullName" label="Name" min-width="120" />
         <el-table-column label="Status" width="120">
@@ -32,6 +33,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="waybillCount" label="Waybills" width="120" />
+        <el-table-column prop="wechatBindTime" label="WeChat Bound At" min-width="180" />
         <el-table-column prop="lastLoginAt" label="Last Login" min-width="180" />
         <el-table-column prop="createdAt" label="Created At" min-width="180" />
         <el-table-column label="Actions" width="260" fixed="right">
@@ -83,6 +85,9 @@
           <div class="grid gap-4 md:grid-cols-2">
             <el-form-item label="Phone" prop="phone">
               <el-input v-model="form.phone" maxlength="11" />
+            </el-form-item>
+            <el-form-item label="WeChat OpenID">
+              <el-input :model-value="currentWechatOpenid" disabled placeholder="Bind from member-side API" />
             </el-form-item>
             <el-form-item label="Password" prop="password">
               <el-input
@@ -199,6 +204,7 @@ const statusOptions = ref<DictionaryOption[]>([])
 const waybillStatusOptions = ref<DictionaryOption[]>([])
 const waybillOptions = ref<WaybillSummary[]>([])
 const memberWaybills = ref<MemberWaybillSummary[]>([])
+const currentWechatOpenid = ref('')
 const formRef = ref<FormInstance>()
 
 const form = reactive<MemberAdminSavePayload>(createEmptyMemberPayload())
@@ -218,6 +224,7 @@ watch([keyword, statusFilter], () => {
 function resetForm() {
   Object.assign(form, createEmptyMemberPayload())
   memberWaybills.value = []
+  currentWechatOpenid.value = ''
 }
 
 function toLabelMap(items: DictionaryOption[]) {
@@ -299,6 +306,7 @@ async function openEditDialog(id: number) {
       remark: detail.remark,
       waybillIds: [...detail.boundWaybillIds],
     })
+    currentWechatOpenid.value = detail.wechatOpenid
     memberWaybills.value = detail.waybills
     dialogVisible.value = true
   } catch {

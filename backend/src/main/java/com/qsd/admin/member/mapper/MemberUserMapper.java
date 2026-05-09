@@ -12,7 +12,7 @@ import java.util.List;
 public interface MemberUserMapper extends BaseMapper<MemberUser> {
 
     @Select("""
-        select id, phone, password_hash, nickname, full_name, avatar_url, status, remark,
+        select id, phone, wechat_openid, wechat_unionid, wechat_bind_time, password_hash, nickname, full_name, avatar_url, status, remark,
                last_login_at, deleted, created_at, updated_at
         from member_user
         where phone = #{phone}
@@ -22,7 +22,7 @@ public interface MemberUserMapper extends BaseMapper<MemberUser> {
     MemberUser selectByPhone(String phone);
 
     @Select("""
-        select id, phone, password_hash, nickname, full_name, avatar_url, status, remark,
+        select id, phone, wechat_openid, wechat_unionid, wechat_bind_time, password_hash, nickname, full_name, avatar_url, status, remark,
                last_login_at, deleted, created_at, updated_at
         from member_user
         where id = #{id}
@@ -32,8 +32,18 @@ public interface MemberUserMapper extends BaseMapper<MemberUser> {
     MemberUser selectActiveById(Long id);
 
     @Select("""
+        select id, phone, wechat_openid, wechat_unionid, wechat_bind_time, password_hash, nickname, full_name, avatar_url, status, remark,
+               last_login_at, deleted, created_at, updated_at
+        from member_user
+        where wechat_openid = #{openid}
+          and deleted = 0
+        limit 1
+        """)
+    MemberUser selectByWechatOpenid(String openid);
+
+    @Select("""
         <script>
-        select id, phone, password_hash, nickname, full_name, avatar_url, status, remark,
+        select id, phone, wechat_openid, wechat_unionid, wechat_bind_time, password_hash, nickname, full_name, avatar_url, status, remark,
                last_login_at, deleted, created_at, updated_at
         from member_user
         where deleted = 0

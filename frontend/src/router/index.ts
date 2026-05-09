@@ -11,6 +11,7 @@ const ContentView = () => import('../views/ContentView.vue')
 const NewsView = () => import('../views/NewsView.vue')
 const WaybillView = () => import('../views/WaybillView.vue')
 const MembersView = () => import('../views/MembersView.vue')
+const PaymentsView = () => import('../views/PaymentsView.vue')
 const ServiceLinesView = () => import('../views/ServiceLinesView.vue')
 const ServiceLineEditorView = () => import('../views/ServiceLineEditorView.vue')
 const NavigationSettingsView = () => import('../views/NavigationSettingsView.vue')
@@ -25,6 +26,7 @@ const viewMap: Record<string, () => Promise<unknown>> = {
   News: NewsView,
   Waybill: WaybillView,
   Members: MembersView,
+  Payments: PaymentsView,
   ServiceLines: ServiceLinesView,
   NavigationSettings: NavigationSettingsView,
   FooterSettings: FooterSettingsView,

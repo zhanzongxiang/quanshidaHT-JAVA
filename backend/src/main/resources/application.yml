@@ -23,3 +23,17 @@ app:
     issuer: ${JWT_ISSUER:qsd-admin}
     secret: ${JWT_SECRET:cXNkLWFkbWluLXNlY3JldC1mb3Itand0LXRva2VuLTIwMjY=}
     expire-minutes: ${JWT_EXPIRE_MINUTES:180}
+  wechat-pay:
+    mock-enabled: ${WECHAT_PAY_MOCK_ENABLED:true}
+    auto-refresh-platform-certificates: ${WECHAT_PAY_AUTO_REFRESH_PLATFORM_CERTIFICATES:true}
+    certificate-store-dir: ${WECHAT_PAY_CERTIFICATE_STORE_DIR:backend/certs/wechatpay}
+    certificate-refresh-hours: ${WECHAT_PAY_CERTIFICATE_REFRESH_HOURS:6}
+    merchant-name: ${WECHAT_PAY_MERCHANT_NAME:Default Merchant}
+    app-id: ${WECHAT_PAY_APP_ID:wx-demo-miniapp}
+    app-secret: ${WECHAT_PAY_APP_SECRET:demo-app-secret}
+    mch-id: ${WECHAT_PAY_MCH_ID:demo-mch}
+    notify-url: ${WECHAT_PAY_NOTIFY_URL:http://localhost:8080/api/payment/callback/wechat}
+    api-v3-key: ${WECHAT_PAY_API_V3_KEY:demo-api-v3-key-1234567890123456}
+    private-key-path: ${WECHAT_PAY_PRIVATE_KEY_PATH:}
+    merchant-serial-no: ${WECHAT_PAY_MERCHANT_SERIAL_NO:}
+    platform-certificate-path: ${WECHAT_PAY_PLATFORM_CERTIFICATE_PATH:}

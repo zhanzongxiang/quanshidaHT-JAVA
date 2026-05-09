@@ -131,4 +131,19 @@ public interface WaybillOrderMapper extends BaseMapper<WaybillOrder> {
         @Param("memberId") Long memberId,
         @Param("phone") String phone
     );
+
+    @Select("""
+        select count(1)
+        from waybill_order
+        where deleted = 0
+        """)
+    long countActive();
+
+    @Select("""
+        select count(1)
+        from waybill_order
+        where deleted = 0
+          and current_status = #{status}
+        """)
+    long countByCurrentStatus(@Param("status") String status);
 }

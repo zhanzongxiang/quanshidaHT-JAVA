@@ -1,195 +1,100 @@
 # qsd Admin
 
-## 项目简介
+## 项目结构
+- `backend`：Spring Boot 后端，包含管理端、会员端、支付与微信支付集成能力。
+- `frontend`：Vue 3 管理后台，当前不是小程序前端。
+- `miniapp`：新增的 `uni-app` 小程序前端骨架，用于会员端与支付端联调。
 
-这是一个面向运单管理与站点运营的后台项目，当前包含后台登录、菜单权限、首页内容管理、线路模板管理、新闻管理、运单管理、字典管理、全局站点设置，以及一组面向官网前台的公开只读接口。
+当前仓库现在已包含一个 `uni-app` 小程序骨架，但它的定位是联调骨架，不是最终上线版小程序产品。
 
-当前版本规划新增“会员系统”，目标是让后台管理端可以管理会员，并让小程序侧通过独立会员接口完成注册、登录、资料维护和会员运单查询。
+## 当前已落地能力
+- 管理员登录、权限、菜单、内容管理、新闻管理、运单管理、字典管理。
+- 会员系统：会员注册、登录、资料维护、会员与运单绑定、会员查看自己的运单。
+- 支付系统 v1：支付单、退款单、支付/退款回调日志、对账记录、后台支付管理页。
+- 微信支付一期：小程序支付下单、支付回调、退款、对账下载、平台证书刷新。
+- 商户模式：单商户运行，但支持后台维护多个商户配置，并切换当前生效商户。
 
-注意：
-
-- 当前仓库不直接包含小程序页面代码
-- 本次改造会优先交付“小程序可直接接入的后端接口 + 后台会员管理能力”
-
-## 技术栈
-
-### 前端
-
-- Vue 3
-- TypeScript
-- Vite
-- Vue Router
-- Pinia
-- Element Plus
-- Tailwind CSS
-
-### 后端
-
-- Java 21
-- Spring Boot 3
-- Spring Security
-- JWT
-- MyBatis-Plus
-- Flyway
-
-## 当前主要模块
-
-- 工作台
-- 页面管理
-  - 首页配置
-  - 线路页面
-  - 新闻资讯
-- 运单管理
-- 会员管理
-  - 会员列表
-  - 会员状态维护
-  - 会员绑定运单查看
-- 全局配置
-  - 导航设置
-  - 页脚设置
-  - 联系方式
-  - 字典管理
-
-## 管理端接口
-
-### 认证接口
-
-- `POST /api/auth/login`
-- `GET /api/auth/me`
-- `GET /api/health`
-
-### 首页内容管理
-
-- `GET /api/content/home`
-- `PUT /api/content/home/draft`
-- `PUT /api/content/home/publish`
-
-### 线路模板管理
-
-- `GET /api/content/service-lines`
-- `GET /api/content/service-lines/{code}`
-- `PUT /api/content/service-lines/{code}/draft`
-- `PUT /api/content/service-lines/{code}/publish`
-
-### 新闻管理
-
-- `GET /api/news`
-- `GET /api/news/{id}`
-- `POST /api/news`
-- `PUT /api/news/{id}`
-- `DELETE /api/news/{id}`
-
-### 运单管理
-
-- `GET /api/waybills`
-- `GET /api/waybills/{id}`
-- `POST /api/waybills`
-- `PUT /api/waybills/{id}`
-- `DELETE /api/waybills/{id}`
-
-### 字典管理
-
-- `GET /api/dictionaries`
-- `GET /api/dictionaries/options`
-- `POST /api/dictionaries`
-- `PUT /api/dictionaries/{id}`
-- `DELETE /api/dictionaries/{id}`
-
-### 会员管理
-
-- `GET /api/admin/members`
-- `GET /api/admin/members/{id}`
-- `POST /api/admin/members`
-- `PUT /api/admin/members/{id}`
-- `PUT /api/admin/members/{id}/status`
-
-## 小程序会员接口
-
-以下接口为小程序或其他会员端使用，不能与后台管理员 JWT 混用：
-
+## 小程序相关接口
 - `POST /api/member/auth/register`
 - `POST /api/member/auth/login`
+- `POST /api/member/auth/wechat-login`
 - `GET /api/member/profile`
 - `PUT /api/member/profile`
+- `PUT /api/member/profile/wechat`
 - `GET /api/member/waybills`
 - `GET /api/member/waybills/{id}`
+- `POST /api/member/payments/prepare`
+- `GET /api/member/payments`
 
-说明：
+## 微信支付一期运维说明
 
-- 会员接口只返回当前会员可见数据
-- 管理端接口仍然要求后台登录
-- 后续如切换微信登录，可在现有会员接口层上扩展，不影响后台
+### 商户模式
+- 系统允许维护多个商户配置，但同一时刻只有一个商户为 `active`。
+- 新支付单会绑定创建时的商户快照，后续切换商户不会影响历史订单和退款链路。
 
-## 官网公开接口
+### 真实微信支付必填配置
+要进入真实微信支付链路，当前生效商户至少应完整配置：
+- `appId`
+- `appSecret`
+- `mchId`
+- `notifyUrl`
+- `apiV3Key`
+- `privateKeyPath`
+- `merchantSerialNo`
+- `platformCertificatePath`
 
-以下接口供官网前台直接读取，不需要管理员 JWT：
+后台支付页已经提供商户配置健康状态展示：
+- `Ready`：商户配置完整，可用于真实微信支付。
+- `Incomplete`：缺少关键字段，只适合 mock 或待补齐后再启用。
 
-- `GET /api/site`
-- `GET /api/pages/home`
-- `GET /api/pages/about`
-- `GET /api/pages/contact`
-- `GET /api/pages/service-line/{key}`
-- `GET /api/pages/news`
-- `GET /api/pages/news/{id}`
-- `GET /api/tracking/{trackingNo}`
+### 证书与回调
+- 后端支持手动刷新当前商户的平台证书。
+- 后端支持定时刷新平台证书，可通过 `app.wechat-pay.auto-refresh-platform-certificates` 控制。
+- 支付和退款回调均支持日志记录、失败分类和后台统计查看。
 
-说明：
-
-- 公开接口只返回已发布内容
-- 后台管理接口仍然要求登录
-- 运单公开查询的状态文案由字典模块统一映射
+### 对账
+- 后端支持下载微信交易账单并生成本地对账记录。
+- 后台支付页支持查看对账差异详情。
+- 当真实商户配置不完整时，系统会保留手工对账兜底流程。
 
 ## 本地启动
 
-### 前端
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-默认开发地址：
-
-- `http://localhost:5174`
-
 ### 后端
-
-Windows 环境建议使用项目脚本启动：
-
 ```powershell
 cd E:\me\quanshidaHT-JAVA
 .\backend\start-dev.ps1
 ```
 
-如果 `8080` 已被占用：
-
-```powershell
-.\backend\start-dev.ps1 -Port 8081
-```
-
-也可以使用 Maven 打包验证：
-
+后端构建或测试：
 ```powershell
 cd backend
 mvn -DskipTests package
+mvn test
 ```
 
-## 数据与迁移
+### 前端
+```powershell
+cd frontend
+npm install
+npm run dev
+```
 
-- 首页和线路模板内容存储在 `site_content_page`
-- 新闻存储在 `news_article`
-- 运单存储在 `waybill_order`、`waybill_leg`、`waybill_track_event`
-- 字典存储在 `sys_dict_item`
-- 会员系统规划存储在 `member_user`、`member_waybill_relation`
-- 历史迁移文件必须保持不可变
+前端校验：
+```powershell
+cd frontend
+npm run build
+```
 
-## 开发约束
+### 小程序骨架
+```powershell
+cd miniapp
+npm install
+npm run dev:mp-weixin
+```
 
-- 前端统一走 `/api`，不要在业务代码中写死后端地址
-- 后台 UI 统一使用 `Element Plus + Tailwind CSS`
-- 固定模板页面不要做成自由拼版
-- 新闻正文统一用区块化表单维护
-- 官网不要直接复用后台 JWT 接口
-- 小程序不要直接复用后台管理员 JWT 接口
-- 运单状态、线路类型、会员状态等基础枚举统一由字典模块管理
+## 约束
+- 管理端接口使用 `/api/**`。
+- 会员端接口使用 `/api/member/**`。
+- 会员 JWT 与管理员 JWT 必须隔离。
+- Flyway 历史迁移只允许追加，不允许改写已执行版本。
+- 支付敏感配置不得硬编码入仓库。

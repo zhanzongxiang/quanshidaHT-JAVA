@@ -13,6 +13,9 @@ export interface MemberWaybillSummary {
 export interface MemberAdminSummary {
   id: number
   phone: string
+  wechatOpenid: string
+  wechatUnionid: string
+  wechatBindTime: string | null
   nickname: string
   fullName: string
   status: string

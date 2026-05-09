@@ -9,12 +9,18 @@ import com.qsd.admin.member.dto.MemberLoginRequest;
 import com.qsd.admin.member.dto.MemberProfileResponse;
 import com.qsd.admin.member.dto.MemberProfileUpdateRequest;
 import com.qsd.admin.member.dto.MemberRegisterRequest;
+import com.qsd.admin.member.dto.MemberWechatBindRequest;
+import com.qsd.admin.member.dto.MemberWechatLoginRequest;
 import com.qsd.admin.member.dto.MemberWaybillDetailResponse;
 import com.qsd.admin.member.dto.MemberWaybillSummaryResponse;
 import com.qsd.admin.member.entity.MemberUser;
 import com.qsd.admin.member.entity.MemberWaybillRelation;
 import com.qsd.admin.member.mapper.MemberUserMapper;
 import com.qsd.admin.member.mapper.MemberWaybillRelationMapper;
+import com.qsd.admin.payment.dto.WechatCodeSessionResponse;
+import com.qsd.admin.payment.entity.PayMerchantConfig;
+import com.qsd.admin.payment.service.PaymentMerchantService;
+import com.qsd.admin.payment.service.WechatPayGateway;
 import com.qsd.admin.security.JwtTokenService;
 import com.qsd.admin.waybill.dto.WaybillEventPayload;
 import com.qsd.admin.waybill.dto.WaybillLegPayload;
@@ -48,19 +54,25 @@ public class MemberService {
     private final WaybillOrderMapper waybillOrderMapper;
     private final WaybillService waybillService;
     private final JwtTokenService jwtTokenService;
+    private final WechatPayGateway wechatPayGateway;
+    private final PaymentMerchantService paymentMerchantService;
 
     public MemberService(
         MemberUserMapper memberUserMapper,
         MemberWaybillRelationMapper memberWaybillRelationMapper,
         WaybillOrderMapper waybillOrderMapper,
         WaybillService waybillService,
-        JwtTokenService jwtTokenService
+        JwtTokenService jwtTokenService,
+        WechatPayGateway wechatPayGateway,
+        PaymentMerchantService paymentMerchantService
     ) {
         this.memberUserMapper = memberUserMapper;
         this.memberWaybillRelationMapper = memberWaybillRelationMapper;
         this.waybillOrderMapper = waybillOrderMapper;
         this.waybillService = waybillService;
         this.jwtTokenService = jwtTokenService;
+        this.wechatPayGateway = wechatPayGateway;
+        this.paymentMerchantService = paymentMerchantService;
     }
 
     public List<MemberAdminSummaryResponse> listAdminMembers(String keyword, String status) {
@@ -68,6 +80,9 @@ public class MemberService {
             .map(member -> new MemberAdminSummaryResponse(
                 member.getId(),
                 member.getPhone(),
+                safe(member.getWechatOpenid()),
+                safe(member.getWechatUnionid()),
+                formatDateTime(member.getWechatBindTime()),
                 safe(member.getNickname()),
                 safe(member.getFullName()),
                 member.getStatus(),
@@ -192,6 +207,53 @@ public class MemberService {
         return new LoginResponse(token, "Bearer");
     }
 
+    @Transactional
+    public LoginResponse wechatLogin(MemberWechatLoginRequest request) {
+        PayMerchantConfig merchantConfig = paymentMerchantService.requireCurrentMerchant();
+        WechatCodeSessionResponse session = wechatPayGateway.exchangeCode(request.code(), merchantConfig);
+        String openid = trimToNull(session.openid());
+        if (openid == null) {
+            throw new IllegalArgumentException("wechat openid is missing");
+        }
+
+        MemberUser member = memberUserMapper.selectByWechatOpenid(openid);
+        LocalDateTime now = LocalDateTime.now();
+        if (member == null) {
+            String phone = trimToNull(request.phone());
+            if (phone != null) {
+                member = memberUserMapper.selectByPhone(phone);
+            }
+            if (member == null) {
+                member = new MemberUser();
+                member.setPhone(phone == null ? generateVirtualPhone(openid) : phone);
+                member.setPasswordHash("wechat-login");
+                member.setNickname(trimToEmpty(request.nickname()));
+                member.setFullName(trimToEmpty(request.fullName()));
+                member.setAvatarUrl("");
+                member.setStatus(STATUS_ACTIVE);
+                member.setRemark("created by wechat login");
+                member.setDeleted(0);
+                member.setCreatedAt(now);
+            }
+        }
+
+        ensureMemberUsable(member);
+        member.setWechatOpenid(openid);
+        member.setWechatUnionid(trimToEmpty(session.unionid()));
+        member.setWechatBindTime(now);
+        member.setLastLoginAt(now);
+        member.setUpdatedAt(now);
+
+        if (member.getId() == null) {
+            memberUserMapper.insert(member);
+        } else {
+            memberUserMapper.updateById(member);
+        }
+
+        String token = jwtTokenService.createMemberToken(member.getId(), member.getPhone());
+        return new LoginResponse(token, "Bearer");
+    }
+
     public MemberProfileResponse getMemberProfile(Long memberId) {
         MemberUser member = requireMember(memberId);
         ensureMemberUsable(member);
@@ -205,6 +267,29 @@ public class MemberService {
         member.setNickname(trimToEmpty(request.nickname()));
         member.setFullName(trimToEmpty(request.fullName()));
         member.setAvatarUrl(trimToEmpty(request.avatarUrl()));
+        member.setUpdatedAt(LocalDateTime.now());
+        memberUserMapper.updateById(member);
+        return toProfile(member);
+    }
+
+    @Transactional
+    public MemberProfileResponse bindWechatIdentity(Long memberId, MemberWechatBindRequest request) {
+        MemberUser member = requireMember(memberId);
+        ensureMemberUsable(member);
+
+        String openid = trimToNull(request.openid());
+        if (openid == null) {
+            throw new IllegalArgumentException("openid must not be blank");
+        }
+
+        MemberUser existing = memberUserMapper.selectByWechatOpenid(openid);
+        if (existing != null && !existing.getId().equals(memberId)) {
+            throw new IllegalArgumentException("wechat openid is already bound to another member");
+        }
+
+        member.setWechatOpenid(openid);
+        member.setWechatUnionid(trimToEmpty(request.unionid()));
+        member.setWechatBindTime(LocalDateTime.now());
         member.setUpdatedAt(LocalDateTime.now());
         memberUserMapper.updateById(member);
         return toProfile(member);
@@ -259,6 +344,9 @@ public class MemberService {
         return new MemberAdminDetailResponse(
             member.getId(),
             member.getPhone(),
+            safe(member.getWechatOpenid()),
+            safe(member.getWechatUnionid()),
+            formatDateTime(member.getWechatBindTime()),
             safe(member.getNickname()),
             safe(member.getFullName()),
             safe(member.getAvatarUrl()),
@@ -276,6 +364,9 @@ public class MemberService {
         return new MemberProfileResponse(
             member.getId(),
             member.getPhone(),
+            safe(member.getWechatOpenid()),
+            safe(member.getWechatUnionid()),
+            formatDateTime(member.getWechatBindTime()),
             safe(member.getNickname()),
             safe(member.getFullName()),
             safe(member.getAvatarUrl()),
@@ -409,5 +500,10 @@ public class MemberService {
 
     private String safe(String value) {
         return value == null ? "" : value;
+    }
+
+    private String generateVirtualPhone(String openid) {
+        int suffix = Math.abs(openid.hashCode()) % 100000000;
+        return "199" + String.format("%08d", suffix);
     }
 }

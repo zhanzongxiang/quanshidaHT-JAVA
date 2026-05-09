@@ -22,6 +22,9 @@ interface MemberWaybillSummaryApiModel {
 interface MemberAdminSummaryApiModel {
   id: number
   phone: string
+  wechatOpenid: string
+  wechatUnionid: string
+  wechatBindTime: string | null
   nickname: string
   fullName: string
   status: string
@@ -56,6 +59,9 @@ function toSummary(model: MemberAdminSummaryApiModel): MemberAdminSummary {
   return {
     id: model.id,
     phone: model.phone,
+    wechatOpenid: model.wechatOpenid || '',
+    wechatUnionid: model.wechatUnionid || '',
+    wechatBindTime: model.wechatBindTime,
     nickname: model.nickname || '',
     fullName: model.fullName || '',
     status: model.status,

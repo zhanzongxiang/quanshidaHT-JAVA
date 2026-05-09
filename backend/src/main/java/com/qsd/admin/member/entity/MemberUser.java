@@ -11,6 +11,9 @@ public class MemberUser {
     @TableId(type = IdType.AUTO)
     private Long id;
     private String phone;
+    private String wechatOpenid;
+    private String wechatUnionid;
+    private LocalDateTime wechatBindTime;
     private String passwordHash;
     private String nickname;
     private String fullName;
@@ -26,6 +29,12 @@ public class MemberUser {
     public void setId(Long id) { this.id = id; }
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
+    public String getWechatOpenid() { return wechatOpenid; }
+    public void setWechatOpenid(String wechatOpenid) { this.wechatOpenid = wechatOpenid; }
+    public String getWechatUnionid() { return wechatUnionid; }
+    public void setWechatUnionid(String wechatUnionid) { this.wechatUnionid = wechatUnionid; }
+    public LocalDateTime getWechatBindTime() { return wechatBindTime; }
+    public void setWechatBindTime(LocalDateTime wechatBindTime) { this.wechatBindTime = wechatBindTime; }
     public String getPasswordHash() { return passwordHash; }
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
     public String getNickname() { return nickname; }
