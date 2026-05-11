@@ -43,9 +43,27 @@
       }
     },
     {
+      "path": "pages/payment/result",
+      "style": {
+        "navigationBarTitleText": "支付结果"
+      }
+    },
+    {
       "path": "pages/profile/index",
       "style": {
         "navigationBarTitleText": "我的资料"
+      }
+    },
+    {
+      "path": "pages/debug/checklist",
+      "style": {
+        "navigationBarTitleText": "联调清单"
+      }
+    },
+    {
+      "path": "pages/debug/diagnostics",
+      "style": {
+        "navigationBarTitleText": "环境诊断"
       }
     }
   ],

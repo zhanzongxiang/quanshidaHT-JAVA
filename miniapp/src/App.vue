@@ -1,9 +1,12 @@
-<script setup lang="ts">
+<script lang="ts">
+export default {
+  onLaunch() {
+    console.log('QSD miniapp launched')
+  },
+}
 </script>
 
 <style lang="scss">
-@import './uni.scss';
-
 page {
   background: #f4efe6;
   color: #1f2a26;

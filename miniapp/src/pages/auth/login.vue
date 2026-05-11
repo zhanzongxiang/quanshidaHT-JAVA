@@ -28,15 +28,21 @@
 
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { useMemberStore } from '@/stores/member'
 
 const memberStore = useMemberStore()
 const submitting = ref(false)
 const wechatLoading = ref(false)
+const redirectUrl = ref('/pages/index/index')
 
 const form = reactive({
   phone: '',
   password: '',
+})
+
+onLoad((query) => {
+  redirectUrl.value = typeof query?.redirect === 'string' && query.redirect ? query.redirect : '/pages/index/index'
 })
 
 async function submitLogin() {
@@ -54,9 +60,7 @@ async function submitLogin() {
       phone: form.phone,
       password: form.password,
     })
-    uni.switchTab({
-      url: '/pages/index/index',
-    })
+    navigateAfterAuth()
   } finally {
     submitting.value = false
   }
@@ -73,9 +77,7 @@ async function submitWechatLogin() {
       code: result.code,
       phone: form.phone || undefined,
     })
-    uni.switchTab({
-      url: '/pages/index/index',
-    })
+    navigateAfterAuth()
   } catch (error) {
     const message = error instanceof Error ? error.message : '微信登录失败'
     uni.showToast({
@@ -89,7 +91,37 @@ async function submitWechatLogin() {
 
 function goToRegister() {
   uni.navigateTo({
-    url: '/pages/auth/register',
+    url: `/pages/auth/register?redirect=${encodeURIComponent(redirectUrl.value)}`,
+  })
+}
+
+function navigateAfterAuth() {
+  if (redirectUrl.value.startsWith('/pages/index/index')) {
+    uni.switchTab({
+      url: '/pages/index/index',
+    })
+    return
+  }
+  if (redirectUrl.value.startsWith('/pages/waybill/list')) {
+    uni.switchTab({
+      url: '/pages/waybill/list',
+    })
+    return
+  }
+  if (redirectUrl.value.startsWith('/pages/payment/list')) {
+    uni.switchTab({
+      url: '/pages/payment/list',
+    })
+    return
+  }
+  if (redirectUrl.value.startsWith('/pages/profile/index')) {
+    uni.switchTab({
+      url: '/pages/profile/index',
+    })
+    return
+  }
+  uni.redirectTo({
+    url: redirectUrl.value,
   })
 }
 </script>

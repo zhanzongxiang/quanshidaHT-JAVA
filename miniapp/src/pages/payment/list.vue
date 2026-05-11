@@ -2,7 +2,10 @@
   <view class="page">
     <view class="card header-card">
       <text class="section-title">支付记录</text>
-      <text class="section-subtitle">用于联调支付准备、支付完成、退款后的状态变化。</text>
+      <text class="section-subtitle">用于联调支付准备、支付完成、关闭、退款后的状态变化。</text>
+      <view class="actions top-gap">
+        <button class="button-secondary" :loading="loading" @click="loadPayments">刷新记录</button>
+      </view>
     </view>
 
     <view v-if="loading" class="card">
@@ -15,13 +18,20 @@
 
     <view v-else class="stack">
       <view v-for="item in payments" :key="item.id" class="card">
-        <text class="item-title">{{ item.orderNo }}</text>
+        <view class="row-between">
+          <text class="item-title">{{ item.orderNo }}</text>
+          <text class="pill">{{ formatPaymentStatus(item.status) }}</text>
+        </view>
         <text class="item-line">商户：{{ item.merchantName }}</text>
         <text class="item-line">运单：{{ item.waybillTrackingNo || '未关联运单' }}</text>
         <text class="item-line">金额：{{ item.amountTotal }} / 实付 {{ item.amountPaid }}</text>
-        <text class="item-line">状态：{{ item.status }}</text>
+        <text class="item-line">说明：{{ item.description || '暂无' }}</text>
         <text class="item-line">支付时间：{{ item.paidAt || '未支付' }}</text>
         <text class="item-line muted">创建时间：{{ item.createdAt }}</text>
+        <view class="actions top-gap">
+          <button class="button-primary" @click="openResult(item)">查看结果</button>
+          <button v-if="item.waybillId" class="button-secondary" @click="openWaybill(item.waybillId)">查看运单</button>
+        </view>
       </view>
     </view>
   </view>
@@ -32,6 +42,7 @@ import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { fetchMemberPayments } from '@/api/payment'
 import type { MemberPayOrderSummary } from '@/types/payment'
+import { formatPaymentStatus } from '@/utils/display'
 import { ensureMemberSession } from '@/utils/guards'
 
 const loading = ref(false)
@@ -53,6 +64,18 @@ async function loadPayments() {
     loading.value = false
   }
 }
+
+function openResult(item: MemberPayOrderSummary) {
+  uni.navigateTo({
+    url: `/pages/payment/result?orderNo=${encodeURIComponent(item.orderNo)}&status=${encodeURIComponent(item.status)}`,
+  })
+}
+
+function openWaybill(waybillId: number) {
+  uni.navigateTo({
+    url: `/pages/waybill/detail?id=${waybillId}`,
+  })
+}
 </script>
 
 <style scoped lang="scss">
@@ -66,12 +89,20 @@ async function loadPayments() {
   gap: 20rpx;
 }
 
+.row-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16rpx;
+}
+
 .item-title {
   display: block;
   margin-bottom: 12rpx;
   font-size: 32rpx;
   font-weight: 700;
   color: #1d2f28;
+  word-break: break-all;
 }
 
 .item-line {
@@ -79,6 +110,10 @@ async function loadPayments() {
   margin-top: 8rpx;
   color: #4f544c;
   line-height: 1.6;
+}
+
+.top-gap {
+  margin-top: 20rpx;
 }
 
 .muted {

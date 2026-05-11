@@ -18,7 +18,7 @@
 
       <view class="card section">
         <text class="section-title">支付入口</text>
-        <text class="section-subtitle">这里对接 `payments/prepare`，适合直接联调小程序支付链路。</text>
+        <text class="section-subtitle">这里对接 `payments/prepare`，用于联调小程序支付链路。</text>
         <view class="field-stack top-gap">
           <view>
             <text class="field-label">支付金额</text>
@@ -42,7 +42,7 @@
             <text class="sub-title">第 {{ leg.legNo || index + 1 }} 段 · {{ leg.legType }}</text>
             <text class="detail-line">运单号：{{ leg.trackingNo }}</text>
             <text class="detail-line">承运商：{{ leg.carrierName || '暂无' }}</text>
-            <text class="detail-line">路线：{{ leg.fromNode || '起点待补' }} → {{ leg.toNode || '终点待补' }}</text>
+            <text class="detail-line">路线：{{ leg.fromNode || '起点待补' }} -> {{ leg.toNode || '终点待补' }}</text>
             <text class="detail-line">状态：{{ leg.legStatus || 'pending' }}</text>
           </view>
         </view>
@@ -136,16 +136,15 @@ async function submitPayment() {
       paySign: payload.paySign,
     })
 
-    uni.showToast({
-      title: '已发起支付',
-      icon: 'success',
+    uni.navigateTo({
+      url: `/pages/payment/result?orderNo=${encodeURIComponent(payload.orderNo)}&status=${encodeURIComponent(payload.status)}`,
     })
-    openPaymentList()
   } catch (error) {
     const message = error instanceof Error ? error.message : '支付发起失败'
-    uni.showToast({
-      title: message,
-      icon: 'none',
+    const normalized = message.toLowerCase()
+    const status = normalized.includes('cancel') ? 'closed' : 'exception'
+    uni.navigateTo({
+      url: `/pages/payment/result?orderNo=&status=${encodeURIComponent(status)}&message=${encodeURIComponent(message)}`,
     })
   } finally {
     paying.value = false

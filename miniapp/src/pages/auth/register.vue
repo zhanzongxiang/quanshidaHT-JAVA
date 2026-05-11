@@ -35,16 +35,22 @@
 
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { useMemberStore } from '@/stores/member'
 
 const memberStore = useMemberStore()
 const submitting = ref(false)
+const redirectUrl = ref('/pages/index/index')
 
 const form = reactive({
   phone: '',
   password: '',
   nickname: '',
   fullName: '',
+})
+
+onLoad((query) => {
+  redirectUrl.value = typeof query?.redirect === 'string' && query.redirect ? query.redirect : '/pages/index/index'
 })
 
 async function submitRegister() {
@@ -64,21 +70,45 @@ async function submitRegister() {
       nickname: form.nickname,
       fullName: form.fullName,
     })
-    uni.switchTab({
-      url: '/pages/index/index',
-    })
+    navigateAfterAuth()
   } finally {
     submitting.value = false
   }
 }
 
 function goToLogin() {
-  uni.navigateBack({
-    fail: () => {
-      uni.navigateTo({
-        url: '/pages/auth/login',
-      })
-    },
+  uni.redirectTo({
+    url: `/pages/auth/login?redirect=${encodeURIComponent(redirectUrl.value)}`,
+  })
+}
+
+function navigateAfterAuth() {
+  if (redirectUrl.value.startsWith('/pages/index/index')) {
+    uni.switchTab({
+      url: '/pages/index/index',
+    })
+    return
+  }
+  if (redirectUrl.value.startsWith('/pages/waybill/list')) {
+    uni.switchTab({
+      url: '/pages/waybill/list',
+    })
+    return
+  }
+  if (redirectUrl.value.startsWith('/pages/payment/list')) {
+    uni.switchTab({
+      url: '/pages/payment/list',
+    })
+    return
+  }
+  if (redirectUrl.value.startsWith('/pages/profile/index')) {
+    uni.switchTab({
+      url: '/pages/profile/index',
+    })
+    return
+  }
+  uni.redirectTo({
+    url: redirectUrl.value,
   })
 }
 </script>

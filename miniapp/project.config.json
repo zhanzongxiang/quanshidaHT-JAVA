@@ -1,0 +1,20 @@
+{
+  "description": "qsd-miniapp uni-app skeleton",
+  "packNpmRelationList": [],
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "postcss": true,
+    "minified": true,
+    "enhance": true,
+    "showShadowRootInWxmlPanel": true,
+    "packNpmManually": false,
+    "compileHotReLoad": true,
+    "ignoreUploadUnusedFiles": true
+  },
+  "compileType": "miniprogram",
+  "libVersion": "trial",
+  "appid": "touristappid",
+  "projectname": "qsd-miniapp",
+  "condition": {}
+}

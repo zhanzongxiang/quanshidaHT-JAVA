@@ -4,16 +4,19 @@
       <view class="pill">uni-app 小程序骨架</view>
       <text class="section-title">会员端联调入口</text>
       <text class="section-subtitle">
-        当前骨架已对齐会员、运单、支付记录与支付准备接口，适合先打通后端链路，再逐步补完整产品体验。
+        当前骨架已对齐会员、运单、支付记录和支付准备接口，适合先打通后端链路，再逐步补完整体产品体验。
       </text>
     </view>
 
     <view v-if="memberStore.profile" class="card profile-card">
-      <text class="section-title">{{ memberStore.profile.nickname || memberStore.profile.fullName || memberStore.profile.phone }}</text>
+      <view class="row-between">
+        <text class="section-title">{{ displayName }}</text>
+        <text class="pill">{{ memberStore.profile.status }}</text>
+      </view>
       <text class="section-subtitle">手机号：{{ memberStore.profile.phone }}</text>
-      <text class="section-subtitle">状态：{{ memberStore.profile.status }}</text>
-      <text class="section-subtitle">
-        微信绑定：{{ memberStore.isWechatBound ? `已绑定 ${memberStore.profile.wechatOpenid}` : '未绑定' }}
+      <text class="section-subtitle">微信状态：{{ wechatBindStatus }}</text>
+      <text v-if="memberStore.profile.wechatOpenid" class="section-subtitle">
+        openid：{{ maskedWechatOpenid }}
       </text>
     </view>
 
@@ -29,37 +32,55 @@
     <view class="grid-links">
       <view class="link-card" @click="openWaybills">
         <text class="link-title">我的运单</text>
-        <text class="link-text">查看会员可见运单与物流节点</text>
+        <text class="link-text">查看会员可见运单、进入详情并继续支付联调。</text>
       </view>
       <view class="link-card" @click="openPayments">
         <text class="link-title">支付记录</text>
-        <text class="link-text">查看支付状态，联调支付结果</text>
+        <text class="link-text">查看支付状态、回看结果页、校对支付同步情况。</text>
       </view>
       <view class="link-card" @click="openProfile">
         <text class="link-title">我的资料</text>
-        <text class="link-text">更新昵称、姓名、头像与微信状态</text>
+        <text class="link-text">维护昵称、姓名、头像，并查看微信绑定状态。</text>
       </view>
       <view class="link-card" @click="refreshProfile">
         <text class="link-title">刷新会话</text>
-        <text class="link-text">重新拉取当前会员资料</text>
+        <text class="link-text">重新拉取当前会员资料，验证登录态和资料回写。</text>
+      </view>
+      <view class="link-card" @click="openChecklist">
+        <text class="link-title">联调工作台</text>
+        <text class="link-text">按步骤记录登录、运单、支付和资料链路，并复制联调摘要。</text>
+      </view>
+      <view class="link-card" @click="openDiagnostics">
+        <text class="link-title">环境诊断</text>
+        <text class="link-text">快速查看后端地址、登录态、微信绑定和最近接口结果。</text>
       </view>
     </view>
 
     <view class="card env-card">
       <text class="section-title">联调提示</text>
       <text class="section-subtitle">后端地址：{{ apiBaseUrl }}</text>
-      <text class="section-subtitle">真实微信支付前请确认后台当前商户状态为 Ready。</text>
+      <text class="section-subtitle">真实微信支付前，请确认后台当前商户状态为 Ready。</text>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { API_BASE_URL } from '@/config/env'
 import { useMemberStore } from '@/stores/member'
+import { formatWechatBindStatus, maskIdentifier } from '@/utils/display'
 
 const memberStore = useMemberStore()
 const apiBaseUrl = API_BASE_URL
+
+const displayName = computed(() => {
+  const profile = memberStore.profile
+  return profile?.nickname || profile?.fullName || profile?.phone || '会员'
+})
+
+const wechatBindStatus = computed(() => formatWechatBindStatus(memberStore.profile?.wechatOpenid))
+const maskedWechatOpenid = computed(() => maskIdentifier(memberStore.profile?.wechatOpenid))
 
 onShow(async () => {
   memberStore.restore()
@@ -102,11 +123,24 @@ function openProfile() {
   })
 }
 
+function openChecklist() {
+  uni.navigateTo({
+    url: '/pages/debug/checklist',
+  })
+}
+
+function openDiagnostics() {
+  uni.navigateTo({
+    url: '/pages/debug/diagnostics',
+  })
+}
+
 async function refreshProfile() {
   if (!memberStore.isAuthenticated) {
     goToLogin()
     return
   }
+
   await memberStore.fetchProfile()
   uni.showToast({
     title: '资料已刷新',
@@ -120,6 +154,13 @@ async function refreshProfile() {
 .profile-card,
 .env-card {
   margin-bottom: 24rpx;
+}
+
+.row-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16rpx;
 }
 
 .top-gap {

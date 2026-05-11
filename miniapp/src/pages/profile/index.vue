@@ -6,12 +6,26 @@
 
     <template v-else>
       <view class="card section">
-        <text class="section-title">会员资料</text>
+        <view class="row-between">
+          <text class="section-title">会员资料</text>
+          <text class="pill">{{ profile.status }}</text>
+        </view>
         <text class="section-subtitle">手机号：{{ profile.phone }}</text>
-        <text class="section-subtitle">状态：{{ profile.status }}</text>
-        <text class="section-subtitle">
-          微信绑定：{{ profile.wechatOpenid ? `已绑定 ${profile.wechatOpenid}` : '未绑定' }}
-        </text>
+        <text class="section-subtitle">昵称：{{ profile.nickname || '未填写' }}</text>
+        <text class="section-subtitle">姓名：{{ profile.fullName || '未填写' }}</text>
+      </view>
+
+      <view class="card section">
+        <text class="section-title">微信状态</text>
+        <text class="section-subtitle">绑定状态：{{ wechatStatusLabel }}</text>
+        <text class="section-subtitle">{{ wechatSummary }}</text>
+        <text v-if="profile.wechatBindTime" class="section-subtitle">绑定时间：{{ profile.wechatBindTime }}</text>
+        <text v-if="profile.wechatOpenid" class="section-subtitle">openid：{{ maskedWechatOpenid }}</text>
+        <text v-if="profile.wechatUnionid" class="section-subtitle">unionid：{{ maskedWechatUnionid }}</text>
+        <view class="actions top-gap">
+          <button class="button-secondary" :loading="wechatLoggingIn" @click="reloginWithWechat">重新走微信登录</button>
+          <button plain :loading="refreshing" @click="handleRefreshProfile">刷新资料</button>
+        </view>
       </view>
 
       <view class="card section">
@@ -36,7 +50,7 @@
       </view>
 
       <view class="card section">
-        <text class="section-title">调试用微信绑定</text>
+        <text class="section-title">手动绑定微信</text>
         <text class="section-subtitle">当前后端提供的是 openid/unionid 绑定接口，这里保留联调用表单。</text>
         <view class="field-stack top-gap">
           <view>
@@ -50,7 +64,6 @@
         </view>
         <view class="actions top-gap">
           <button class="button-secondary" :loading="binding" @click="bindWechat">提交绑定</button>
-          <button plain @click="reloginWithWechat">重新走微信登录</button>
           <button plain @click="logout">退出登录</button>
         </view>
       </view>
@@ -59,14 +72,17 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useMemberStore } from '@/stores/member'
+import { formatWechatBindStatus, maskIdentifier } from '@/utils/display'
 import { ensureMemberSession } from '@/utils/guards'
 
 const memberStore = useMemberStore()
 const saving = ref(false)
 const binding = ref(false)
+const refreshing = ref(false)
+const wechatLoggingIn = ref(false)
 
 const form = reactive({
   nickname: '',
@@ -81,14 +97,23 @@ const wechatForm = reactive({
 
 const profile = ref(memberStore.profile)
 
+const wechatSummary = computed(() => {
+  if (!profile.value?.wechatOpenid) {
+    return '当前未绑定微信，可先走微信登录，也可手动填 openid/unionid 做联调。'
+  }
+  return '当前账号已绑定微信身份，可继续验证登录回写和资料刷新。'
+})
+
+const wechatStatusLabel = computed(() => formatWechatBindStatus(profile.value?.wechatOpenid))
+const maskedWechatOpenid = computed(() => maskIdentifier(profile.value?.wechatOpenid))
+const maskedWechatUnionid = computed(() => maskIdentifier(profile.value?.wechatUnionid))
+
 onShow(async () => {
   const ready = await ensureMemberSession()
   if (!ready) {
     return
   }
-  const latest = await memberStore.fetchProfile()
-  profile.value = latest
-  syncForm()
+  await refreshProfile(false)
 })
 
 function syncForm() {
@@ -98,6 +123,29 @@ function syncForm() {
   form.nickname = memberStore.profile.nickname || ''
   form.fullName = memberStore.profile.fullName || ''
   form.avatarUrl = memberStore.profile.avatarUrl || ''
+  wechatForm.openid = memberStore.profile.wechatOpenid || ''
+  wechatForm.unionid = memberStore.profile.wechatUnionid || ''
+}
+
+async function refreshProfile(showToast = true) {
+  refreshing.value = true
+  try {
+    const latest = await memberStore.fetchProfile()
+    profile.value = latest
+    syncForm()
+    if (showToast) {
+      uni.showToast({
+        title: '资料已刷新',
+        icon: 'success',
+      })
+    }
+  } finally {
+    refreshing.value = false
+  }
+}
+
+async function handleRefreshProfile() {
+  await refreshProfile()
 }
 
 async function saveProfile() {
@@ -109,6 +157,7 @@ async function saveProfile() {
       avatarUrl: form.avatarUrl,
     })
     profile.value = latest
+    syncForm()
     uni.showToast({
       title: '资料已保存',
       icon: 'success',
@@ -133,6 +182,7 @@ async function bindWechat() {
       unionid: wechatForm.unionid,
     })
     profile.value = latest
+    syncForm()
     uni.showToast({
       title: '微信已绑定',
       icon: 'success',
@@ -143,6 +193,7 @@ async function bindWechat() {
 }
 
 async function reloginWithWechat() {
+  wechatLoggingIn.value = true
   try {
     const result = await uni.login()
     if (!result.code) {
@@ -164,6 +215,8 @@ async function reloginWithWechat() {
       title: message,
       icon: 'none',
     })
+  } finally {
+    wechatLoggingIn.value = false
   }
 }
 
@@ -175,6 +228,13 @@ function logout() {
 <style scoped lang="scss">
 .section {
   margin-bottom: 24rpx;
+}
+
+.row-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16rpx;
 }
 
 .top-gap {
