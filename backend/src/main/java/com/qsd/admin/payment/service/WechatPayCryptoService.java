@@ -40,7 +40,7 @@ public class WechatPayCryptoService {
             signature.update(message.getBytes(StandardCharsets.UTF_8));
             return Base64.getEncoder().encodeToString(signature.sign());
         } catch (Exception ex) {
-            throw new IllegalStateException("failed to sign wechat pay request", ex);
+            throw new IllegalStateException("微信支付请求签名失败", ex);
         }
     }
 
@@ -58,12 +58,12 @@ public class WechatPayCryptoService {
             signature.update(message.getBytes(StandardCharsets.UTF_8));
             boolean verified = signature.verify(Base64.getDecoder().decode(signatureValue));
             if (!verified) {
-                throw new IllegalArgumentException("wechat callback signature verification failed");
+                throw new IllegalArgumentException("微信回调签名校验失败");
             }
         } catch (IllegalArgumentException ex) {
             throw ex;
         } catch (Exception ex) {
-            throw new IllegalStateException("failed to verify wechat callback signature", ex);
+            throw new IllegalStateException("校验微信回调签名失败", ex);
         }
     }
 
@@ -73,7 +73,7 @@ public class WechatPayCryptoService {
             Map<String, Object> root = objectMapper.readValue(body, Map.class);
             Object resourceObject = root.get("resource");
             if (!(resourceObject instanceof Map<?, ?> resource)) {
-                throw new IllegalArgumentException("wechat notify resource is missing");
+                throw new IllegalArgumentException("微信回调缺少加密资源数据");
             }
 
             String nonce = stringValue(resource.get("nonce"));
@@ -93,7 +93,7 @@ public class WechatPayCryptoService {
             byte[] plainBytes = cipher.doFinal(cipherBytes);
             return objectMapper.readValue(plainBytes, Map.class);
         } catch (Exception ex) {
-            throw new IllegalStateException("failed to decrypt wechat pay notify resource", ex);
+            throw new IllegalStateException("解密微信支付回调资源失败", ex);
         }
     }
 
@@ -112,7 +112,7 @@ public class WechatPayCryptoService {
             byte[] plainBytes = cipher.doFinal(cipherBytes);
             return new String(plainBytes, StandardCharsets.UTF_8);
         } catch (Exception ex) {
-            throw new IllegalStateException("failed to decrypt wechat platform certificate", ex);
+            throw new IllegalStateException("解密微信平台证书失败", ex);
         }
     }
 
@@ -126,7 +126,7 @@ public class WechatPayCryptoService {
     private PrivateKey loadPrivateKey(PayMerchantConfig merchantConfig) {
         String keyPath = trimToNull(merchantConfig.getPrivateKeyPath());
         if (keyPath == null) {
-            throw new IllegalStateException("merchant private key path is not configured");
+            throw new IllegalStateException("商户私钥路径未配置");
         }
         return privateKeyCache.computeIfAbsent(keyPath, this::readPrivateKey);
     }
@@ -134,7 +134,7 @@ public class WechatPayCryptoService {
     private PublicKey loadPlatformPublicKey(PayMerchantConfig merchantConfig) {
         String certPath = trimToNull(merchantConfig.getPlatformCertificatePath());
         if (certPath == null) {
-            throw new IllegalStateException("merchant platform certificate path is not configured");
+            throw new IllegalStateException("商户平台证书路径未配置");
         }
         return platformKeyCache.computeIfAbsent(certPath, this::readPlatformPublicKey);
     }
@@ -151,7 +151,7 @@ public class WechatPayCryptoService {
             KeyFactory keyFactory = KeyFactory.getInstance("RSA");
             return keyFactory.generatePrivate(keySpec);
         } catch (Exception ex) {
-            throw new IllegalStateException("failed to load merchant private key", ex);
+            throw new IllegalStateException("加载商户私钥失败", ex);
         }
     }
 
@@ -163,7 +163,7 @@ public class WechatPayCryptoService {
                 return certificate.getPublicKey();
             }
         } catch (Exception ex) {
-            throw new IllegalStateException("failed to load wechat platform certificate", ex);
+            throw new IllegalStateException("加载微信平台证书失败", ex);
         }
     }
 

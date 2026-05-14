@@ -1,7 +1,7 @@
 <template>
   <view class="page">
     <view class="card section">
-      <view class="row-between">
+      <view class="row-between header-row">
         <view class="header-copy">
           <text class="section-title">联调工作台</text>
           <text class="section-subtitle">
@@ -32,7 +32,7 @@
           </view>
           <textarea
             v-model="checklistState[item.key].note"
-            class="note-input"
+            class="textarea note-input"
             auto-height
             maxlength="120"
             placeholder="可选备注：记录当前环境、账号或异常现象"
@@ -54,7 +54,7 @@
           </view>
           <textarea
             v-model="checklistState[item.key].note"
-            class="note-input"
+            class="textarea note-input"
             auto-height
             maxlength="120"
             placeholder="可选备注：记录页面表现、接口参数或跳转结果"
@@ -87,7 +87,7 @@
           </view>
           <textarea
             v-model="checklistState[item.key].note"
-            class="note-input"
+            class="textarea note-input"
             auto-height
             maxlength="120"
             placeholder="可选备注：记录异常文案、状态差异或复现步骤"
@@ -101,7 +101,6 @@
 
 <script setup lang="ts">
 import { computed, reactive } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
 import {
   clearChecklistState,
   getChecklistState,
@@ -109,6 +108,8 @@ import {
   type ChecklistEntryState,
   type ChecklistState,
 } from '@/utils/debug'
+import { openAppPage } from '@/utils/navigation'
+import { showSuccess } from '@/utils/toast'
 
 interface ChecklistItem {
   key: string
@@ -138,16 +139,13 @@ const observeItems: ChecklistItem[] = [
 ]
 
 const checklistState = reactive<ChecklistState>({})
-
 const allItems = [...envItems, ...flowItems, ...observeItems]
 
 const totalCount = allItems.length
 const completedCount = computed(() => allItems.filter((item) => checklistState[item.key]?.checked).length)
 const progressWidth = computed(() => `${Math.round((completedCount.value / totalCount) * 100)}%`)
 
-onShow(() => {
-  loadChecklistState()
-})
+loadChecklistState()
 
 function createEmptyEntry(): ChecklistEntryState {
   return {
@@ -193,10 +191,7 @@ function resetChecklist() {
   allItems.forEach((item) => {
     checklistState[item.key] = createEmptyEntry()
   })
-  uni.showToast({
-    title: '清单已重置',
-    icon: 'success',
-  })
+  showSuccess('清单已重置')
 }
 
 function buildSummary() {
@@ -206,10 +201,10 @@ function buildSummary() {
     { title: '重点观察', items: observeItems },
   ]
 
-  const lines = [`联调工作台摘要`, `完成进度：${completedCount.value}/${totalCount}`]
+  const lines = ['联调工作台摘要', `完成进度：${completedCount.value}/${totalCount}`]
 
   sections.forEach((section) => {
-    lines.push(``, `[${section.title}]`)
+    lines.push('', `[${section.title}]`)
     section.items.forEach((item) => {
       const entry = checklistState[item.key] || createEmptyEntry()
       const status = entry.checked ? '已完成' : '未完成'
@@ -226,42 +221,29 @@ function copySummary() {
   uni.setClipboardData({
     data: buildSummary(),
     success: () => {
-      uni.showToast({
-        title: '摘要已复制',
-        icon: 'success',
-      })
+      showSuccess('摘要已复制')
     },
   })
 }
 
 function openLogin() {
-  uni.navigateTo({
-    url: '/pages/auth/login',
-  })
+  openAppPage('/pages/auth/login')
 }
 
 function openWaybills() {
-  uni.switchTab({
-    url: '/pages/waybill/list',
-  })
+  openAppPage('/pages/waybill/list')
 }
 
 function openPayments() {
-  uni.switchTab({
-    url: '/pages/payment/list',
-  })
+  openAppPage('/pages/payment/list')
 }
 
 function openProfile() {
-  uni.switchTab({
-    url: '/pages/profile/index',
-  })
+  openAppPage('/pages/profile/index')
 }
 
 function openDiagnostics() {
-  uni.navigateTo({
-    url: '/pages/debug/diagnostics',
-  })
+  openAppPage('/pages/debug/diagnostics')
 }
 </script>
 
@@ -270,11 +252,8 @@ function openDiagnostics() {
   margin-bottom: 24rpx;
 }
 
-.row-between {
-  display: flex;
-  justify-content: space-between;
+.header-row {
   align-items: flex-start;
-  gap: 16rpx;
 }
 
 .header-copy {
@@ -339,18 +318,6 @@ function openDiagnostics() {
 }
 
 .note-input {
-  width: 100%;
-  min-height: 112rpx;
   margin-top: 16rpx;
-  padding: 18rpx 20rpx;
-  border-radius: 16rpx;
-  background: #fffdf8;
-  color: #4f544c;
-  line-height: 1.6;
-  box-sizing: border-box;
-}
-
-.top-gap {
-  margin-top: 20rpx;
 }
 </style>

@@ -1,5 +1,6 @@
 package com.qsd.admin.news.service;
 
+import com.qsd.admin.common.exception.NotFoundException;
 import com.qsd.admin.news.dto.NewsArticleResponse;
 import com.qsd.admin.news.dto.NewsArticleSaveRequest;
 import com.qsd.admin.news.entity.NewsArticle;
@@ -86,7 +87,7 @@ public class NewsArticleService {
     private NewsArticle requireArticle(Long id) {
         NewsArticle article = newsArticleMapper.selectActiveById(id);
         if (article == null) {
-            throw new IllegalArgumentException("news article not found");
+            throw new NotFoundException("新闻不存在");
         }
         return article;
     }

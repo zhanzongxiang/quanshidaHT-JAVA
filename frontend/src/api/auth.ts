@@ -1,11 +1,7 @@
 import { http } from './http'
+import { unwrapResponse } from './shared'
+import type { ApiResponse } from './shared'
 import type { MeInfo } from '../types/auth'
-
-interface ApiResponse<T> {
-  code: number
-  message: string
-  data: T
-}
 
 export interface LoginPayload {
   username: string
@@ -18,11 +14,9 @@ export interface LoginResult {
 }
 
 export async function login(payload: LoginPayload): Promise<LoginResult> {
-  const { data } = await http.post<ApiResponse<LoginResult>>('/auth/login', payload)
-  return data.data
+  return unwrapResponse(await http.post<ApiResponse<LoginResult>>('/auth/login', payload))
 }
 
 export async function fetchMe(): Promise<MeInfo> {
-  const { data } = await http.get<ApiResponse<MeInfo>>('/auth/me')
-  return data.data
+  return unwrapResponse(await http.get<ApiResponse<MeInfo>>('/auth/me'))
 }

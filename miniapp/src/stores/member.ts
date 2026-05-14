@@ -15,7 +15,7 @@ import type {
   MemberWechatBindPayload,
   MemberWechatLoginPayload,
 } from '@/types/member'
-import { clearStoredToken, getStoredToken, setStoredToken } from '@/utils/http'
+import { clearSessionStorage, getStoredToken, setStoredToken } from '@/utils/http'
 
 export const useMemberStore = defineStore('member', {
   state: () => ({
@@ -37,27 +37,28 @@ export const useMemberStore = defineStore('member', {
     clearSession() {
       this.token = ''
       this.profile = null
-      clearStoredToken()
+      clearSessionStorage()
     },
     async fetchProfile() {
       const profile = await fetchMemberProfile()
       this.profile = profile
       return profile
     },
+    async applyAuthenticatedSession(accessToken: string) {
+      this.setToken(accessToken)
+      await this.fetchProfile()
+    },
     async register(payload: MemberRegisterPayload) {
       const result = await registerMember(payload)
-      this.setToken(result.accessToken)
-      await this.fetchProfile()
+      await this.applyAuthenticatedSession(result.accessToken)
     },
     async login(payload: MemberLoginPayload) {
       const result = await loginMember(payload)
-      this.setToken(result.accessToken)
-      await this.fetchProfile()
+      await this.applyAuthenticatedSession(result.accessToken)
     },
     async wechatLogin(payload: MemberWechatLoginPayload) {
       const result = await loginMemberWithWechat(payload)
-      this.setToken(result.accessToken)
-      await this.fetchProfile()
+      await this.applyAuthenticatedSession(result.accessToken)
     },
     async saveProfile(payload: MemberProfileUpdatePayload) {
       const profile = await updateMemberProfile(payload)

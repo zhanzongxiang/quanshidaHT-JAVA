@@ -45,7 +45,7 @@ public class WechatPayCallbackParser {
         } catch (WechatCallbackException ex) {
             throw ex;
         } catch (Exception ex) {
-            throw new WechatCallbackException("parse_error", "failed to parse wechat payment callback", false, ex);
+            throw new WechatCallbackException("parse_error", "解析微信支付回调失败", false, ex);
         }
     }
 
@@ -66,7 +66,7 @@ public class WechatPayCallbackParser {
         } catch (WechatCallbackException ex) {
             throw ex;
         } catch (Exception ex) {
-            throw new WechatCallbackException("parse_error", "failed to parse wechat refund callback", false, ex);
+            throw new WechatCallbackException("parse_error", "解析微信退款回调失败", false, ex);
         }
     }
 
@@ -86,7 +86,7 @@ public class WechatPayCallbackParser {
             Map<String, Object> resource = wechatPayCryptoService.decryptNotifyResource(body, merchantConfig.getApiV3Key());
             return new WechatCallbackContext(merchantConfig, resource);
         } catch (Exception ex) {
-            throw new IllegalArgumentException("failed to parse wechat payment callback context", ex);
+            throw new IllegalArgumentException("解析微信支付回调上下文失败", ex);
         }
     }
 
@@ -102,7 +102,7 @@ public class WechatPayCallbackParser {
             Map<String, Object> resource = wechatPayCryptoService.decryptNotifyResource(body, merchantConfig.getApiV3Key());
             return new WechatCallbackContext(merchantConfig, resource);
         } catch (Exception ex) {
-            throw new IllegalArgumentException("failed to parse wechat refund callback context", ex);
+            throw new IllegalArgumentException("解析微信退款回调上下文失败", ex);
         }
     }
 
@@ -142,7 +142,7 @@ public class WechatPayCallbackParser {
             verifySignatureIfPresent(body, timestamp, nonce, signature, fallback);
             return fallback;
         }
-        throw new WechatCallbackException("merchant_config_missing", "no merchant configuration can verify or decrypt wechat notify resource", true);
+        throw new WechatCallbackException("merchant_config_missing", "没有可用于验签或解密微信回调的商户配置", true);
     }
 
     private String extractMchId(Map<String, Object> payload) {

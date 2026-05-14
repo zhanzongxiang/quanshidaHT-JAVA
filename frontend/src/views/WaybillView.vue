@@ -4,7 +4,7 @@
       <div class="space-y-2">
         <h2 class="m-0 text-xl font-extrabold text-ink">运单管理</h2>
         <p class="m-0 max-w-3xl text-sm leading-6 text-mist">
-          用于维护主运单、中转线路和客户可见轨迹事件的后台管理页面。
+          用于维护主运单、线路分段和客户可见轨迹事件，支持后台查询、编辑与删除。
         </p>
       </div>
       <div class="flex gap-3">
@@ -65,25 +65,25 @@
           <template #header>
             <div>
               <h3 class="m-0 text-base font-bold text-ink">基础信息</h3>
-              <p class="m-0 mt-1 text-sm text-mist">维护后台管理和前台公开查询使用的主运单核心字段。</p>
+              <p class="m-0 mt-1 text-sm text-mist">维护后台管理和前台运单查询使用的核心字段。</p>
             </div>
           </template>
 
           <div class="grid gap-4 md:grid-cols-2">
             <el-form-item label="主运单号" prop="mainTrackingNo">
-              <el-input v-model="form.mainTrackingNo" />
+              <el-input v-model.trim="form.mainTrackingNo" maxlength="64" />
             </el-form-item>
             <el-form-item label="参考单号" prop="referenceNo">
-              <el-input v-model="form.referenceNo" />
+              <el-input v-model.trim="form.referenceNo" maxlength="64" />
             </el-form-item>
             <el-form-item label="客户名称" prop="customerName">
-              <el-input v-model="form.customerName" />
+              <el-input v-model.trim="form.customerName" maxlength="64" />
             </el-form-item>
             <el-form-item label="客户电话" prop="customerPhone">
-              <el-input v-model="form.customerPhone" />
+              <el-input v-model.trim="form.customerPhone" maxlength="32" />
             </el-form-item>
             <el-form-item label="始发仓" prop="originWarehouse">
-              <el-input v-model="form.originWarehouse" />
+              <el-input v-model.trim="form.originWarehouse" maxlength="128" />
             </el-form-item>
             <el-form-item label="线路类型" prop="routeType">
               <el-select v-model="form.routeType">
@@ -91,10 +91,10 @@
               </el-select>
             </el-form-item>
             <el-form-item label="目的国家" prop="destinationCountry">
-              <el-input v-model="form.destinationCountry" />
+              <el-input v-model.trim="form.destinationCountry" maxlength="64" />
             </el-form-item>
             <el-form-item label="目的城市" prop="destinationCity">
-              <el-input v-model="form.destinationCity" />
+              <el-input v-model.trim="form.destinationCity" maxlength="64" />
             </el-form-item>
             <el-form-item label="当前状态" prop="currentStatus">
               <el-select v-model="form.currentStatus">
@@ -102,19 +102,19 @@
               </el-select>
             </el-form-item>
             <el-form-item label="当前节点" prop="currentNode">
-              <el-input v-model="form.currentNode" />
+              <el-input v-model.trim="form.currentNode" maxlength="128" />
             </el-form-item>
             <el-form-item label="包裹数量" prop="packageCount">
               <el-input-number v-model="form.packageCount" :min="1" class="!w-full" />
             </el-form-item>
-            <el-form-item label="重量（KG）" prop="weightKg">
+            <el-form-item label="重量（kg）" prop="weightKg">
               <el-input-number v-model="form.weightKg" :min="0" :precision="2" class="!w-full" />
             </el-form-item>
             <el-form-item label="货物描述" prop="cargoDescription" class="md:col-span-2">
-              <el-input v-model="form.cargoDescription" type="textarea" :rows="3" />
+              <el-input v-model.trim="form.cargoDescription" type="textarea" :rows="3" maxlength="255" show-word-limit />
             </el-form-item>
             <el-form-item label="备注" prop="remark" class="md:col-span-2">
-              <el-input v-model="form.remark" type="textarea" :rows="3" />
+              <el-input v-model.trim="form.remark" type="textarea" :rows="3" maxlength="500" show-word-limit />
             </el-form-item>
           </div>
         </el-card>
@@ -124,7 +124,7 @@
             <div class="flex items-center justify-between gap-3">
               <div>
                 <h3 class="m-0 text-base font-bold text-ink">线路分段</h3>
-                <p class="m-0 mt-1 text-sm text-mist">用于维护中转节点、分段运单号和承运归属。</p>
+                <p class="m-0 mt-1 text-sm text-mist">维护中转节点、分段运单号和承运归属。</p>
               </div>
               <el-button type="primary" plain @click="onAddLeg">新增分段</el-button>
             </div>
@@ -138,13 +138,13 @@
               </div>
               <div class="grid gap-4 md:grid-cols-2">
                 <el-form-item :label="`分段 ${index + 1} 类型`">
-                  <el-input v-model="leg.legType" />
+                  <el-input v-model.trim="leg.legType" maxlength="32" />
                 </el-form-item>
                 <el-form-item :label="`分段 ${index + 1} 运单号`">
-                  <el-input v-model="leg.trackingNo" />
+                  <el-input v-model.trim="leg.trackingNo" maxlength="64" />
                 </el-form-item>
                 <el-form-item :label="`分段 ${index + 1} 承运商`">
-                  <el-input v-model="leg.carrierName" />
+                  <el-input v-model.trim="leg.carrierName" maxlength="64" />
                 </el-form-item>
                 <el-form-item :label="`分段 ${index + 1} 状态`">
                   <el-select v-model="leg.legStatus">
@@ -152,19 +152,19 @@
                   </el-select>
                 </el-form-item>
                 <el-form-item :label="`分段 ${index + 1} 起始节点`">
-                  <el-input v-model="leg.fromNode" />
+                  <el-input v-model.trim="leg.fromNode" maxlength="128" />
                 </el-form-item>
                 <el-form-item :label="`分段 ${index + 1} 目标节点`">
-                  <el-input v-model="leg.toNode" />
+                  <el-input v-model.trim="leg.toNode" maxlength="128" />
                 </el-form-item>
                 <el-form-item :label="`分段 ${index + 1} 发出时间`">
-                  <el-input v-model="leg.departureTime" placeholder="yyyy-MM-dd HH:mm:ss" />
+                  <el-input v-model.trim="leg.departureTime" placeholder="yyyy-MM-dd HH:mm:ss" />
                 </el-form-item>
                 <el-form-item :label="`分段 ${index + 1} 到达时间`">
-                  <el-input v-model="leg.arrivalTime" placeholder="yyyy-MM-dd HH:mm:ss" />
+                  <el-input v-model.trim="leg.arrivalTime" placeholder="yyyy-MM-dd HH:mm:ss" />
                 </el-form-item>
                 <el-form-item :label="`分段 ${index + 1} 备注`" class="md:col-span-2">
-                  <el-input v-model="leg.remark" />
+                  <el-input v-model.trim="leg.remark" maxlength="500" />
                 </el-form-item>
               </div>
               <el-checkbox v-model="leg.transferFlag">中转分段</el-checkbox>
@@ -177,7 +177,7 @@
             <div class="flex items-center justify-between gap-3">
               <div>
                 <h3 class="m-0 text-base font-bold text-ink">轨迹事件</h3>
-                <p class="m-0 mt-1 text-sm text-mist">这些事件会作为前台运单查询的轨迹输出。</p>
+                <p class="m-0 mt-1 text-sm text-mist">这些事件会同步到前台运单查询，直接影响用户看到的轨迹信息。</p>
               </div>
               <el-button type="primary" plain @click="onAddEvent">新增事件</el-button>
             </div>
@@ -191,7 +191,7 @@
               </div>
               <div class="grid gap-4 md:grid-cols-2">
                 <el-form-item :label="`事件 ${index + 1} 时间`">
-                  <el-input v-model="event.eventTime" placeholder="yyyy-MM-dd HH:mm:ss" />
+                  <el-input v-model.trim="event.eventTime" placeholder="yyyy-MM-dd HH:mm:ss" />
                 </el-form-item>
                 <el-form-item :label="`事件 ${index + 1} 状态`">
                   <el-select v-model="event.eventStatus">
@@ -199,10 +199,10 @@
                   </el-select>
                 </el-form-item>
                 <el-form-item :label="`事件 ${index + 1} 描述`" class="md:col-span-2">
-                  <el-input v-model="event.eventDescription" />
+                  <el-input v-model.trim="event.eventDescription" maxlength="255" />
                 </el-form-item>
                 <el-form-item :label="`事件 ${index + 1} 位置`">
-                  <el-input v-model="event.eventLocation" />
+                  <el-input v-model.trim="event.eventLocation" maxlength="128" />
                 </el-form-item>
                 <el-form-item :label="`事件 ${index + 1} 所属分段`">
                   <el-input-number v-model="event.legId" :min="1" :max="form.legs.length || 1" class="!w-full" />
@@ -226,7 +226,6 @@
 
 <script setup lang="ts">
 import type { FormInstance, FormRules } from 'element-plus'
-import { ElMessage, ElMessageBox } from 'element-plus'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { fetchDictionaryOptions } from '../api/dictionary'
 import {
@@ -241,6 +240,8 @@ import {
 import { useAuthStore } from '../stores/auth'
 import type { DictionaryOption } from '../types/dictionary'
 import type { WaybillDetail, WaybillEvent, WaybillLeg, WaybillSavePayload, WaybillSummary } from '../types/waybill'
+import { confirmAction, showErrorMessage, showSuccessMessage } from '../utils/message'
+import { hasText, isDateTimeText } from '../utils/validation'
 
 const auth = useAuthStore()
 const canEdit = computed(() => auth.hasPermission('waybill:edit'))
@@ -338,6 +339,8 @@ async function loadWaybills() {
       keyword: keyword.value || undefined,
       status: statusFilter.value || undefined,
     })
+  } catch (error) {
+    showErrorMessage(error, '运单列表加载失败')
   } finally {
     loading.value = false
   }
@@ -373,6 +376,8 @@ async function openEditDialog(id: number) {
       events: cloneEvents(waybill.events),
     })
     dialogVisible.value = true
+  } catch (error) {
+    showErrorMessage(error, '运单详情加载失败')
   } finally {
     loading.value = false
   }
@@ -390,6 +395,11 @@ function onRemoveLeg(index: number) {
   form.legs.forEach((item, legIndex) => {
     item.legNo = legIndex + 1
   })
+  form.events.forEach((item) => {
+    if (item.legId != null && item.legId > form.legs.length) {
+      item.legId = null
+    }
+  })
 }
 
 function onAddEvent() {
@@ -406,16 +416,66 @@ function onRemoveEvent(index: number) {
   })
 }
 
-function validateDetails() {
-  if (form.legs.some((item) => !item.legType.trim() || !item.trackingNo.trim())) {
-    ElMessage.error('每个分段都必须填写分段类型和运单号。')
-    return false
+function validateLegs() {
+  for (let index = 0; index < form.legs.length; index += 1) {
+    const leg = form.legs[index]
+    const rowNo = index + 1
+
+    if (!hasText(leg.legType) || !hasText(leg.trackingNo)) {
+      showErrorMessage(`第 ${rowNo} 条分段必须填写分段类型和运单号`)
+      return false
+    }
+
+    if (hasText(leg.departureTime) && !isDateTimeText(leg.departureTime)) {
+      showErrorMessage(`第 ${rowNo} 条分段的发出时间格式不正确`)
+      return false
+    }
+
+    if (hasText(leg.arrivalTime) && !isDateTimeText(leg.arrivalTime)) {
+      showErrorMessage(`第 ${rowNo} 条分段的到达时间格式不正确`)
+      return false
+    }
+
+    if (hasText(leg.departureTime) && hasText(leg.arrivalTime) && leg.arrivalTime.trim() < leg.departureTime.trim()) {
+      showErrorMessage(`第 ${rowNo} 条分段的到达时间不能早于发出时间`)
+      return false
+    }
   }
-  if (form.events.some((item) => !item.eventTime.trim() || !item.eventStatus.trim() || !item.eventDescription.trim())) {
-    ElMessage.error('每个轨迹事件都必须填写时间、状态和描述。')
-    return false
-  }
+
   return true
+}
+
+function validateEvents() {
+  for (let index = 0; index < form.events.length; index += 1) {
+    const event = form.events[index]
+    const rowNo = index + 1
+
+    if (!hasText(event.eventTime) || !hasText(event.eventStatus) || !hasText(event.eventDescription)) {
+      showErrorMessage(`第 ${rowNo} 条事件必须填写时间、状态和描述`)
+      return false
+    }
+
+    if (!isDateTimeText(event.eventTime)) {
+      showErrorMessage(`第 ${rowNo} 条事件的时间格式不正确`)
+      return false
+    }
+
+    if (event.legId != null && (event.legId < 1 || event.legId > form.legs.length)) {
+      showErrorMessage(`第 ${rowNo} 条事件关联的分段序号无效`)
+      return false
+    }
+  }
+
+  return true
+}
+
+function validateDetails() {
+  if (form.packageCount < 1) {
+    showErrorMessage('包裹数量必须大于 0')
+    return false
+  }
+
+  return validateLegs() && validateEvents()
 }
 
 async function onSave() {
@@ -437,37 +497,32 @@ async function onSave() {
 
     if (editingId.value) {
       await updateWaybill(editingId.value, payload)
-      ElMessage.success('运单更新成功。')
+      showSuccessMessage('运单更新成功')
     } else {
       await createWaybill(payload)
-      ElMessage.success('运单创建成功。')
+      showSuccessMessage('运单创建成功')
     }
     dialogVisible.value = false
     await loadWaybills()
-  } catch {
-    ElMessage.error('运单保存失败。')
+  } catch (error) {
+    showErrorMessage(error, '运单保存失败')
   } finally {
     saving.value = false
   }
 }
 
 async function onDelete(id: number) {
-  try {
-    await ElMessageBox.confirm('确认删除这条运单吗？', '删除运单', {
-      type: 'warning',
-      confirmButtonText: '删除',
-      cancelButtonText: '取消',
-    })
-  } catch {
+  const confirmed = await confirmAction('确认删除这条运单吗？', '删除运单', '删除')
+  if (!confirmed) {
     return
   }
 
   try {
     await deleteWaybill(id)
-    ElMessage.success('运单删除成功。')
+    showSuccessMessage('运单删除成功')
     await loadWaybills()
-  } catch {
-    ElMessage.error('运单删除失败。')
+  } catch (error) {
+    showErrorMessage(error, '运单删除失败')
   }
 }
 
@@ -478,8 +533,8 @@ function onDialogClosed() {
 }
 
 onMounted(() => {
-  Promise.all([loadDictionaryData(), loadWaybills()]).catch(() => {
-    ElMessage.error('运单字典加载失败。')
+  Promise.all([loadDictionaryData(), loadWaybills()]).catch((error) => {
+    showErrorMessage(error, '运单页面初始化失败')
   })
 })
 </script>

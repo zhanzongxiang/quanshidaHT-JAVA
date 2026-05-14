@@ -267,10 +267,10 @@
 
 <script setup lang="ts">
 import type { FormInstance, FormRules } from 'element-plus'
-import { ElMessage } from 'element-plus'
 import { reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchServiceLineContent, publishServiceLine, saveServiceLineDraft } from '../api/service-line'
+import { showErrorMessage, showSuccessMessage } from '../utils/message'
 import {
   createEmptyServiceLineForm,
   createHighlight,
@@ -362,8 +362,8 @@ async function loadDocument() {
   try {
     const response = await fetchServiceLineContent(lineCode)
     applyDocument(response)
-  } catch {
-    ElMessage.error('加载线路模板失败')
+  } catch (error) {
+    showErrorMessage(error, '加载线路模板失败')
     router.replace('/pages/service-lines')
   } finally {
     loading.value = false
@@ -403,27 +403,27 @@ function removeItem<T>(list: T[], index: number) {
 
 function validateItems() {
   if (form.heroTags.some((item) => !item.value.trim())) {
-    ElMessage.error('请完整填写 Hero 标签')
+    showErrorMessage('请完整填写 Hero 标签')
     return false
   }
   if (form.metrics.some((item) => !item.label.trim() || !item.value.trim())) {
-    ElMessage.error('请完整填写关键指标')
+    showErrorMessage('请完整填写关键指标')
     return false
   }
   if (form.highlights.some((item) => !item.title.trim() || !item.description.trim())) {
-    ElMessage.error('请完整填写亮点模块')
+    showErrorMessage('请完整填写亮点模块')
     return false
   }
   if (form.processSteps.some((item) => !item.value.trim())) {
-    ElMessage.error('请完整填写流程步骤')
+    showErrorMessage('请完整填写流程步骤')
     return false
   }
   if (form.scopeItems.some((item) => !item.value.trim())) {
-    ElMessage.error('请完整填写承运范围项')
+    showErrorMessage('请完整填写承运范围项')
     return false
   }
   if (form.supportItems.some((item) => !item.value.trim())) {
-    ElMessage.error('请完整填写适配客户项')
+    showErrorMessage('请完整填写适配客户项')
     return false
   }
   return true
@@ -450,9 +450,9 @@ async function persist(mode: 'draft' | 'publish') {
       ? await saveServiceLineDraft(lineCode, payload)
       : await publishServiceLine(lineCode, payload)
     applyDocument(response)
-    ElMessage.success(mode === 'draft' ? '线路模板草稿已保存' : '线路模板已发布')
-  } catch {
-    ElMessage.error(mode === 'draft' ? '保存线路模板草稿失败' : '发布线路模板失败')
+    showSuccessMessage(mode === 'draft' ? '线路模板草稿已保存' : '线路模板已发布')
+  } catch (error) {
+    showErrorMessage(error, mode === 'draft' ? '保存线路模板草稿失败' : '发布线路模板失败')
   }
 }
 

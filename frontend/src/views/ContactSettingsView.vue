@@ -187,9 +187,9 @@
 </template>
 
 <script setup lang="ts">
-import { ElMessage } from 'element-plus'
 import { onMounted, reactive, ref } from 'vue'
 import { fetchContactSettings, saveContactSettings } from '../api/site-settings'
+import { showErrorMessage, showSuccessMessage } from '../utils/message'
 import type { ContactSettings } from '../types/site-settings'
 
 const saving = ref(false)
@@ -225,14 +225,20 @@ const form = reactive<ContactSettings>({
 })
 
 async function loadSettings() {
-  Object.assign(form, await fetchContactSettings())
+  try {
+    Object.assign(form, await fetchContactSettings())
+  } catch (error) {
+    showErrorMessage(error, '联系我们设置加载失败')
+  }
 }
 
 async function onSave() {
   saving.value = true
   try {
     await saveContactSettings({ ...form })
-    ElMessage.success('联系我们模块已保存')
+    showSuccessMessage('联系我们模块已保存')
+  } catch (error) {
+    showErrorMessage(error, '联系我们设置保存失败')
   } finally {
     saving.value = false
   }

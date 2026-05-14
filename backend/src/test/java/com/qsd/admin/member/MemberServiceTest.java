@@ -1,6 +1,7 @@
 package com.qsd.admin.member;
 
 import com.qsd.admin.auth.dto.LoginResponse;
+import com.qsd.admin.common.exception.BusinessException;
 import com.qsd.admin.member.dto.MemberProfileResponse;
 import com.qsd.admin.member.dto.MemberWechatBindRequest;
 import com.qsd.admin.member.dto.MemberWechatLoginRequest;
@@ -22,12 +23,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -101,6 +102,7 @@ class MemberServiceTest {
         assertEquals("unionid-001", insertedMember.getWechatUnionid());
         assertEquals("wx-user", insertedMember.getNickname());
         assertEquals("Wechat User", insertedMember.getFullName());
+        assertEquals("微信登录自动创建", insertedMember.getRemark());
         assertNotNull(insertedMember.getWechatBindTime());
 
         assertEquals("member-token-001", response.accessToken());
@@ -188,12 +190,12 @@ class MemberServiceTest {
         when(memberUserMapper.selectByWechatOpenid("openid-disabled")).thenReturn(null);
         when(memberUserMapper.selectByPhone("13800138001")).thenReturn(existingMember);
 
-        IllegalArgumentException ex = assertThrows(
-            IllegalArgumentException.class,
+        BusinessException ex = assertThrows(
+            BusinessException.class,
             () -> memberService.wechatLogin(new MemberWechatLoginRequest("demo-code", "13800138001", null, null))
         );
 
-        assertEquals("member is disabled", ex.getMessage());
+        assertEquals("会员已被停用", ex.getMessage());
         verify(memberUserMapper, never()).updateById(any(MemberUser.class));
         verify(memberUserMapper, never()).insert(any(MemberUser.class));
     }
@@ -212,12 +214,12 @@ class MemberServiceTest {
         when(memberUserMapper.selectActiveById(21L)).thenReturn(currentMember);
         when(memberUserMapper.selectByWechatOpenid("openid-occupied")).thenReturn(existingMember);
 
-        IllegalArgumentException ex = assertThrows(
-            IllegalArgumentException.class,
+        BusinessException ex = assertThrows(
+            BusinessException.class,
             () -> memberService.bindWechatIdentity(21L, new MemberWechatBindRequest("openid-occupied", "unionid-occupied"))
         );
 
-        assertEquals("wechat openid is already bound to another member", ex.getMessage());
+        assertEquals("该微信身份已绑定其他会员", ex.getMessage());
         verify(memberUserMapper, never()).updateById(any(MemberUser.class));
     }
 }

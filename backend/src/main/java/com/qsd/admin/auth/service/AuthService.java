@@ -6,6 +6,7 @@ import com.qsd.admin.auth.entity.AdminMenu;
 import com.qsd.admin.auth.entity.AdminUser;
 import com.qsd.admin.auth.mapper.AdminMenuMapper;
 import com.qsd.admin.auth.mapper.AdminUserMapper;
+import com.qsd.admin.common.exception.BusinessException;
 import com.qsd.admin.security.JwtTokenService;
 import org.springframework.stereotype.Service;
 
@@ -29,14 +30,15 @@ public class AuthService {
     public LoginResponse login(String username, String password) {
         AdminUser user = adminUserMapper.selectByUsername(username);
         if (user == null) {
-            throw new IllegalArgumentException("用户不存在");
+            throw new BusinessException("用户不存在");
         }
         if (!"ENABLED".equals(user.getStatus())) {
-            throw new IllegalArgumentException("账号已禁用");
+            throw new BusinessException("账号已被禁用");
         }
         if (!user.getPasswordHash().equals(password)) {
-            throw new IllegalArgumentException("用户名或密码错误");
+            throw new BusinessException("用户名或密码错误");
         }
+
         List<String> permissions = adminUserMapper.selectPermissionCodes(user.getId());
         String token = jwtTokenService.createAdminToken(user.getId(), user.getUsername(), permissions);
         return new LoginResponse(token, "Bearer");
@@ -45,8 +47,9 @@ public class AuthService {
     public MeResponse me(String username) {
         AdminUser user = adminUserMapper.selectByUsername(username);
         if (user == null) {
-            throw new IllegalArgumentException("用户不存在");
+            throw new BusinessException("用户不存在");
         }
+
         List<String> permissions = adminUserMapper.selectPermissionCodes(user.getId());
         List<AdminMenu> menus = adminMenuMapper.selectMenusByUserId(user.getId());
         return new MeResponse(user.getId(), user.getUsername(), permissions, buildMenuTree(menus));
@@ -64,6 +67,7 @@ public class AuthService {
                 new ArrayList<>()
             ));
         }
+
         List<MeResponse.MenuNode> roots = new ArrayList<>();
         for (AdminMenu menu : menus) {
             MeResponse.MenuNode node = nodeMap.get(menu.getId());
@@ -71,6 +75,7 @@ public class AuthService {
                 roots.add(node);
                 continue;
             }
+
             MeResponse.MenuNode parent = nodeMap.get(menu.getParentId());
             if (parent == null) {
                 roots.add(node);

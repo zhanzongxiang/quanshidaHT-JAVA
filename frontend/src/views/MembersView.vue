@@ -2,44 +2,49 @@
   <div class="space-y-6 pb-6">
     <div class="flex flex-col gap-4 rounded-3xl border border-line bg-panel px-5 py-5 shadow-panel lg:flex-row lg:items-start lg:justify-between">
       <div class="space-y-2">
-        <h2 class="m-0 text-xl font-extrabold text-ink">Members</h2>
+        <h2 class="m-0 text-xl font-extrabold text-ink">会员管理</h2>
         <p class="m-0 max-w-3xl text-sm leading-6 text-mist">
-          Manage mini-program member accounts, member status, and member-visible waybill bindings.
+          维护小程序会员账号、状态和可见运单范围，保证后台与会员端数据一致。
         </p>
       </div>
       <div class="flex gap-3">
-        <el-button :loading="loading" @click="loadData">Refresh</el-button>
-        <el-button v-if="canEdit" type="primary" @click="openCreateDialog">New Member</el-button>
+        <el-button :loading="loading" @click="loadData">刷新</el-button>
+        <el-button v-if="canEdit" type="primary" @click="openCreateDialog">新建会员</el-button>
       </div>
     </div>
 
     <el-card class="rounded-3xl border-0 shadow-panel">
       <div class="mb-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
-        <el-input v-model="keyword" clearable placeholder="Search by phone, nickname, or name" />
-        <el-select v-model="statusFilter" clearable placeholder="Filter by status">
-          <el-option label="All Statuses" value="" />
+        <el-input v-model="keyword" clearable placeholder="按手机号、昵称或姓名搜索" />
+        <el-select v-model="statusFilter" clearable placeholder="按状态筛选">
+          <el-option label="全部状态" value="" />
           <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
       </div>
 
       <el-table :data="members" v-loading="loading" border class="overflow-hidden rounded-2xl">
-        <el-table-column prop="phone" label="Phone" min-width="140" />
-        <el-table-column prop="wechatOpenid" label="WeChat OpenID" min-width="180" />
-        <el-table-column prop="nickname" label="Nickname" min-width="120" />
-        <el-table-column prop="fullName" label="Name" min-width="120" />
-        <el-table-column label="Status" width="120">
+        <el-table-column prop="phone" label="手机号" min-width="140" />
+        <el-table-column prop="nickname" label="昵称" min-width="120" />
+        <el-table-column prop="fullName" label="姓名" min-width="120" />
+        <el-table-column label="状态" width="120">
           <template #default="{ row }">
             <el-tag :type="statusTagType(row.status)">{{ formatStatus(row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="waybillCount" label="Waybills" width="120" />
-        <el-table-column prop="wechatBindTime" label="WeChat Bound At" min-width="180" />
-        <el-table-column prop="lastLoginAt" label="Last Login" min-width="180" />
-        <el-table-column prop="createdAt" label="Created At" min-width="180" />
-        <el-table-column label="Actions" width="260" fixed="right">
+        <el-table-column label="微信绑定" min-width="180">
+          <template #default="{ row }">
+            <span v-if="row.wechatOpenid">{{ maskIdentifier(row.wechatOpenid) }}</span>
+            <span v-else class="text-mist">未绑定</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="waybillCount" label="可见运单数" width="120" />
+        <el-table-column prop="wechatBindTime" label="微信绑定时间" min-width="180" />
+        <el-table-column prop="lastLoginAt" label="最近登录" min-width="180" />
+        <el-table-column prop="createdAt" label="创建时间" min-width="180" />
+        <el-table-column label="操作" width="260" fixed="right">
           <template #default="{ row }">
             <div class="flex flex-wrap gap-2">
-              <el-button size="small" @click="openEditDialog(row.id)">{{ canEdit ? 'Edit' : 'View' }}</el-button>
+              <el-button size="small" @click="openEditDialog(row.id)">{{ canEdit ? '编辑' : '查看' }}</el-button>
               <el-button
                 v-if="canEdit && row.status !== 'active'"
                 size="small"
@@ -47,7 +52,7 @@
                 plain
                 @click="onChangeStatus(row.id, 'active')"
               >
-                Enable
+                启用
               </el-button>
               <el-button
                 v-if="canEdit && row.status !== 'disabled'"
@@ -56,7 +61,7 @@
                 plain
                 @click="onChangeStatus(row.id, 'disabled')"
               >
-                Disable
+                停用
               </el-button>
             </div>
           </template>
@@ -66,53 +71,51 @@
 
     <el-dialog
       v-model="dialogVisible"
-      :title="editingId ? 'Edit Member' : 'New Member'"
+      :title="editingId ? '编辑会员' : '新建会员'"
       width="960px"
       destroy-on-close
       @closed="onDialogClosed"
     >
-      <el-form ref="formRef" :model="form" :rules="rules" label-position="top" class="space-y-6">
+      <el-form ref="formRef" :model="form" :rules="rules" :disabled="!canEdit" label-position="top" class="space-y-6">
         <el-card shadow="never" class="rounded-2xl border border-slate-200">
           <template #header>
             <div>
-              <h3 class="m-0 text-base font-bold text-ink">Profile</h3>
-              <p class="m-0 mt-1 text-sm text-mist">
-                The member phone is used for mini-program login and automatic waybill ownership matching.
-              </p>
+              <h3 class="m-0 text-base font-bold text-ink">基础资料</h3>
+              <p class="m-0 mt-1 text-sm text-mist">手机号用于会员登录和后台自动关联运单。</p>
             </div>
           </template>
 
           <div class="grid gap-4 md:grid-cols-2">
-            <el-form-item label="Phone" prop="phone">
-              <el-input v-model="form.phone" maxlength="11" />
+            <el-form-item label="手机号" prop="phone">
+              <el-input v-model="form.phone" maxlength="11" placeholder="请输入 11 位手机号" />
             </el-form-item>
-            <el-form-item label="WeChat OpenID">
-              <el-input :model-value="currentWechatOpenid" disabled placeholder="Bind from member-side API" />
+            <el-form-item label="微信 OpenID">
+              <el-input :model-value="currentWechatOpenid || ''" disabled placeholder="由会员登录或绑定后回填" />
             </el-form-item>
-            <el-form-item label="Password" prop="password">
+            <el-form-item label="登录密码" prop="password">
               <el-input
                 v-model="form.password"
                 type="password"
                 show-password
-                :placeholder="editingId ? 'Leave empty to keep the current password' : 'Enter a password for member login'"
+                :placeholder="editingId ? '留空表示不修改当前密码' : '请输入登录密码'"
               />
             </el-form-item>
-            <el-form-item label="Nickname" prop="nickname">
-              <el-input v-model="form.nickname" />
-            </el-form-item>
-            <el-form-item label="Name" prop="fullName">
-              <el-input v-model="form.fullName" />
-            </el-form-item>
-            <el-form-item label="Avatar URL" prop="avatarUrl" class="md:col-span-2">
-              <el-input v-model="form.avatarUrl" />
-            </el-form-item>
-            <el-form-item label="Status" prop="status">
+            <el-form-item label="会员状态" prop="status">
               <el-select v-model="form.status">
                 <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
               </el-select>
             </el-form-item>
-            <el-form-item label="Remark" prop="remark" class="md:col-span-2">
-              <el-input v-model="form.remark" type="textarea" :rows="3" />
+            <el-form-item label="昵称" prop="nickname">
+              <el-input v-model="form.nickname" maxlength="64" />
+            </el-form-item>
+            <el-form-item label="姓名" prop="fullName">
+              <el-input v-model="form.fullName" maxlength="64" />
+            </el-form-item>
+            <el-form-item label="头像地址" prop="avatarUrl" class="md:col-span-2">
+              <el-input v-model="form.avatarUrl" maxlength="500" placeholder="可留空" />
+            </el-form-item>
+            <el-form-item label="备注" prop="remark" class="md:col-span-2">
+              <el-input v-model="form.remark" type="textarea" :rows="3" maxlength="500" show-word-limit />
             </el-form-item>
           </div>
         </el-card>
@@ -120,14 +123,12 @@
         <el-card shadow="never" class="rounded-2xl border border-slate-200">
           <template #header>
             <div>
-              <h3 class="m-0 text-base font-bold text-ink">Waybill Binding</h3>
-              <p class="m-0 mt-1 text-sm text-mist">
-                These are manual bindings. The backend also auto-matches waybills by member phone.
-              </p>
+              <h3 class="m-0 text-base font-bold text-ink">运单绑定</h3>
+              <p class="m-0 mt-1 text-sm text-mist">支持手工绑定运单，后台仍会按手机号自动补充可见运单。</p>
             </div>
           </template>
 
-          <el-form-item label="Bound Waybills">
+          <el-form-item label="手工绑定运单">
             <el-select
               v-model="form.waybillIds"
               multiple
@@ -136,7 +137,7 @@
               collapse-tags
               collapse-tags-tooltip
               class="w-full"
-              placeholder="Select waybills to bind"
+              placeholder="请选择需要绑定的运单"
             >
               <el-option
                 v-for="item in waybillOptions"
@@ -148,30 +149,31 @@
           </el-form-item>
 
           <div v-if="memberWaybills.length > 0" class="mt-4">
-            <p class="mb-3 text-sm font-semibold text-slate-900">Visible Waybills</p>
+            <p class="mb-3 text-sm font-semibold text-slate-900">当前可见运单</p>
             <el-table :data="memberWaybills" border size="small" class="overflow-hidden rounded-2xl">
-              <el-table-column prop="mainTrackingNo" label="Main Tracking No" min-width="160" />
-              <el-table-column prop="customerName" label="Customer" min-width="140" />
-              <el-table-column label="Destination" min-width="160">
+              <el-table-column prop="mainTrackingNo" label="主运单号" min-width="160" />
+              <el-table-column prop="customerName" label="客户名称" min-width="140" />
+              <el-table-column label="目的地" min-width="180">
                 <template #default="{ row }">
                   {{ row.destinationCountry }}<span v-if="row.destinationCity"> / {{ row.destinationCity }}</span>
                 </template>
               </el-table-column>
-              <el-table-column label="Status" width="140">
+              <el-table-column label="状态" width="140">
                 <template #default="{ row }">
                   {{ formatWaybillStatus(row.currentStatus) }}
                 </template>
               </el-table-column>
-              <el-table-column prop="updatedAt" label="Updated At" min-width="180" />
+              <el-table-column prop="updatedAt" label="更新时间" min-width="180" />
             </el-table>
           </div>
+          <el-empty v-else description="当前没有可见运单" />
         </el-card>
       </el-form>
 
       <template #footer>
         <div class="flex justify-end gap-3">
-          <el-button @click="dialogVisible = false">Cancel</el-button>
-          <el-button v-if="canEdit" type="primary" :loading="saving" @click="onSave">Save</el-button>
+          <el-button @click="dialogVisible = false">{{ canEdit ? '取消' : '关闭' }}</el-button>
+          <el-button v-if="canEdit" type="primary" :loading="saving" @click="onSave">保存</el-button>
         </div>
       </template>
     </el-dialog>
@@ -180,7 +182,6 @@
 
 <script setup lang="ts">
 import type { FormInstance, FormRules } from 'element-plus'
-import { ElMessage, ElMessageBox } from 'element-plus'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { fetchDictionaryOptions } from '../api/dictionary'
 import { createEmptyMemberPayload, createMember, fetchMember, fetchMembers, updateMember, updateMemberStatus } from '../api/member'
@@ -189,6 +190,9 @@ import { useAuthStore } from '../stores/auth'
 import type { DictionaryOption } from '../types/dictionary'
 import type { MemberAdminSavePayload, MemberAdminSummary, MemberWaybillSummary } from '../types/member'
 import type { WaybillSummary } from '../types/waybill'
+import { runSafely, runWithLoading } from '../utils/async'
+import { confirmAction, showErrorMessage, showSuccessMessage } from '../utils/message'
+import { isValidPhone, normalizePhone } from '../utils/validation'
 
 const auth = useAuthStore()
 const canEdit = computed(() => auth.hasPermission('member:edit'))
@@ -211,14 +215,14 @@ const form = reactive<MemberAdminSavePayload>(createEmptyMemberPayload())
 
 const rules: FormRules = {
   phone: [
-    { required: true, message: 'Please enter a phone number', trigger: 'blur' },
-    { pattern: /^1\d{10}$/, message: 'Phone format is invalid', trigger: 'blur' },
+    { required: true, message: '请输入手机号', trigger: 'blur' },
+    { pattern: /^1\d{10}$/, message: '手机号格式不正确', trigger: 'blur' },
   ],
-  status: [{ required: true, message: 'Please select a status', trigger: 'change' }],
+  status: [{ required: true, message: '请选择会员状态', trigger: 'change' }],
 }
 
 watch([keyword, statusFilter], () => {
-  loadMembers()
+  void loadMembers()
 })
 
 function resetForm() {
@@ -252,37 +256,58 @@ function statusTagType(status: string) {
   return 'warning'
 }
 
-async function loadDictionaryData() {
-  const data = await fetchDictionaryOptions(['member_status', 'waybill_status'])
-  statusOptions.value = data.member_status ?? []
-  waybillStatusOptions.value = data.waybill_status ?? []
-}
-
-async function loadWaybillOptions() {
-  waybillOptions.value = await fetchWaybills()
+function maskIdentifier(value: string) {
+  if (!value) {
+    return ''
+  }
+  if (value.length <= 10) {
+    return value
+  }
+  return `${value.slice(0, 4)}...${value.slice(-4)}`
 }
 
 async function loadMembers() {
-  loading.value = true
-  try {
-    members.value = await fetchMembers({
-      keyword: keyword.value || undefined,
-      status: statusFilter.value || undefined,
-    })
-  } finally {
-    loading.value = false
+  const data = await runWithLoading(
+    loading,
+    () =>
+      fetchMembers({
+        keyword: keyword.value || undefined,
+        status: statusFilter.value || undefined,
+      }),
+    '会员列表加载失败',
+  )
+
+  if (data) {
+    members.value = data
   }
 }
 
 async function loadData() {
-  loading.value = true
-  try {
-    await Promise.all([loadDictionaryData(), loadWaybillOptions(), loadMembers()])
-  } catch {
-    ElMessage.error('Failed to load member management data.')
-  } finally {
-    loading.value = false
+  const data = await runWithLoading(
+    loading,
+    async () => {
+      const [dictionaryData, waybillData, memberData] = await Promise.all([
+        fetchDictionaryOptions(['member_status', 'waybill_status']),
+        fetchWaybills(),
+        fetchMembers({
+          keyword: keyword.value || undefined,
+          status: statusFilter.value || undefined,
+        }),
+      ])
+
+      return { dictionaryData, waybillData, memberData }
+    },
+    '会员管理数据加载失败',
+  )
+
+  if (!data) {
+    return
   }
+
+  statusOptions.value = data.dictionaryData.member_status ?? []
+  waybillStatusOptions.value = data.dictionaryData.waybill_status ?? []
+  waybillOptions.value = data.waybillData
+  members.value = data.memberData
 }
 
 function openCreateDialog() {
@@ -292,27 +317,37 @@ function openCreateDialog() {
 }
 
 async function openEditDialog(id: number) {
-  loading.value = true
-  try {
-    const detail = await fetchMember(id)
-    editingId.value = id
-    Object.assign(form, {
-      phone: detail.phone,
-      password: '',
-      nickname: detail.nickname,
-      fullName: detail.fullName,
-      avatarUrl: detail.avatarUrl,
-      status: detail.status,
-      remark: detail.remark,
-      waybillIds: [...detail.boundWaybillIds],
-    })
-    currentWechatOpenid.value = detail.wechatOpenid
-    memberWaybills.value = detail.waybills
-    dialogVisible.value = true
-  } catch {
-    ElMessage.error('Failed to load member detail.')
-  } finally {
-    loading.value = false
+  const detail = await runWithLoading(loading, () => fetchMember(id), '会员详情加载失败')
+  if (!detail) {
+    return
+  }
+
+  editingId.value = id
+  Object.assign(form, {
+    phone: detail.phone,
+    password: '',
+    nickname: detail.nickname,
+    fullName: detail.fullName,
+    avatarUrl: detail.avatarUrl,
+    status: detail.status,
+    remark: detail.remark,
+    waybillIds: [...detail.boundWaybillIds],
+  })
+  currentWechatOpenid.value = detail.wechatOpenid
+  memberWaybills.value = detail.waybills
+  dialogVisible.value = true
+}
+
+function buildPayload(): MemberAdminSavePayload {
+  return {
+    ...form,
+    phone: normalizePhone(form.phone),
+    password: form.password.trim(),
+    nickname: form.nickname.trim(),
+    fullName: form.fullName.trim(),
+    avatarUrl: form.avatarUrl.trim(),
+    remark: form.remark.trim(),
+    waybillIds: [...new Set(form.waybillIds.filter((id) => Number.isInteger(id) && id > 0))],
   }
 }
 
@@ -325,55 +360,49 @@ async function onSave() {
     return
   }
 
-  if (!editingId.value && !form.password.trim()) {
-    ElMessage.error('Password is required when creating a member.')
+  const payload = buildPayload()
+  if (!isValidPhone(payload.phone)) {
+    showErrorMessage('请输入正确的 11 位手机号')
+    return
+  }
+
+  if (!editingId.value && !payload.password) {
+    showErrorMessage('新建会员时必须填写登录密码')
     return
   }
 
   saving.value = true
   try {
-    const payload: MemberAdminSavePayload = {
-      ...form,
-      password: form.password.trim(),
-      waybillIds: [...form.waybillIds],
-    }
-
     if (editingId.value) {
       const detail = await updateMember(editingId.value, payload)
       memberWaybills.value = detail.waybills
-      ElMessage.success('Member updated successfully.')
+      currentWechatOpenid.value = detail.wechatOpenid
+      showSuccessMessage('会员更新成功')
     } else {
       await createMember(payload)
-      ElMessage.success('Member created successfully.')
+      showSuccessMessage('会员创建成功')
     }
     dialogVisible.value = false
     await loadMembers()
-  } catch {
-    ElMessage.error('Failed to save member.')
+  } catch (error) {
+    showErrorMessage(error, '会员保存失败')
   } finally {
     saving.value = false
   }
 }
 
 async function onChangeStatus(id: number, status: string) {
-  const actionText = status === 'active' ? 'Enable' : 'Disable'
-  try {
-    await ElMessageBox.confirm(`Are you sure you want to ${actionText.toLowerCase()} this member?`, `${actionText} Member`, {
-      type: 'warning',
-      confirmButtonText: actionText,
-      cancelButtonText: 'Cancel',
-    })
-  } catch {
+  const actionText = status === 'active' ? '启用' : '停用'
+  const confirmed = await confirmAction(`确认${actionText}该会员吗？`, `${actionText}会员`, actionText)
+  if (!confirmed) {
     return
   }
 
-  try {
+  await runSafely(async () => {
     await updateMemberStatus(id, status)
-    ElMessage.success(`Member ${actionText.toLowerCase()}d successfully.`)
+    showSuccessMessage(`会员${actionText}成功`)
     await loadMembers()
-  } catch {
-    ElMessage.error(`Failed to ${actionText.toLowerCase()} member.`)
-  }
+  }, `会员${actionText}失败`)
 }
 
 function onDialogClosed() {
@@ -383,6 +412,6 @@ function onDialogClosed() {
 }
 
 onMounted(() => {
-  loadData()
+  void loadData()
 })
 </script>

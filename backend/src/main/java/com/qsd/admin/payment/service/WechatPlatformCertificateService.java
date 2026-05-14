@@ -69,13 +69,13 @@ public class WechatPlatformCertificateService {
                 String.class
             );
             if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-                throw new IllegalStateException("wechat platform certificates request failed");
+                throw new IllegalStateException("微信支付平台证书请求失败");
             }
 
             Map<String, Object> body = objectMapper.readValue(response.getBody(), MAP_TYPE);
             Object dataObject = body.get("data");
             if (!(dataObject instanceof List<?> items) || items.isEmpty()) {
-                throw new IllegalStateException("wechat platform certificates response is empty");
+                throw new IllegalStateException("微信支付平台证书响应为空");
             }
 
             Map<String, Object> latest = null;
@@ -85,12 +85,12 @@ public class WechatPlatformCertificateService {
                 }
             }
             if (latest == null) {
-                throw new IllegalStateException("wechat platform certificates response has no usable certificate");
+                throw new IllegalStateException("微信支付平台证书响应中没有可用证书");
             }
 
             Map<String, Object> encryptCertificate = (Map<String, Object>) latest.get("encrypt_certificate");
             if (encryptCertificate == null) {
-                throw new IllegalStateException("wechat platform certificates encrypt_certificate is missing");
+                throw new IllegalStateException("微信支付平台证书响应缺少加密证书信息");
             }
 
             String serialNo = stringValue(latest.get("serial_no"));
@@ -114,7 +114,7 @@ public class WechatPlatformCertificateService {
             if (ex instanceof IllegalStateException stateException) {
                 throw stateException;
             }
-            throw new IllegalStateException("failed to refresh wechat platform certificate", ex);
+            throw new IllegalStateException("刷新微信支付平台证书失败", ex);
         }
     }
 
@@ -147,7 +147,7 @@ public class WechatPlatformCertificateService {
             || isBlank(merchant.getPrivateKeyPath())
             || isBlank(merchant.getApiV3Key())
             || isBlank(merchant.getMerchantCode())) {
-            throw new IllegalStateException("merchant credentials are incomplete for certificate refresh");
+            throw new IllegalStateException("商户证书刷新所需配置不完整");
         }
     }
 

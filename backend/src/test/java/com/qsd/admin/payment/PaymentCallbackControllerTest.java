@@ -5,6 +5,7 @@ import com.qsd.admin.payment.dto.RefundCallbackRequest;
 import com.qsd.admin.payment.dto.WechatPayCallbackRequest;
 import com.qsd.admin.payment.service.PaymentMerchantService;
 import com.qsd.admin.payment.service.PaymentService;
+import com.qsd.admin.payment.service.WechatCallbackException;
 import com.qsd.admin.payment.service.WechatPayCallbackParser;
 import com.qsd.admin.security.JwtTokenService;
 import org.junit.jupiter.api.Test;
@@ -16,7 +17,9 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -60,7 +63,8 @@ class PaymentCallbackControllerTest {
                     }
                     """))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.code").value("SUCCESS"));
+            .andExpect(jsonPath("$.code").value("SUCCESS"))
+            .andExpect(jsonPath("$.message").value("成功"));
     }
 
     @Test
@@ -82,6 +86,52 @@ class PaymentCallbackControllerTest {
                     }
                     """))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.code").value("SUCCESS"));
+            .andExpect(jsonPath("$.code").value("SUCCESS"))
+            .andExpect(jsonPath("$.message").value("成功"));
+    }
+
+    @Test
+    void shouldReturnBusinessFailureMessageForNonRetryableWechatCallbackError() throws Exception {
+        when(wechatPayCallbackParser.parsePaymentCallback(any())).thenReturn(
+            new WechatPayCallbackRequest("PO202605080001", "wx-txn-001", "SUCCESS", "{\"event\":\"pay\"}")
+        );
+        doThrow(new WechatCallbackException("merchant_mismatch", "支付商户不匹配", false))
+            .when(paymentService).handleWechatCallback(any());
+
+        mockMvc.perform(post("/api/payment/callback/wechat")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "orderNo": "PO202605080001",
+                      "transactionNo": "wx-txn-001",
+                      "status": "SUCCESS",
+                      "payload": "{\\\"event\\\":\\\"pay\\\"}"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("FAIL"))
+            .andExpect(jsonPath("$.message").value("支付商户不匹配"));
+    }
+
+    @Test
+    void shouldReturnRetryForUnexpectedRefundCallbackError() throws Exception {
+        when(wechatPayCallbackParser.parseRefundCallback(any())).thenReturn(
+            new RefundCallbackRequest("RF202605080001", "SUCCESS", "wx-rf-001", "{\"event\":\"refund\"}")
+        );
+        doThrow(new RuntimeException("boom")).when(paymentService).handleRefundCallback(any());
+
+        mockMvc.perform(post("/api/payment/callback/wechat-refund")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "refundNo": "RF202605080001",
+                      "status": "SUCCESS",
+                      "externalRefundNo": "wx-rf-001",
+                      "payload": "{\\\"event\\\":\\\"refund\\\"}"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("FAIL"))
+            .andExpect(jsonPath("$.message").value("retry"));
     }
 }

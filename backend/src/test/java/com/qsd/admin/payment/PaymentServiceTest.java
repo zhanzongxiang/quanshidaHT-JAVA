@@ -1,5 +1,6 @@
 package com.qsd.admin.payment;
 
+import com.qsd.admin.common.exception.BusinessException;
 import com.qsd.admin.member.entity.MemberUser;
 import com.qsd.admin.member.mapper.MemberUserMapper;
 import com.qsd.admin.payment.dto.MemberPaymentPrepareRequest;
@@ -34,6 +35,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -284,16 +286,108 @@ class PaymentServiceTest {
 
         when(memberUserMapper.selectActiveById(7L)).thenReturn(member);
 
-        IllegalArgumentException ex = assertThrows(
-            IllegalArgumentException.class,
+        BusinessException ex = assertThrows(
+            BusinessException.class,
             () -> paymentService.prepareMemberPayment(
                 7L,
                 new MemberPaymentPrepareRequest(15L, new BigDecimal("88.50"), "Waybill payment", "wechat_pay")
             )
         );
 
-        assertEquals("member wechat identity is not bound", ex.getMessage());
+        assertEquals("当前会员未绑定微信身份，无法发起小程序支付", ex.getMessage());
         verify(payOrderMapper, never()).insert(any(PayOrder.class));
+    }
+
+    @Test
+    void shouldRejectMemberPaymentPrepareWhenWaybillIsNotAccessible() {
+        MemberUser member = new MemberUser();
+        member.setId(7L);
+        member.setPhone("13800138000");
+        member.setStatus("active");
+        member.setWechatOpenid("openid-001");
+
+        when(memberUserMapper.selectActiveById(7L)).thenReturn(member);
+        when(waybillOrderMapper.selectAccessibleDetailByMember(15L, 7L, "13800138000")).thenReturn(null);
+
+        RuntimeException ex = assertThrows(
+            RuntimeException.class,
+            () -> paymentService.prepareMemberPayment(
+                7L,
+                new MemberPaymentPrepareRequest(15L, new BigDecimal("88.50"), "Waybill payment", "wechat_pay")
+            )
+        );
+
+        assertTrue(ex.getMessage() != null && !ex.getMessage().isBlank());
+        verify(paymentMerchantService, never()).requireCurrentMerchant();
+        verify(payOrderMapper, never()).insert(any(PayOrder.class));
+    }
+
+    @Test
+    void shouldRejectRefundWhenAmountExceedsPaidAmount() {
+        PayOrder order = new PayOrder();
+        order.setId(66L);
+        order.setStatus("paid");
+        order.setAmountPaid(new BigDecimal("19.90"));
+
+        when(payOrderMapper.selectActiveById(66L)).thenReturn(order);
+
+        BusinessException ex = assertThrows(
+            BusinessException.class,
+            () -> paymentService.createRefund(
+                66L,
+                new com.qsd.admin.payment.dto.RefundCreateRequest(new BigDecimal("20.00"), "customer request")
+            )
+        );
+
+        assertTrue(ex.getMessage() != null && !ex.getMessage().isBlank());
+        verify(wechatPayGateway, never()).createRefund(any(PayOrder.class), any(RefundOrder.class), any(PayMerchantConfig.class));
+        verify(refundOrderMapper, never()).insert(any(RefundOrder.class));
+    }
+
+    @Test
+    void shouldRejectRetryRefundWhenSourceRefundIsNotFailed() {
+        RefundOrder refund = new RefundOrder();
+        refund.setId(77L);
+        refund.setRefundNo("RF202605090003");
+        refund.setPayOrderId(88L);
+        refund.setStatus("processing");
+
+        when(refundOrderMapper.selectByIdValue(77L)).thenReturn(refund);
+
+        BusinessException ex = assertThrows(
+            BusinessException.class,
+            () -> paymentService.retryRefund(77L)
+        );
+
+        assertTrue(ex.getMessage() != null && !ex.getMessage().isBlank());
+        verify(payOrderMapper, never()).selectActiveById(any(Long.class));
+        verify(wechatPayGateway, never()).createRefund(any(PayOrder.class), any(RefundOrder.class), any(PayMerchantConfig.class));
+    }
+
+    @Test
+    void shouldRejectRetryRefundWhenPayOrderStatusIsInvalid() {
+        RefundOrder refund = new RefundOrder();
+        refund.setId(78L);
+        refund.setRefundNo("RF202605090004");
+        refund.setPayOrderId(89L);
+        refund.setStatus("failed");
+        refund.setAmountRefund(new BigDecimal("9.90"));
+
+        PayOrder order = new PayOrder();
+        order.setId(89L);
+        order.setStatus("closed");
+
+        when(refundOrderMapper.selectByIdValue(78L)).thenReturn(refund);
+        when(payOrderMapper.selectActiveById(89L)).thenReturn(order);
+
+        BusinessException ex = assertThrows(
+            BusinessException.class,
+            () -> paymentService.retryRefund(78L)
+        );
+
+        assertTrue(ex.getMessage() != null && !ex.getMessage().isBlank());
+        verify(wechatPayGateway, never()).createRefund(any(PayOrder.class), any(RefundOrder.class), any(PayMerchantConfig.class));
+        verify(refundOrderMapper, never()).insert(any(RefundOrder.class));
     }
 
     @Test

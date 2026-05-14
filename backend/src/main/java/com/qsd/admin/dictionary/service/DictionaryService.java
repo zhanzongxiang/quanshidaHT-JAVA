@@ -1,6 +1,7 @@
 package com.qsd.admin.dictionary.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.qsd.admin.common.exception.BusinessException;
 import com.qsd.admin.common.exception.NotFoundException;
 import com.qsd.admin.dictionary.dto.DictionaryGroupResponse;
 import com.qsd.admin.dictionary.dto.DictionaryItemResponse;
@@ -156,7 +157,7 @@ public class DictionaryService {
     public void delete(Long id) {
         DictionaryItem item = requireItem(id);
         if (item.getBuiltin() != null && item.getBuiltin() == 1) {
-            throw new IllegalArgumentException("内置字典项不允许删除");
+            throw new BusinessException("内置字典项不允许删除");
         }
         dictionaryItemMapper.deleteById(id);
     }
@@ -169,7 +170,7 @@ public class DictionaryService {
                 .last("limit 1")
         );
         if (existing != null && !existing.getId().equals(currentId)) {
-            throw new IllegalArgumentException("同一字典类型下的字典值已存在");
+            throw new BusinessException("同一字典类型下的字典值已存在");
         }
     }
 
@@ -215,7 +216,7 @@ public class DictionaryService {
     private String requireText(String value, String message) {
         String trimmed = trimToNull(value);
         if (trimmed == null) {
-            throw new IllegalArgumentException(message);
+            throw new BusinessException(message);
         }
         return trimmed;
     }

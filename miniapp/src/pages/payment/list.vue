@@ -22,12 +22,12 @@
           <text class="item-title">{{ item.orderNo }}</text>
           <text class="pill">{{ formatPaymentStatus(item.status) }}</text>
         </view>
-        <text class="item-line">商户：{{ item.merchantName }}</text>
-        <text class="item-line">运单：{{ item.waybillTrackingNo || '未关联运单' }}</text>
-        <text class="item-line">金额：{{ item.amountTotal }} / 实付 {{ item.amountPaid }}</text>
-        <text class="item-line">说明：{{ item.description || '暂无' }}</text>
-        <text class="item-line">支付时间：{{ item.paidAt || '未支付' }}</text>
-        <text class="item-line muted">创建时间：{{ item.createdAt }}</text>
+        <text class="detail-line">商户：{{ item.merchantName }}</text>
+        <text class="detail-line">运单：{{ item.waybillTrackingNo || '未关联运单' }}</text>
+        <text class="detail-line">金额：{{ item.amountTotal }} / 实付 {{ item.amountPaid }}</text>
+        <text class="detail-line">说明：{{ item.description || '暂无' }}</text>
+        <text class="detail-line">支付时间：{{ item.paidAt || '未支付' }}</text>
+        <text class="detail-line muted">创建时间：{{ item.createdAt }}</text>
         <view class="actions top-gap">
           <button class="button-primary" @click="openResult(item)">查看结果</button>
           <button v-if="item.waybillId" class="button-secondary" @click="openWaybill(item.waybillId)">查看运单</button>
@@ -44,6 +44,8 @@ import { fetchMemberPayments } from '@/api/payment'
 import type { MemberPayOrderSummary } from '@/types/payment'
 import { formatPaymentStatus } from '@/utils/display'
 import { ensureMemberSession } from '@/utils/guards'
+import { openAppPage } from '@/utils/navigation'
+import { showError } from '@/utils/toast'
 
 const loading = ref(false)
 const payments = ref<MemberPayOrderSummary[]>([])
@@ -60,40 +62,25 @@ async function loadPayments() {
   loading.value = true
   try {
     payments.value = await fetchMemberPayments()
+  } catch (error) {
+    showError(error, '支付记录加载失败')
   } finally {
     loading.value = false
   }
 }
 
 function openResult(item: MemberPayOrderSummary) {
-  uni.navigateTo({
-    url: `/pages/payment/result?orderNo=${encodeURIComponent(item.orderNo)}&status=${encodeURIComponent(item.status)}`,
-  })
+  openAppPage(`/pages/payment/result?orderNo=${encodeURIComponent(item.orderNo)}&status=${encodeURIComponent(item.status)}`)
 }
 
 function openWaybill(waybillId: number) {
-  uni.navigateTo({
-    url: `/pages/waybill/detail?id=${waybillId}`,
-  })
+  openAppPage(`/pages/waybill/detail?id=${waybillId}`)
 }
 </script>
 
 <style scoped lang="scss">
 .header-card {
   margin-bottom: 24rpx;
-}
-
-.stack {
-  display: flex;
-  flex-direction: column;
-  gap: 20rpx;
-}
-
-.row-between {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16rpx;
 }
 
 .item-title {
@@ -103,20 +90,5 @@ function openWaybill(waybillId: number) {
   font-weight: 700;
   color: #1d2f28;
   word-break: break-all;
-}
-
-.item-line {
-  display: block;
-  margin-top: 8rpx;
-  color: #4f544c;
-  line-height: 1.6;
-}
-
-.top-gap {
-  margin-top: 20rpx;
-}
-
-.muted {
-  color: #7b756b;
 }
 </style>

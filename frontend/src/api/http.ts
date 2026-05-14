@@ -1,4 +1,6 @@
 import axios from 'axios'
+import type { AxiosError } from 'axios'
+import type { ApiResponse } from './shared'
 
 export const http = axios.create({
   baseURL: '/api',
@@ -15,10 +17,16 @@ http.interceptors.request.use((config) => {
 
 http.interceptors.response.use(
   (response) => response,
-  (error) => {
+  (error: AxiosError<ApiResponse<unknown>>) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('access_token')
     }
-    return Promise.reject(error)
+
+    const message =
+      error.response?.data?.message?.trim() ||
+      error.message?.trim() ||
+      '请求失败，请稍后重试'
+
+    return Promise.reject(new Error(message))
   },
 )

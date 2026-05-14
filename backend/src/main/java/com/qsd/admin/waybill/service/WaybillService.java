@@ -1,5 +1,6 @@
 package com.qsd.admin.waybill.service;
 
+import com.qsd.admin.common.exception.BusinessException;
 import com.qsd.admin.common.exception.NotFoundException;
 import com.qsd.admin.waybill.dto.WaybillDetailResponse;
 import com.qsd.admin.waybill.dto.WaybillEventPayload;
@@ -62,7 +63,7 @@ public class WaybillService {
         order.setUpdatedAt(now);
         waybillOrderMapper.insert(order);
 
-        replaceChildren(order.getId(), request);
+        replaceChildren(order.getId(), request, now);
         return toDetailResponse(requireWaybill(order.getId()));
     }
 
@@ -71,10 +72,11 @@ public class WaybillService {
         WaybillOrder order = requireWaybill(id);
         ensureMainTrackingNoAvailable(request.mainTrackingNo(), id);
 
-        applyRequest(order, request, LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        applyRequest(order, request, now);
         waybillOrderMapper.updateById(order);
 
-        replaceChildren(id, request);
+        replaceChildren(id, request, now);
         return toDetailResponse(requireWaybill(id));
     }
 
@@ -204,9 +206,14 @@ public class WaybillService {
     }
 
     private void ensureMainTrackingNoAvailable(String mainTrackingNo, Long currentId) {
-        WaybillOrder existing = waybillOrderMapper.selectActiveByMainTrackingNo(mainTrackingNo.trim());
+        String normalized = trimToNull(mainTrackingNo);
+        if (normalized == null) {
+            throw new BusinessException("主运单号不能为空");
+        }
+
+        WaybillOrder existing = waybillOrderMapper.selectActiveByMainTrackingNo(normalized);
         if (existing != null && !existing.getId().equals(currentId)) {
-            throw new IllegalArgumentException("主运单号已存在");
+            throw new BusinessException("主运单号已存在");
         }
     }
 
@@ -231,17 +238,63 @@ public class WaybillService {
 
     private void validateRequest(WaybillSaveRequest request) {
         if (request.packageCount() == null || request.packageCount() < 1) {
-            throw new IllegalArgumentException("包裹数量必须大于 0");
+            throw new BusinessException("包裹数量必须大于 0");
         }
         if (request.legs() == null || request.legs().isEmpty()) {
-            throw new IllegalArgumentException("至少需要填写一个线路分段");
+            throw new BusinessException("至少需要填写一条线路分段");
         }
         if (request.events() == null || request.events().isEmpty()) {
-            throw new IllegalArgumentException("至少需要填写一个轨迹事件");
+            throw new BusinessException("至少需要填写一条轨迹事件");
+        }
+
+        validateLegs(request.legs());
+        validateEvents(request.events(), request.legs().size());
+    }
+
+    private void validateLegs(List<WaybillLegPayload> legs) {
+        for (int index = 0; index < legs.size(); index++) {
+            WaybillLegPayload leg = legs.get(index);
+            int rowNo = index + 1;
+
+            if (trimToNull(leg.legType()) == null) {
+                throw new BusinessException("第 " + rowNo + " 条分段未填写分段类型");
+            }
+            if (trimToNull(leg.trackingNo()) == null) {
+                throw new BusinessException("第 " + rowNo + " 条分段未填写分段运单号");
+            }
+            if (trimToNull(leg.departureTime()) != null && trimToNull(leg.arrivalTime()) != null) {
+                LocalDateTime departureTime = parseDateTime(leg.departureTime());
+                LocalDateTime arrivalTime = parseDateTime(leg.arrivalTime());
+                if (arrivalTime.isBefore(departureTime)) {
+                    throw new BusinessException("第 " + rowNo + " 条分段到达时间不能早于发出时间");
+                }
+            }
         }
     }
 
-    private void replaceChildren(Long waybillId, WaybillSaveRequest request) {
+    private void validateEvents(List<WaybillEventPayload> events, int legCount) {
+        for (int index = 0; index < events.size(); index++) {
+            WaybillEventPayload event = events.get(index);
+            int rowNo = index + 1;
+
+            if (trimToNull(event.eventTime()) == null) {
+                throw new BusinessException("第 " + rowNo + " 条事件未填写事件时间");
+            }
+            if (trimToNull(event.eventStatus()) == null) {
+                throw new BusinessException("第 " + rowNo + " 条事件未填写事件状态");
+            }
+            if (trimToNull(event.eventDescription()) == null) {
+                throw new BusinessException("第 " + rowNo + " 条事件未填写事件描述");
+            }
+            parseDateTime(event.eventTime());
+
+            if (event.legId() != null && (event.legId() < 1 || event.legId() > legCount)) {
+                throw new BusinessException("第 " + rowNo + " 条事件关联的分段序号无效");
+            }
+        }
+    }
+
+    private void replaceChildren(Long waybillId, WaybillSaveRequest request, LocalDateTime now) {
         waybillLegMapper.deleteByWaybillId(waybillId);
         waybillTrackEventMapper.deleteByWaybillId(waybillId);
 
@@ -262,8 +315,8 @@ public class WaybillService {
             leg.setDepartureTime(parseDateTime(legPayload.departureTime()));
             leg.setArrivalTime(parseDateTime(legPayload.arrivalTime()));
             leg.setRemark(trimToEmpty(legPayload.remark()));
-            leg.setCreatedAt(LocalDateTime.now());
-            leg.setUpdatedAt(LocalDateTime.now());
+            leg.setCreatedAt(now);
+            leg.setUpdatedAt(now);
             waybillLegMapper.insert(leg);
             legIdMap.put(legNo, leg.getId());
         }
@@ -279,7 +332,7 @@ public class WaybillService {
             event.setEventLocation(trimToEmpty(eventPayload.eventLocation()));
             event.setVisibleToCustomer(Boolean.FALSE.equals(eventPayload.visibleToCustomer()) ? 0 : 1);
             event.setSortNo(eventPayload.sortNo() == null ? index + 1 : eventPayload.sortNo());
-            event.setCreatedAt(LocalDateTime.now());
+            event.setCreatedAt(now);
             waybillTrackEventMapper.insert(event);
         }
     }
@@ -292,7 +345,7 @@ public class WaybillService {
         try {
             return LocalDateTime.parse(trimmed, DATE_TIME_FORMATTER);
         } catch (DateTimeParseException ex) {
-            throw new IllegalArgumentException("时间格式必须为 yyyy-MM-dd HH:mm:ss");
+            throw new BusinessException("时间格式必须为 yyyy-MM-dd HH:mm:ss");
         }
     }
 

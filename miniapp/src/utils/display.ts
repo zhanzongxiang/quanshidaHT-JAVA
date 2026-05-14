@@ -10,7 +10,7 @@ export function formatPaymentStatus(status: string) {
 
 export function formatWaybillStatus(status: string) {
   if (status === 'signed') return '已签收'
-  if (status === 'delivered') return '已妥投'
+  if (status === 'delivered') return '已派送'
   if (status === 'in_transit') return '运输中'
   if (status === 'arrived') return '已到站'
   if (status === 'clearing') return '清关中'
@@ -21,6 +21,13 @@ export function formatWaybillStatus(status: string) {
 
 export function formatWechatBindStatus(openid?: string | null) {
   return openid ? '已绑定微信' : '未绑定微信'
+}
+
+export function formatMemberStatus(status?: string | null) {
+  if (status === 'active') return '正常'
+  if (status === 'disabled') return '已停用'
+  if (status === 'pending') return '待审核'
+  return status || '未知'
 }
 
 export function maskIdentifier(value?: string | null) {

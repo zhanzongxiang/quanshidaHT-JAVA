@@ -49,6 +49,7 @@ import { API_BASE_URL } from '@/config/env'
 import { useMemberStore } from '@/stores/member'
 import { clearLastApiEvent, getLastApiEvent, type LastApiEvent } from '@/utils/debug'
 import { formatWechatBindStatus, maskIdentifier } from '@/utils/display'
+import { showError, showSuccess } from '@/utils/toast'
 
 const memberStore = useMemberStore()
 const apiBaseUrl = API_BASE_URL
@@ -104,30 +105,21 @@ function copySummary() {
   uni.setClipboardData({
     data: buildSummary(),
     success: () => {
-      uni.showToast({
-        title: '诊断摘要已复制',
-        icon: 'success',
-      })
+      showSuccess('诊断摘要已复制')
     },
   })
 }
 
 async function testProfile() {
   if (!memberStore.isAuthenticated) {
-    uni.showToast({
-      title: '当前未登录',
-      icon: 'none',
-    })
+    showError('当前未登录')
     return
   }
 
   testingProfile.value = true
   try {
     await memberStore.fetchProfile()
-    uni.showToast({
-      title: '资料接口正常',
-      icon: 'success',
-    })
+    showSuccess('资料接口正常')
   } finally {
     testingProfile.value = false
     lastApiEvent.value = getLastApiEvent()
@@ -137,18 +129,12 @@ async function testProfile() {
 function clearApiRecord() {
   clearLastApiEvent()
   lastApiEvent.value = null
-  uni.showToast({
-    title: '已清空',
-    icon: 'success',
-  })
+  showSuccess('已清空')
 }
 
 function clearSession() {
   memberStore.logout(false)
-  uni.showToast({
-    title: '本地登录态已清空',
-    icon: 'success',
-  })
+  showSuccess('本地登录态已清空')
   void refreshPanel()
 }
 </script>
@@ -156,17 +142,5 @@ function clearSession() {
 <style scoped lang="scss">
 .section {
   margin-bottom: 24rpx;
-}
-
-.detail-line {
-  display: block;
-  margin-top: 10rpx;
-  line-height: 1.6;
-  color: #4f544c;
-  word-break: break-all;
-}
-
-.top-gap {
-  margin-top: 20rpx;
 }
 </style>

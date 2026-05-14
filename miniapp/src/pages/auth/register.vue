@@ -7,21 +7,33 @@
 
     <view class="card form-card">
       <view class="field-stack">
-        <view>
+        <view class="field-block">
           <text class="field-label">手机号</text>
-          <input v-model.trim="form.phone" class="input" type="number" maxlength="11" placeholder="请输入手机号" />
+          <input
+            v-model="form.phone"
+            class="input"
+            type="number"
+            maxlength="11"
+            placeholder="请输入 11 位手机号"
+            @input="handlePhoneInput"
+          />
         </view>
-        <view>
+        <view class="field-block">
           <text class="field-label">密码</text>
-          <input v-model.trim="form.password" class="input" password placeholder="请输入密码" />
+          <input
+            v-model.trim="form.password"
+            class="input"
+            password
+            placeholder="请输入至少 6 位密码"
+          />
         </view>
-        <view>
+        <view class="field-block">
           <text class="field-label">昵称</text>
-          <input v-model.trim="form.nickname" class="input" placeholder="可选" />
+          <input v-model.trim="form.nickname" class="input" maxlength="20" placeholder="可选，最多 20 个字符" />
         </view>
-        <view>
+        <view class="field-block">
           <text class="field-label">姓名</text>
-          <input v-model.trim="form.fullName" class="input" placeholder="可选" />
+          <input v-model.trim="form.fullName" class="input" maxlength="20" placeholder="可选，最多 20 个字符" />
         </view>
       </view>
 
@@ -37,6 +49,9 @@
 import { reactive, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useMemberStore } from '@/stores/member'
+import { navigateAfterAuth, openAppPage, resolveRedirectUrl } from '@/utils/navigation'
+import { showError } from '@/utils/toast'
+import { isValidPassword, isValidPhone, normalizePhone } from '@/utils/validation'
 
 const memberStore = useMemberStore()
 const submitting = ref(false)
@@ -50,83 +65,56 @@ const form = reactive({
 })
 
 onLoad((query) => {
-  redirectUrl.value = typeof query?.redirect === 'string' && query.redirect ? query.redirect : '/pages/index/index'
+  redirectUrl.value = resolveRedirectUrl(typeof query?.redirect === 'string' ? query.redirect : undefined)
 })
 
+function handlePhoneInput(event: Event) {
+  const value = (event as { detail?: { value?: string } }).detail?.value || ''
+  form.phone = normalizePhone(value)
+}
+
+function validateRegisterForm() {
+  if (!isValidPhone(form.phone)) {
+    showError('请输入正确的 11 位手机号')
+    return false
+  }
+
+  if (!isValidPassword(form.password)) {
+    showError('密码至少需要 6 位')
+    return false
+  }
+
+  return true
+}
+
 async function submitRegister() {
-  if (!form.phone || !form.password) {
-    uni.showToast({
-      title: '手机号和密码必填',
-      icon: 'none',
-    })
+  if (!validateRegisterForm()) {
     return
   }
 
   submitting.value = true
   try {
     await memberStore.register({
-      phone: form.phone,
-      password: form.password,
-      nickname: form.nickname,
-      fullName: form.fullName,
+      phone: normalizePhone(form.phone),
+      password: form.password.trim(),
+      nickname: form.nickname.trim(),
+      fullName: form.fullName.trim(),
     })
-    navigateAfterAuth()
+    navigateAfterAuth(redirectUrl.value)
+  } catch (error) {
+    showError(error, '注册失败')
   } finally {
     submitting.value = false
   }
 }
 
 function goToLogin() {
-  uni.redirectTo({
-    url: `/pages/auth/login?redirect=${encodeURIComponent(redirectUrl.value)}`,
-  })
-}
-
-function navigateAfterAuth() {
-  if (redirectUrl.value.startsWith('/pages/index/index')) {
-    uni.switchTab({
-      url: '/pages/index/index',
-    })
-    return
-  }
-  if (redirectUrl.value.startsWith('/pages/waybill/list')) {
-    uni.switchTab({
-      url: '/pages/waybill/list',
-    })
-    return
-  }
-  if (redirectUrl.value.startsWith('/pages/payment/list')) {
-    uni.switchTab({
-      url: '/pages/payment/list',
-    })
-    return
-  }
-  if (redirectUrl.value.startsWith('/pages/profile/index')) {
-    uni.switchTab({
-      url: '/pages/profile/index',
-    })
-    return
-  }
-  uni.redirectTo({
-    url: redirectUrl.value,
-  })
+  openAppPage(`/pages/auth/login?redirect=${encodeURIComponent(redirectUrl.value)}`)
 }
 </script>
 
 <style scoped lang="scss">
 .form-card {
   margin-top: 24rpx;
-}
-
-.top-gap {
-  margin-top: 28rpx;
-}
-
-.input {
-  height: 88rpx;
-  padding: 0 24rpx;
-  border-radius: 18rpx;
-  border: 2rpx solid #ddd2c2;
-  background: #fff;
 }
 </style>

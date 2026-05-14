@@ -1,5 +1,6 @@
 package com.qsd.admin.payment.service;
 
+import com.qsd.admin.common.exception.BusinessException;
 import com.qsd.admin.common.exception.NotFoundException;
 import com.qsd.admin.member.entity.MemberUser;
 import com.qsd.admin.member.mapper.MemberUserMapper;
@@ -21,13 +22,13 @@ import com.qsd.admin.payment.dto.RefundOrderResponse;
 import com.qsd.admin.payment.dto.WechatMiniProgramPayParams;
 import com.qsd.admin.payment.dto.WechatPayCallbackRequest;
 import com.qsd.admin.payment.dto.WechatRefundResult;
-import com.qsd.admin.payment.entity.PayNotifyLog;
 import com.qsd.admin.payment.entity.PayMerchantConfig;
+import com.qsd.admin.payment.entity.PayNotifyLog;
 import com.qsd.admin.payment.entity.PayOrder;
 import com.qsd.admin.payment.entity.PayReconcileRecord;
 import com.qsd.admin.payment.entity.PayTransaction;
-import com.qsd.admin.payment.entity.RefundOrder;
 import com.qsd.admin.payment.entity.RefundNotifyLog;
+import com.qsd.admin.payment.entity.RefundOrder;
 import com.qsd.admin.payment.mapper.PayNotifyLogMapper;
 import com.qsd.admin.payment.mapper.PayOrderMapper;
 import com.qsd.admin.payment.mapper.PayReconcileRecordMapper;
@@ -102,14 +103,14 @@ public class PaymentService {
     public PaymentAdminDetailResponse createAdminPayOrder(PaymentAdminCreateRequest request) {
         MemberUser member = memberUserMapper.selectActiveById(request.memberId());
         if (member == null) {
-            throw new IllegalArgumentException("member not found");
+            throw new BusinessException("会员不存在或已禁用");
         }
 
         WaybillOrder waybill = null;
         if (request.waybillId() != null) {
             waybill = waybillOrderMapper.selectActiveById(request.waybillId());
             if (waybill == null) {
-                throw new IllegalArgumentException("waybill not found");
+                throw new BusinessException("运单不存在");
             }
         }
 
@@ -143,7 +144,7 @@ public class PaymentService {
         PayOrder order = requirePayOrder(id);
         String status = trimToNull(request.status());
         if (status == null || !ALLOWED_STATUSES.contains(status)) {
-            throw new IllegalArgumentException("payment status is invalid");
+            throw new BusinessException("支付状态不合法");
         }
 
         order.setStatus(status);
@@ -179,7 +180,7 @@ public class PaymentService {
     public List<MemberPayOrderSummaryResponse> listMemberPayOrders(Long memberId) {
         MemberUser member = memberUserMapper.selectActiveById(memberId);
         if (member == null) {
-            throw new NotFoundException("member not found");
+            throw new NotFoundException("会员不存在");
         }
 
         return payOrderMapper.selectByMemberId(memberId).stream()
@@ -191,15 +192,15 @@ public class PaymentService {
     public MemberPaymentPrepareResponse prepareMemberPayment(Long memberId, MemberPaymentPrepareRequest request) {
         MemberUser member = memberUserMapper.selectActiveById(memberId);
         if (member == null) {
-            throw new NotFoundException("member not found");
+            throw new NotFoundException("会员不存在");
         }
         if (trimToNull(member.getWechatOpenid()) == null) {
-            throw new IllegalArgumentException("member wechat identity is not bound");
+            throw new BusinessException("当前会员未绑定微信身份，无法发起小程序支付");
         }
 
         WaybillOrder waybill = waybillOrderMapper.selectAccessibleDetailByMember(request.waybillId(), memberId, member.getPhone());
         if (waybill == null) {
-            throw new NotFoundException("member waybill not found");
+            throw new NotFoundException("会员运单不存在");
         }
 
         PayMerchantConfig merchantConfig = paymentMerchantService.requireCurrentMerchant();
@@ -258,7 +259,7 @@ public class PaymentService {
     public void handleWechatCallback(WechatPayCallbackRequest request) {
         PayOrder order = payOrderMapper.selectByOrderNo(request.orderNo());
         if (order == null) {
-            throw new NotFoundException("payment order not found");
+            throw new NotFoundException("支付订单不存在");
         }
 
         String callbackStatus = trimToDefault(request.status(), "paid");
@@ -327,10 +328,10 @@ public class PaymentService {
     public RefundOrderResponse createRefund(Long payOrderId, RefundCreateRequest request) {
         PayOrder order = requirePayOrder(payOrderId);
         if (!"paid".equals(order.getStatus()) && !"refunding".equals(order.getStatus())) {
-            throw new IllegalArgumentException("only paid order can be refunded");
+            throw new BusinessException("只有已支付或退款中的订单才允许退款");
         }
         if (request.amountRefund().compareTo(order.getAmountPaid()) > 0) {
-            throw new IllegalArgumentException("refund amount cannot exceed paid amount");
+            throw new BusinessException("退款金额不能超过实付金额");
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -369,15 +370,15 @@ public class PaymentService {
     public RefundOrderResponse retryRefund(Long refundOrderId) {
         RefundOrder failedRefund = refundOrderMapper.selectByIdValue(refundOrderId);
         if (failedRefund == null) {
-            throw new NotFoundException("refund order not found");
+            throw new NotFoundException("退款单不存在");
         }
         if (!"failed".equals(failedRefund.getStatus())) {
-            throw new IllegalArgumentException("only failed refund can be retried");
+            throw new BusinessException("只有失败的退款单才允许重试");
         }
 
         PayOrder order = requirePayOrder(failedRefund.getPayOrderId());
         if (!"paid".equals(order.getStatus()) && !"refunding".equals(order.getStatus()) && !"refunded".equals(order.getStatus())) {
-            throw new IllegalArgumentException("payment order status does not allow refund retry");
+            throw new BusinessException("当前支付状态不允许重试退款");
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -742,7 +743,7 @@ public class PaymentService {
     private PayOrder requirePayOrder(Long id) {
         PayOrder order = payOrderMapper.selectActiveById(id);
         if (order == null) {
-            throw new NotFoundException("payment order not found");
+            throw new NotFoundException("支付订单不存在");
         }
         return order;
     }
@@ -752,12 +753,12 @@ public class PaymentService {
         if (refund != null) {
             return refund;
         }
-        throw new NotFoundException("refund order not found");
+        throw new NotFoundException("退款单不存在");
     }
 
     private BigDecimal normalizeAmount(BigDecimal value) {
         if (value == null || value.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("payment amount must be greater than 0");
+            throw new BusinessException("支付金额必须大于 0");
         }
         return value.setScale(2, java.math.RoundingMode.HALF_UP);
     }
@@ -799,7 +800,7 @@ public class PaymentService {
         if (merchantConfigId != null) {
             PayMerchantConfig config = paymentMerchantService.requireMerchantById(merchantConfigId);
             if (config.getEnabled() == null || config.getEnabled() != 1) {
-                throw new IllegalArgumentException("selected payment merchant is disabled");
+                throw new BusinessException("所选支付商户已禁用");
             }
             return config;
         }

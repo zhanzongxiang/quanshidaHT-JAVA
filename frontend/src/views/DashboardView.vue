@@ -27,8 +27,8 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { ElMessage } from 'element-plus'
 import { fetchDashboardSummary, type DashboardSummary } from '../api/dashboard'
+import { showErrorMessage } from '../utils/message'
 
 const loading = ref(false)
 const summary = ref<DashboardSummary | null>(null)
@@ -59,7 +59,7 @@ async function loadSummary() {
   try {
     summary.value = await fetchDashboardSummary()
   } catch (error) {
-    ElMessage.error('加载工作台数据失败')
+    showErrorMessage(error, '加载工作台数据失败')
   } finally {
     loading.value = false
   }

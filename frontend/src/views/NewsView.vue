@@ -214,7 +214,6 @@
 
 <script setup lang="ts">
 import type { FormInstance, FormRules } from 'element-plus'
-import { ElMessage, ElMessageBox } from 'element-plus'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
   createEmptyNewsBlock,
@@ -227,6 +226,7 @@ import {
 } from '../api/news'
 import { useAuthStore } from '../stores/auth'
 import type { NewsArticle, NewsArticleSavePayload, NewsBlock, NewsBlockType } from '../types/news'
+import { confirmAction, showErrorMessage, showSuccessMessage } from '../utils/message'
 
 const blockTypeLabelMap: Record<NewsBlockType, string> = {
   paragraph: '段落',
@@ -264,9 +264,10 @@ const rules: FormRules = {
 
 const filteredArticles = computed(() => {
   return articles.value.filter((article) => {
-    const matchedKeyword = !keyword.value.trim()
-      || article.title.toLowerCase().includes(keyword.value.trim().toLowerCase())
-      || article.summary.toLowerCase().includes(keyword.value.trim().toLowerCase())
+    const searchKeyword = keyword.value.trim().toLowerCase()
+    const matchedKeyword = !searchKeyword
+      || article.title.toLowerCase().includes(searchKeyword)
+      || article.summary.toLowerCase().includes(searchKeyword)
     const matchedStatus = !statusFilter.value || article.status === statusFilter.value
     return matchedKeyword && matchedStatus
   })
@@ -303,6 +304,8 @@ async function loadArticles() {
   loading.value = true
   try {
     articles.value = await fetchNewsArticles()
+  } catch (error) {
+    showErrorMessage(error, '新闻列表加载失败')
   } finally {
     loading.value = false
   }
@@ -327,6 +330,8 @@ async function openEditDialog(id: number) {
       author: article.author,
     })
     dialogVisible.value = true
+  } catch (error) {
+    showErrorMessage(error, '新闻详情加载失败')
   } finally {
     loading.value = false
   }
@@ -355,13 +360,13 @@ function onMoveBlock(index: number, direction: -1 | 1) {
 
 function validateBlocks() {
   if (form.blocks.length === 0) {
-    ElMessage.error('请至少添加一个正文区块')
+    showErrorMessage('请至少添加一个正文区块')
     return false
   }
 
   const invalidBlock = form.blocks.some((block) => !block.content.trim())
   if (invalidBlock) {
-    ElMessage.error('请完整填写所有正文区块内容')
+    showErrorMessage('请完整填写所有正文区块内容')
     return false
   }
 
@@ -384,18 +389,18 @@ async function onSave() {
         ...form,
         blocks: cloneBlocks(form.blocks),
       })
-      ElMessage.success('新闻已更新')
+      showSuccessMessage('新闻已更新')
     } else {
       await createNewsArticle({
         ...form,
         blocks: cloneBlocks(form.blocks),
       })
-      ElMessage.success('新闻已创建')
+      showSuccessMessage('新闻已创建')
     }
     dialogVisible.value = false
     await loadArticles()
-  } catch {
-    ElMessage.error('保存新闻失败')
+  } catch (error) {
+    showErrorMessage(error, '保存新闻失败')
   } finally {
     saving.value = false
   }
@@ -405,33 +410,28 @@ async function onPublish(id: number) {
   publishingId.value = id
   try {
     await publishNewsArticle(id)
-    ElMessage.success('新闻已发布')
+    showSuccessMessage('新闻已发布')
     await loadArticles()
-  } catch {
-    ElMessage.error('发布新闻失败')
+  } catch (error) {
+    showErrorMessage(error, '发布新闻失败')
   } finally {
     publishingId.value = null
   }
 }
 
 async function onDelete(id: number) {
-  try {
-    await ElMessageBox.confirm('删除后不可恢复，确认删除这条新闻吗？', '删除新闻', {
-      type: 'warning',
-      confirmButtonText: '删除',
-      cancelButtonText: '取消',
-    })
-  } catch {
+  const confirmed = await confirmAction('删除后不可恢复，确认删除这条新闻吗？', '删除新闻', '删除')
+  if (!confirmed) {
     return
   }
 
   deletingId.value = id
   try {
     await deleteNewsArticle(id)
-    ElMessage.success('新闻已删除')
+    showSuccessMessage('新闻已删除')
     await loadArticles()
-  } catch {
-    ElMessage.error('删除新闻失败')
+  } catch (error) {
+    showErrorMessage(error, '删除新闻失败')
   } finally {
     deletingId.value = null
   }
@@ -444,6 +444,6 @@ function onDialogClosed() {
 }
 
 onMounted(() => {
-  loadArticles()
+  void loadArticles()
 })
 </script>

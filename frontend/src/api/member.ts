@@ -1,11 +1,7 @@
 import { http } from './http'
+import { unwrapResponse, withQuery } from './shared'
+import type { ApiResponse } from './shared'
 import type { MemberAdminDetail, MemberAdminSavePayload, MemberAdminSummary, MemberWaybillSummary } from '../types/member'
-
-interface ApiResponse<T> {
-  code: number
-  message: string
-  data: T
-}
 
 interface MemberWaybillSummaryApiModel {
   id: number
@@ -96,26 +92,22 @@ export function createEmptyMemberPayload(): MemberAdminSavePayload {
 }
 
 export async function fetchMembers(params?: { keyword?: string; status?: string }): Promise<MemberAdminSummary[]> {
-  const { data } = await http.get<ApiResponse<MemberAdminSummaryApiModel[]>>('/admin/members', { params })
-  return data.data.map(toSummary)
+  const response = await http.get<ApiResponse<MemberAdminSummaryApiModel[]>>('/admin/members', withQuery(params))
+  return unwrapResponse(response).map(toSummary)
 }
 
 export async function fetchMember(id: number): Promise<MemberAdminDetail> {
-  const { data } = await http.get<ApiResponse<MemberAdminDetailApiModel>>(`/admin/members/${id}`)
-  return toDetail(data.data)
+  return toDetail(unwrapResponse(await http.get<ApiResponse<MemberAdminDetailApiModel>>(`/admin/members/${id}`)))
 }
 
 export async function createMember(payload: MemberAdminSavePayload): Promise<MemberAdminDetail> {
-  const { data } = await http.post<ApiResponse<MemberAdminDetailApiModel>>('/admin/members', payload)
-  return toDetail(data.data)
+  return toDetail(unwrapResponse(await http.post<ApiResponse<MemberAdminDetailApiModel>>('/admin/members', payload)))
 }
 
 export async function updateMember(id: number, payload: MemberAdminSavePayload): Promise<MemberAdminDetail> {
-  const { data } = await http.put<ApiResponse<MemberAdminDetailApiModel>>(`/admin/members/${id}`, payload)
-  return toDetail(data.data)
+  return toDetail(unwrapResponse(await http.put<ApiResponse<MemberAdminDetailApiModel>>(`/admin/members/${id}`, payload)))
 }
 
 export async function updateMemberStatus(id: number, status: string): Promise<MemberAdminDetail> {
-  const { data } = await http.put<ApiResponse<MemberAdminDetailApiModel>>(`/admin/members/${id}/status`, { status })
-  return toDetail(data.data)
+  return toDetail(unwrapResponse(await http.put<ApiResponse<MemberAdminDetailApiModel>>(`/admin/members/${id}/status`, { status })))
 }

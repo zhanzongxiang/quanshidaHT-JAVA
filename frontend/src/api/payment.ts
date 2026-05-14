@@ -1,4 +1,6 @@
 import { http } from './http'
+import { unwrapResponse, withQuery } from './shared'
+import type { ApiResponse } from './shared'
 import type {
   MerchantCertificateStatus,
   NotifyReplayResult,
@@ -14,12 +16,6 @@ import type {
   RefundCreatePayload,
   RefundOrder,
 } from '../types/payment'
-
-interface ApiResponse<T> {
-  code: number
-  message: string
-  data: T
-}
 
 export function createEmptyPaymentPayload(): PaymentCreatePayload {
   return {
@@ -75,91 +71,76 @@ export async function fetchPayments(params?: {
   status?: string
   channel?: string
 }): Promise<PaymentAdminSummary[]> {
-  const { data } = await http.get<ApiResponse<PaymentAdminSummary[]>>('/admin/payments', { params })
-  return data.data
+  return unwrapResponse(await http.get<ApiResponse<PaymentAdminSummary[]>>('/admin/payments', withQuery(params)))
 }
 
 export async function fetchPayment(id: number): Promise<PaymentAdminDetail> {
-  const { data } = await http.get<ApiResponse<PaymentAdminDetail>>(`/admin/payments/${id}`)
-  return data.data
+  return unwrapResponse(await http.get<ApiResponse<PaymentAdminDetail>>(`/admin/payments/${id}`))
 }
 
 export async function createPayment(payload: PaymentCreatePayload): Promise<PaymentAdminDetail> {
-  const { data } = await http.post<ApiResponse<PaymentAdminDetail>>('/admin/payments', payload)
-  return data.data
+  return unwrapResponse(await http.post<ApiResponse<PaymentAdminDetail>>('/admin/payments', payload))
 }
 
 export async function updatePaymentStatus(id: number, status: string, externalTransactionNo = ''): Promise<PaymentAdminDetail> {
-  const { data } = await http.put<ApiResponse<PaymentAdminDetail>>(`/admin/payments/${id}/status`, {
-    status,
-    externalTransactionNo,
-  })
-  return data.data
+  return unwrapResponse(
+    await http.put<ApiResponse<PaymentAdminDetail>>(`/admin/payments/${id}/status`, {
+      status,
+      externalTransactionNo,
+    }),
+  )
 }
 
 export async function createRefund(id: number, payload: RefundCreatePayload): Promise<RefundOrder> {
-  const { data } = await http.post<ApiResponse<RefundOrder>>(`/admin/payments/${id}/refunds`, payload)
-  return data.data
+  return unwrapResponse(await http.post<ApiResponse<RefundOrder>>(`/admin/payments/${id}/refunds`, payload))
 }
 
 export async function retryRefund(id: number): Promise<RefundOrder> {
-  const { data } = await http.post<ApiResponse<RefundOrder>>(`/admin/payments/refunds/${id}/retry`)
-  return data.data
+  return unwrapResponse(await http.post<ApiResponse<RefundOrder>>(`/admin/payments/refunds/${id}/retry`))
 }
 
 export async function fetchReconcileRecords(channel?: string): Promise<ReconcileRecord[]> {
-  const { data } = await http.get<ApiResponse<ReconcileRecord[]>>('/admin/payments/reconcile-records', {
-    params: { channel },
-  })
-  return data.data
+  return unwrapResponse(
+    await http.get<ApiResponse<ReconcileRecord[]>>('/admin/payments/reconcile-records', withQuery({ channel })),
+  )
 }
 
 export async function createReconcileRecord(payload: ReconcileCreatePayload): Promise<ReconcileRecord> {
-  const { data } = await http.post<ApiResponse<ReconcileRecord>>('/admin/payments/reconcile-records', payload)
-  return data.data
+  return unwrapResponse(await http.post<ApiResponse<ReconcileRecord>>('/admin/payments/reconcile-records', payload))
 }
 
 export async function fetchPaymentOpsOverview(): Promise<PaymentOpsOverview> {
-  const { data } = await http.get<ApiResponse<PaymentOpsOverview>>('/admin/payments/ops/overview')
-  return data.data
+  return unwrapResponse(await http.get<ApiResponse<PaymentOpsOverview>>('/admin/payments/ops/overview'))
 }
 
 export async function refreshCurrentMerchantCertificate(): Promise<MerchantCertificateStatus> {
-  const { data } = await http.post<ApiResponse<MerchantCertificateStatus>>('/admin/payments/ops/certificate-refresh')
-  return data.data
+  return unwrapResponse(await http.post<ApiResponse<MerchantCertificateStatus>>('/admin/payments/ops/certificate-refresh'))
 }
 
 export async function fetchReconcileDiffDetail(id: number): Promise<ReconcileDiffDetail> {
-  const { data } = await http.get<ApiResponse<ReconcileDiffDetail>>(`/admin/payments/reconcile-records/${id}/diffs`)
-  return data.data
+  return unwrapResponse(await http.get<ApiResponse<ReconcileDiffDetail>>(`/admin/payments/reconcile-records/${id}/diffs`))
 }
 
 export async function replayPaymentNotifyLog(id: number): Promise<NotifyReplayResult> {
-  const { data } = await http.post<ApiResponse<NotifyReplayResult>>(`/admin/payments/notify-logs/${id}/replay`)
-  return data.data
+  return unwrapResponse(await http.post<ApiResponse<NotifyReplayResult>>(`/admin/payments/notify-logs/${id}/replay`))
 }
 
 export async function replayRefundNotifyLog(id: number): Promise<NotifyReplayResult> {
-  const { data } = await http.post<ApiResponse<NotifyReplayResult>>(`/admin/payments/refund-notify-logs/${id}/replay`)
-  return data.data
+  return unwrapResponse(await http.post<ApiResponse<NotifyReplayResult>>(`/admin/payments/refund-notify-logs/${id}/replay`))
 }
 
 export async function fetchPaymentMerchants(): Promise<PayMerchantConfig[]> {
-  const { data } = await http.get<ApiResponse<PayMerchantConfig[]>>('/admin/payment-merchants')
-  return data.data
+  return unwrapResponse(await http.get<ApiResponse<PayMerchantConfig[]>>('/admin/payment-merchants'))
 }
 
 export async function createPaymentMerchant(payload: PayMerchantConfigPayload): Promise<PayMerchantConfig> {
-  const { data } = await http.post<ApiResponse<PayMerchantConfig>>('/admin/payment-merchants', payload)
-  return data.data
+  return unwrapResponse(await http.post<ApiResponse<PayMerchantConfig>>('/admin/payment-merchants', payload))
 }
 
 export async function updatePaymentMerchant(id: number, payload: PayMerchantConfigPayload): Promise<PayMerchantConfig> {
-  const { data } = await http.put<ApiResponse<PayMerchantConfig>>(`/admin/payment-merchants/${id}`, payload)
-  return data.data
+  return unwrapResponse(await http.put<ApiResponse<PayMerchantConfig>>(`/admin/payment-merchants/${id}`, payload))
 }
 
 export async function activatePaymentMerchant(merchantConfigId: number): Promise<PayMerchantConfig> {
-  const { data } = await http.put<ApiResponse<PayMerchantConfig>>('/admin/payment-merchants/activate', { merchantConfigId })
-  return data.data
+  return unwrapResponse(await http.put<ApiResponse<PayMerchantConfig>>('/admin/payment-merchants/activate', { merchantConfigId }))
 }

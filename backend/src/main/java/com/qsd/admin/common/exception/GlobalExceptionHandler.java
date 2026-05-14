@@ -11,6 +11,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(BusinessException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse<Void> handleBusiness(BusinessException ex) {
+        return ApiResponse.fail(4001, ex.getMessage());
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse<Void> handleIllegalArgument(IllegalArgumentException ex) {
@@ -27,13 +33,13 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse<Void> handleValidation(MethodArgumentNotValidException ex) {
         FieldError error = ex.getBindingResult().getFieldErrors().stream().findFirst().orElse(null);
-        String message = error == null ? "参数校验失败" : error.getField() + ": " + error.getDefaultMessage();
+        String message = error == null ? "参数校验失败" : error.getField() + "：" + error.getDefaultMessage();
         return ApiResponse.fail(4002, message);
     }
 
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ApiResponse<Void> handleUnknown(Exception ex) {
-        return ApiResponse.fail(5000, ex.getMessage());
+        return ApiResponse.fail(5000, "系统异常，请稍后重试");
     }
 }

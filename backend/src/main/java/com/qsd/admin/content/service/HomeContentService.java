@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.qsd.admin.common.exception.BusinessException;
 import com.qsd.admin.content.dto.HomeContentResponse;
 import com.qsd.admin.content.entity.SiteContentPage;
 import com.qsd.admin.content.mapper.SiteContentPageMapper;
@@ -86,7 +87,7 @@ public class HomeContentService {
 
     private void validateForm(JsonNode form) {
         if (form == null || form.isNull() || !form.isObject()) {
-            throw new IllegalArgumentException("form must be an object");
+            throw new BusinessException("首页内容表单格式不正确");
         }
     }
 
@@ -104,7 +105,7 @@ public class HomeContentService {
         try {
             return objectMapper.writeValueAsString(form);
         } catch (JsonProcessingException ex) {
-            throw new IllegalArgumentException("failed to serialize home content");
+            throw new BusinessException("首页内容序列化失败");
         }
     }
 

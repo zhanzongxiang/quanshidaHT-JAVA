@@ -1,4 +1,6 @@
 import { http } from './http'
+import { unwrapResponse } from './shared'
+import type { ApiResponse } from './shared'
 import type {
   DictionaryGroup,
   DictionaryItem,
@@ -6,15 +8,8 @@ import type {
   DictionaryOption,
 } from '../types/dictionary'
 
-interface ApiResponse<T> {
-  code: number
-  message: string
-  data: T
-}
-
 export async function fetchDictionaryGroups(): Promise<DictionaryGroup[]> {
-  const { data } = await http.get<ApiResponse<DictionaryGroup[]>>('/dictionaries')
-  return data.data
+  return unwrapResponse(await http.get<ApiResponse<DictionaryGroup[]>>('/dictionaries'))
 }
 
 export async function fetchDictionaryOptions(
@@ -25,26 +20,25 @@ export async function fetchDictionaryOptions(
     return {}
   }
 
-  const { data } = await http.get<ApiResponse<Record<string, DictionaryOption[]>>>('/dictionaries/options', {
-    params: {
-      types,
-      enabledOnly,
-    },
-    paramsSerializer: {
-      indexes: null,
-    },
-  })
-  return data.data
+  return unwrapResponse(
+    await http.get<ApiResponse<Record<string, DictionaryOption[]>>>('/dictionaries/options', {
+      params: {
+        types,
+        enabledOnly,
+      },
+      paramsSerializer: {
+        indexes: null,
+      },
+    }),
+  )
 }
 
 export async function createDictionaryItem(payload: DictionaryItemSavePayload): Promise<DictionaryItem> {
-  const { data } = await http.post<ApiResponse<DictionaryItem>>('/dictionaries', payload)
-  return data.data
+  return unwrapResponse(await http.post<ApiResponse<DictionaryItem>>('/dictionaries', payload))
 }
 
 export async function updateDictionaryItem(id: number, payload: DictionaryItemSavePayload): Promise<DictionaryItem> {
-  const { data } = await http.put<ApiResponse<DictionaryItem>>(`/dictionaries/${id}`, payload)
-  return data.data
+  return unwrapResponse(await http.put<ApiResponse<DictionaryItem>>(`/dictionaries/${id}`, payload))
 }
 
 export async function deleteDictionaryItem(id: number): Promise<void> {

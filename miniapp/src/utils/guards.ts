@@ -1,6 +1,7 @@
 import { useMemberStore } from '@/stores/member'
+import { goToLogin, resolveRedirectUrl } from '@/utils/navigation'
 
-function buildLoginRedirect() {
+export function buildLoginRedirect() {
   const pages = getCurrentPages()
   const current = pages[pages.length - 1]
   const route = current?.route
@@ -15,7 +16,7 @@ function buildLoginRedirect() {
     .join('&')
   const target = queryString ? `/${route}?${queryString}` : `/${route}`
 
-  return `/pages/auth/login?redirect=${encodeURIComponent(target)}`
+  return resolveRedirectUrl(target)
 }
 
 export async function ensureMemberSession() {
@@ -23,9 +24,7 @@ export async function ensureMemberSession() {
   memberStore.restore()
 
   if (!memberStore.isAuthenticated) {
-    uni.navigateTo({
-      url: buildLoginRedirect(),
-    })
+    goToLogin(buildLoginRedirect())
     return false
   }
 
@@ -34,9 +33,7 @@ export async function ensureMemberSession() {
       await memberStore.fetchProfile()
     } catch {
       memberStore.logout(false)
-      uni.navigateTo({
-        url: buildLoginRedirect(),
-      })
+      goToLogin(buildLoginRedirect())
       return false
     }
   }

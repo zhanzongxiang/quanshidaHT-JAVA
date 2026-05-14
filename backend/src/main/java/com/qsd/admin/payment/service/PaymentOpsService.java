@@ -1,7 +1,7 @@
 package com.qsd.admin.payment.service;
 
+import com.qsd.admin.common.exception.NotFoundException;
 import com.qsd.admin.payment.dto.MerchantCertificateStatusResponse;
-import com.qsd.admin.payment.dto.NotifyFailureStatResponse;
 import com.qsd.admin.payment.dto.PaymentOpsOverviewResponse;
 import com.qsd.admin.payment.dto.ReconcileDiffDetailResponse;
 import com.qsd.admin.payment.entity.PayMerchantConfig;
@@ -12,6 +12,7 @@ import com.qsd.admin.payment.mapper.RefundNotifyLogMapper;
 import org.springframework.stereotype.Service;
 
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.List;
 
 @Service
@@ -40,16 +41,8 @@ public class PaymentOpsService {
 
     public PaymentOpsOverviewResponse getOverview() {
         PayMerchantConfig merchant = paymentMerchantService.requireCurrentMerchant();
-        MerchantCertificateStatusResponse certificateStatus = new MerchantCertificateStatusResponse(
-            merchant.getId(),
-            merchant.getMerchantName(),
-            merchant.getMchId(),
-            merchant.getPlatformCertificatePath(),
-            true,
-            merchant.getUpdatedAt() == null ? null : DATE_TIME_FORMATTER.format(merchant.getUpdatedAt())
-        );
         return new PaymentOpsOverviewResponse(
-            certificateStatus,
+            buildCertificateStatus(merchant, merchant.getPlatformCertificatePath()),
             payNotifyLogMapper.selectFailureStats(),
             refundNotifyLogMapper.selectFailureStats()
         );
@@ -58,41 +51,48 @@ public class PaymentOpsService {
     public MerchantCertificateStatusResponse refreshCurrentMerchantCertificate() {
         String path = wechatPlatformCertificateService.refreshCurrentMerchantCertificate();
         PayMerchantConfig merchant = paymentMerchantService.requireCurrentMerchant();
-        return new MerchantCertificateStatusResponse(
-            merchant.getId(),
-            merchant.getMerchantName(),
-            merchant.getMchId(),
-            path,
-            true,
-            merchant.getUpdatedAt() == null ? null : DATE_TIME_FORMATTER.format(merchant.getUpdatedAt())
-        );
+        return buildCertificateStatus(merchant, path);
     }
 
     public ReconcileDiffDetailResponse getReconcileDiffDetail(Long id) {
         PayReconcileRecord record = payReconcileRecordMapper.selectById(id);
         if (record == null) {
-            throw new IllegalArgumentException("reconcile record not found");
+            throw new NotFoundException("对账记录不存在");
         }
 
-        List<String> diffItems = List.of();
         String summary = record.getSummary() == null ? "" : record.getSummary();
-        int index = summary.indexOf("diffs=");
-        if (index >= 0) {
-            String diffPart = summary.substring(index + "diffs=".length());
-            diffItems = java.util.Arrays.stream(diffPart.split("\\|"))
-                .map(String::trim)
-                .filter(item -> !item.isEmpty())
-                .toList();
-        }
-
         return new ReconcileDiffDetailResponse(
             record.getId(),
             record.getReconcileDate() == null ? null : record.getReconcileDate().toString(),
             record.getChannel(),
             record.getReconcileStatus(),
             record.getDiffCount(),
-            diffItems,
+            parseDiffItems(summary),
             summary
         );
+    }
+
+    private MerchantCertificateStatusResponse buildCertificateStatus(PayMerchantConfig merchant, String certificatePath) {
+        return new MerchantCertificateStatusResponse(
+            merchant.getId(),
+            merchant.getMerchantName(),
+            merchant.getMchId(),
+            certificatePath,
+            true,
+            merchant.getUpdatedAt() == null ? null : DATE_TIME_FORMATTER.format(merchant.getUpdatedAt())
+        );
+    }
+
+    private List<String> parseDiffItems(String summary) {
+        int index = summary.indexOf("diffs=");
+        if (index < 0) {
+            return List.of();
+        }
+
+        String diffPart = summary.substring(index + "diffs=".length());
+        return Arrays.stream(diffPart.split("\\|"))
+            .map(String::trim)
+            .filter(item -> !item.isEmpty())
+            .toList();
     }
 }

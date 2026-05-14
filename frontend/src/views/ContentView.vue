@@ -399,10 +399,10 @@
 
 <script setup lang="ts">
 import type { FormInstance, FormRules, UploadFile, UploadFiles } from 'element-plus'
-import { ElMessage } from 'element-plus'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { fetchHomeContent, publishHomeContent, saveHomeContentDraft } from '../api/content'
 import { useAuthStore } from '../stores/auth'
+import { showErrorMessage, showSuccessMessage, showWarningMessage } from '../utils/message'
 import type {
   HomeBannerImage,
   HomeContentDocument,
@@ -691,44 +691,44 @@ async function validateForm() {
   }
 
   if (form.hero.enabled && form.hero.images.length === 0) {
-    ElMessage.error('请至少上传一张 Banner 图片')
+    showErrorMessage('请至少上传一张 Banner 图片')
     return false
   }
 
   if (form.servicesSection.enabled) {
     if (form.servicesSection.items.length === 0) {
-      ElMessage.error('请至少添加一个主营业务模块')
+      showErrorMessage('请至少添加一个主营业务模块')
       return false
     }
 
     const invalidService = form.servicesSection.items.some((item) => !item.name.trim() || !item.description.trim() || !item.link.trim())
     if (invalidService) {
-      ElMessage.error('请完整填写主营业务模块的名称、描述和路由')
+      showErrorMessage('请完整填写主营业务模块的名称、描述和路由')
       return false
     }
   }
 
   if (form.processSection.enabled) {
     if (form.processSection.steps.length === 0) {
-      ElMessage.error('请至少添加一个一站式服务步骤')
+      showErrorMessage('请至少添加一个一站式服务步骤')
       return false
     }
 
     if (form.processSection.steps.length > 7) {
-      ElMessage.error('一站式服务步骤最多只能添加 7 个')
+      showErrorMessage('一站式服务步骤最多只能添加 7 个')
       return false
     }
 
     const invalidStep = form.processSection.steps.some((step) => !step.title.trim() || !step.description.trim())
     if (invalidStep) {
-      ElMessage.error('请完整填写一站式服务步骤的标题和描述')
+      showErrorMessage('请完整填写一站式服务步骤的标题和描述')
       return false
     }
   }
 
   const invalidPromiseItem = form.promiseSection.items.some((item) => !item.title.trim() || !item.subtitle.trim())
   if (invalidPromiseItem) {
-    ElMessage.error('请完整填写我们承诺的 6 个固定模块')
+    showErrorMessage('请完整填写我们承诺的 6 个固定模块')
     return false
   }
 
@@ -789,7 +789,7 @@ function onRemoveService(index: number) {
 
 function onAddProcessStep() {
   if (form.processSection.steps.length >= 7) {
-    ElMessage.warning('一站式服务步骤最多只能添加 7 个')
+    showWarningMessage('一站式服务步骤最多只能添加 7 个')
     return
   }
 
@@ -823,9 +823,9 @@ async function onSaveDraft() {
   try {
     const document = await saveHomeContentDraft(cloneForm(form))
     applyDocument(document)
-    ElMessage.success('首页内容草稿已保存')
+    showSuccessMessage('首页内容草稿已保存')
   } catch (error) {
-    ElMessage.error('保存草稿失败')
+    showErrorMessage(error, '保存草稿失败')
   } finally {
     saving.value = false
   }
@@ -840,9 +840,9 @@ async function onPublish() {
   try {
     const document = await publishHomeContent(cloneForm(form))
     applyDocument(document)
-    ElMessage.success('首页内容已发布')
+    showSuccessMessage('首页内容已发布')
   } catch (error) {
-    ElMessage.error('发布首页失败')
+    showErrorMessage(error, '发布首页失败')
   } finally {
     publishing.value = false
   }
@@ -850,7 +850,7 @@ async function onPublish() {
 
 async function onReset() {
   await loadContent()
-  ElMessage.success('已恢复到最近保存的内容')
+  showSuccessMessage('已恢复到最近保存的内容')
 }
 
 onMounted(() => {

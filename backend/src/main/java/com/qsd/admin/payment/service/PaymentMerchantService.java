@@ -1,5 +1,6 @@
 package com.qsd.admin.payment.service;
 
+import com.qsd.admin.common.exception.BusinessException;
 import com.qsd.admin.common.exception.NotFoundException;
 import com.qsd.admin.config.WechatPayProperties;
 import com.qsd.admin.payment.dto.PayMerchantConfigCreateRequest;
@@ -43,14 +44,14 @@ public class PaymentMerchantService {
         if (config != null) {
             return config;
         }
-        throw new IllegalStateException("no active payment merchant is configured");
+        throw new IllegalStateException(PaymentMerchantExceptionMessages.CURRENT_MERCHANT_MISSING);
     }
 
     public PayMerchantConfig requireMerchantById(Long id) {
         ensureDefaultMerchantExists();
         PayMerchantConfig config = payMerchantConfigMapper.selectActiveById(id);
         if (config == null) {
-            throw new NotFoundException("payment merchant not found");
+            throw new NotFoundException(PaymentMerchantExceptionMessages.MERCHANT_NOT_FOUND);
         }
         return config;
     }
@@ -136,7 +137,7 @@ public class PaymentMerchantService {
     public PayMerchantConfigSummaryResponse activateMerchantConfig(Long id) {
         PayMerchantConfig config = requireMerchantById(id);
         if (config.getEnabled() == null || config.getEnabled() != 1) {
-            throw new IllegalArgumentException("payment merchant must be enabled before activation");
+            throw new BusinessException(PaymentMerchantExceptionMessages.MERCHANT_DISABLED);
         }
         payMerchantConfigMapper.clearActiveFlag();
         config.setActive(1);

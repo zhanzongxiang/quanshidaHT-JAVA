@@ -2,6 +2,7 @@ package com.qsd.admin.payment.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.qsd.admin.common.exception.BusinessException;
 import com.qsd.admin.payment.dto.WechatCodeSessionResponse;
 import com.qsd.admin.payment.dto.WechatMiniProgramPayParams;
 import com.qsd.admin.payment.dto.WechatReconcileDownloadResult;
@@ -59,10 +60,10 @@ public class RealWechatPayGateway implements WechatPayGateway {
 
         Map<String, Object> response = restTemplate.getForObject(url, Map.class);
         if (response == null) {
-            throw new IllegalStateException("wechat code2session returned empty response");
+            throw new IllegalStateException("微信 code2session 接口返回为空");
         }
         if (response.get("errcode") != null) {
-            throw new IllegalArgumentException("wechat code2session failed: " + response.get("errmsg"));
+            throw new BusinessException("微信登录失败：" + stringValue(response.get("errmsg")));
         }
         return new WechatCodeSessionResponse(
             stringValue(response.get("openid")),
@@ -95,13 +96,13 @@ public class RealWechatPayGateway implements WechatPayGateway {
             );
 
             if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-                throw new IllegalStateException("wechat jsapi prepay request failed");
+                throw new IllegalStateException("微信预支付下单失败");
             }
 
             Map<String, Object> responseMap = objectMapper.readValue(response.getBody(), MAP_TYPE);
             String prepayId = stringValue(responseMap.get("prepay_id"));
             if (prepayId.isEmpty()) {
-                throw new IllegalStateException("wechat jsapi prepay id is missing");
+                throw new IllegalStateException("微信预支付单号缺失");
             }
 
             String payPackage = "prepay_id=" + prepayId;
@@ -130,7 +131,7 @@ public class RealWechatPayGateway implements WechatPayGateway {
             if (ex instanceof IllegalArgumentException argumentException) {
                 throw argumentException;
             }
-            throw new IllegalStateException("failed to prepare real wechat mini-program payment", ex);
+            throw new IllegalStateException("生成微信小程序支付参数失败", ex);
         }
     }
 
@@ -158,7 +159,7 @@ public class RealWechatPayGateway implements WechatPayGateway {
                 String.class
             );
             if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-                throw new IllegalStateException("wechat refund request failed");
+                throw new IllegalStateException("微信退款请求失败");
             }
 
             Map<String, Object> responseMap = objectMapper.readValue(response.getBody(), MAP_TYPE);
@@ -174,7 +175,7 @@ public class RealWechatPayGateway implements WechatPayGateway {
             if (ex instanceof IllegalArgumentException argumentException) {
                 throw argumentException;
             }
-            throw new IllegalStateException("failed to create real wechat refund", ex);
+            throw new IllegalStateException("发起微信退款失败", ex);
         }
     }
 
@@ -200,18 +201,18 @@ public class RealWechatPayGateway implements WechatPayGateway {
                 String.class
             );
             if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-                throw new IllegalStateException("wechat trade bill request failed");
+                throw new IllegalStateException("微信对账单下载请求失败");
             }
 
             Map<String, Object> responseMap = objectMapper.readValue(response.getBody(), MAP_TYPE);
             String downloadUrl = stringValue(responseMap.get("download_url"));
             if (downloadUrl.isEmpty()) {
-                throw new IllegalStateException("wechat trade bill download url is missing");
+                throw new IllegalStateException("微信对账单下载地址缺失");
             }
 
             ResponseEntity<String> downloadResponse = restTemplate.exchange(downloadUrl, HttpMethod.GET, new HttpEntity<>(new HttpHeaders()), String.class);
             if (!downloadResponse.getStatusCode().is2xxSuccessful() || downloadResponse.getBody() == null) {
-                throw new IllegalStateException("wechat trade bill download failed");
+                throw new IllegalStateException("微信对账单下载失败");
             }
             return new WechatReconcileDownloadResult(billDate.toString(), downloadResponse.getBody(), downloadUrl);
         } catch (Exception ex) {
@@ -221,7 +222,7 @@ public class RealWechatPayGateway implements WechatPayGateway {
             if (ex instanceof IllegalArgumentException argumentException) {
                 throw argumentException;
             }
-            throw new IllegalStateException("failed to download wechat trade bill", ex);
+            throw new IllegalStateException("下载微信对账单失败", ex);
         }
     }
 
@@ -297,7 +298,7 @@ public class RealWechatPayGateway implements WechatPayGateway {
 
     private void validateMiniProgramIdentity(PayMerchantConfig merchantConfig) {
         if (trimToNull(merchantConfig.getAppId()) == null || trimToNull(merchantConfig.getAppSecret()) == null) {
-            throw new IllegalStateException("wechat mini-program app id or app secret is not configured");
+            throw new IllegalStateException("微信小程序 appId 或 appSecret 未配置");
         }
     }
 
@@ -307,7 +308,7 @@ public class RealWechatPayGateway implements WechatPayGateway {
             || trimToNull(merchantConfig.getMerchantSerialNo()) == null
             || trimToNull(merchantConfig.getPrivateKeyPath()) == null
             || trimToNull(merchantConfig.getNotifyUrl()) == null) {
-            throw new IllegalStateException("wechat pay merchant credentials are incomplete");
+            throw new IllegalStateException("微信支付商户关键配置不完整");
         }
     }
 

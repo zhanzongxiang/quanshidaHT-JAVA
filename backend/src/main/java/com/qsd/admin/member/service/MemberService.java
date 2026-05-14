@@ -1,6 +1,7 @@
 package com.qsd.admin.member.service;
 
 import com.qsd.admin.auth.dto.LoginResponse;
+import com.qsd.admin.common.exception.BusinessException;
 import com.qsd.admin.common.exception.NotFoundException;
 import com.qsd.admin.member.dto.MemberAdminDetailResponse;
 import com.qsd.admin.member.dto.MemberAdminSaveRequest;
@@ -9,10 +10,10 @@ import com.qsd.admin.member.dto.MemberLoginRequest;
 import com.qsd.admin.member.dto.MemberProfileResponse;
 import com.qsd.admin.member.dto.MemberProfileUpdateRequest;
 import com.qsd.admin.member.dto.MemberRegisterRequest;
-import com.qsd.admin.member.dto.MemberWechatBindRequest;
-import com.qsd.admin.member.dto.MemberWechatLoginRequest;
 import com.qsd.admin.member.dto.MemberWaybillDetailResponse;
 import com.qsd.admin.member.dto.MemberWaybillSummaryResponse;
+import com.qsd.admin.member.dto.MemberWechatBindRequest;
+import com.qsd.admin.member.dto.MemberWechatLoginRequest;
 import com.qsd.admin.member.entity.MemberUser;
 import com.qsd.admin.member.entity.MemberWaybillRelation;
 import com.qsd.admin.member.mapper.MemberUserMapper;
@@ -47,6 +48,7 @@ public class MemberService {
     private static final String STATUS_ACTIVE = "active";
     private static final String STATUS_DISABLED = "disabled";
     private static final String STATUS_PENDING = "pending";
+    private static final Set<String> ALLOWED_STATUSES = Set.of(STATUS_ACTIVE, STATUS_DISABLED, STATUS_PENDING);
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final MemberUserMapper memberUserMapper;
@@ -101,10 +103,10 @@ public class MemberService {
     public MemberAdminDetailResponse createAdminMember(MemberAdminSaveRequest request) {
         MemberUser existing = memberUserMapper.selectByPhone(request.phone().trim());
         if (existing != null) {
-            throw new IllegalArgumentException("member phone already exists");
+            throw new BusinessException("该手机号已存在");
         }
         if (trimToNull(request.password()) == null) {
-            throw new IllegalArgumentException("password is required when creating a member");
+            throw new BusinessException("新建会员时必须设置登录密码");
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -130,7 +132,7 @@ public class MemberService {
         MemberUser member = requireMember(id);
         MemberUser existing = memberUserMapper.selectByPhone(request.phone().trim());
         if (existing != null && !existing.getId().equals(id)) {
-            throw new IllegalArgumentException("member phone already exists");
+            throw new BusinessException("该手机号已存在");
         }
 
         member.setPhone(request.phone().trim());
@@ -161,7 +163,7 @@ public class MemberService {
     @Transactional
     public LoginResponse register(MemberRegisterRequest request) {
         if (memberUserMapper.selectByPhone(request.phone().trim()) != null) {
-            throw new IllegalArgumentException("phone already registered");
+            throw new BusinessException("该手机号已注册");
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -186,21 +188,19 @@ public class MemberService {
     @Transactional
     public LoginResponse login(MemberLoginRequest request) {
         MemberUser member = memberUserMapper.selectByPhone(request.phone().trim());
-        if (member == null) {
-            throw new IllegalArgumentException("member does not exist");
+        if (member == null || !member.getPasswordHash().equals(request.password().trim())) {
+            throw new BusinessException("手机号或密码错误");
         }
         if (STATUS_DISABLED.equals(member.getStatus())) {
-            throw new IllegalArgumentException("member is disabled");
+            throw new BusinessException("会员已被停用");
         }
         if (STATUS_PENDING.equals(member.getStatus())) {
-            throw new IllegalArgumentException("member is pending approval");
-        }
-        if (!member.getPasswordHash().equals(request.password().trim())) {
-            throw new IllegalArgumentException("invalid phone or password");
+            throw new BusinessException("会员待审核，暂不可登录");
         }
 
-        member.setLastLoginAt(LocalDateTime.now());
-        member.setUpdatedAt(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        member.setLastLoginAt(now);
+        member.setUpdatedAt(now);
         memberUserMapper.updateById(member);
 
         String token = jwtTokenService.createMemberToken(member.getId(), member.getPhone());
@@ -213,7 +213,7 @@ public class MemberService {
         WechatCodeSessionResponse session = wechatPayGateway.exchangeCode(request.code(), merchantConfig);
         String openid = trimToNull(session.openid());
         if (openid == null) {
-            throw new IllegalArgumentException("wechat openid is missing");
+            throw new BusinessException("未获取到微信 openid，请稍后重试");
         }
 
         MemberUser member = memberUserMapper.selectByWechatOpenid(openid);
@@ -231,7 +231,7 @@ public class MemberService {
                 member.setFullName(trimToEmpty(request.fullName()));
                 member.setAvatarUrl("");
                 member.setStatus(STATUS_ACTIVE);
-                member.setRemark("created by wechat login");
+                member.setRemark("微信登录自动创建");
                 member.setDeleted(0);
                 member.setCreatedAt(now);
             }
@@ -279,18 +279,19 @@ public class MemberService {
 
         String openid = trimToNull(request.openid());
         if (openid == null) {
-            throw new IllegalArgumentException("openid must not be blank");
+            throw new BusinessException("openid 不能为空");
         }
 
         MemberUser existing = memberUserMapper.selectByWechatOpenid(openid);
         if (existing != null && !existing.getId().equals(memberId)) {
-            throw new IllegalArgumentException("wechat openid is already bound to another member");
+            throw new BusinessException("该微信身份已绑定其他会员");
         }
 
+        LocalDateTime now = LocalDateTime.now();
         member.setWechatOpenid(openid);
         member.setWechatUnionid(trimToEmpty(request.unionid()));
-        member.setWechatBindTime(LocalDateTime.now());
-        member.setUpdatedAt(LocalDateTime.now());
+        member.setWechatBindTime(now);
+        member.setUpdatedAt(now);
         memberUserMapper.updateById(member);
         return toProfile(member);
     }
@@ -306,7 +307,7 @@ public class MemberService {
         ensureMemberUsable(member);
         WaybillOrder order = waybillOrderMapper.selectAccessibleDetailByMember(waybillId, memberId, member.getPhone());
         if (order == null) {
-            throw new NotFoundException("member waybill not found");
+            throw new NotFoundException("会员运单不存在");
         }
         List<WaybillLeg> legEntities = waybillService.listLegs(order.getId());
         Map<Long, Integer> legNoMap = new HashMap<>();
@@ -433,14 +434,15 @@ public class MemberService {
 
         List<WaybillOrder> waybills = waybillOrderMapper.selectActiveByIds(new ArrayList<>(uniqueIds));
         if (waybills.size() != uniqueIds.size()) {
-            throw new IllegalArgumentException("invalid waybill ids for member binding");
+            throw new BusinessException("存在无效的运单，无法完成绑定");
         }
 
+        LocalDateTime now = LocalDateTime.now();
         for (Long waybillId : uniqueIds) {
             MemberWaybillRelation relation = new MemberWaybillRelation();
             relation.setMemberId(memberId);
             relation.setWaybillId(waybillId);
-            relation.setCreatedAt(LocalDateTime.now());
+            relation.setCreatedAt(now);
             memberWaybillRelationMapper.insert(relation);
         }
     }
@@ -457,27 +459,27 @@ public class MemberService {
     private MemberUser requireMember(Long id) {
         MemberUser member = memberUserMapper.selectActiveById(id);
         if (member == null) {
-            throw new NotFoundException("member not found");
+            throw new NotFoundException("会员不存在");
         }
         return member;
     }
 
     private void ensureMemberUsable(MemberUser member) {
         if (STATUS_DISABLED.equals(member.getStatus())) {
-            throw new IllegalArgumentException("member is disabled");
+            throw new BusinessException("会员已被停用");
         }
         if (STATUS_PENDING.equals(member.getStatus())) {
-            throw new IllegalArgumentException("member is pending approval");
+            throw new BusinessException("会员待审核，暂不可操作");
         }
     }
 
     private String normalizeStatus(String status) {
         String normalized = trimToNull(status);
         if (normalized == null) {
-            throw new IllegalArgumentException("member status is required");
+            throw new BusinessException("会员状态不能为空");
         }
-        if (!STATUS_ACTIVE.equals(normalized) && !STATUS_DISABLED.equals(normalized) && !STATUS_PENDING.equals(normalized)) {
-            throw new IllegalArgumentException("member status is invalid");
+        if (!ALLOWED_STATUSES.contains(normalized)) {
+            throw new BusinessException("会员状态不合法");
         }
         return normalized;
     }
@@ -503,7 +505,7 @@ public class MemberService {
     }
 
     private String generateVirtualPhone(String openid) {
-        int suffix = Math.abs(openid.hashCode()) % 100000000;
+        int suffix = Math.floorMod(openid.hashCode(), 100000000);
         return "199" + String.format("%08d", suffix);
     }
 }

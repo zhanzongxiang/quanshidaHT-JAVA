@@ -6,7 +6,7 @@
       <text class="section-subtitle">{{ subtitleText }}</text>
       <view class="result-lines">
         <text class="detail-line">支付单号：{{ orderNo || '暂无' }}</text>
-        <text class="detail-line">状态：{{ status || '未知' }}</text>
+        <text class="detail-line">状态：{{ formatPaymentStatus(status || 'timeout') }}</text>
         <text class="detail-line">轮询次数：{{ pollCount }}</text>
         <text v-if="statusMessage" class="detail-line">提示：{{ statusMessage }}</text>
       </view>
@@ -26,7 +26,7 @@
       <view class="actions top-gap">
         <button class="button-primary" @click="openPaymentList">查看支付记录</button>
         <button class="button-secondary" @click="openWaybills">返回运单列表</button>
-        <button plain @click="pollNow">立即刷新状态</button>
+        <button plain :disabled="polling" @click="pollNow">{{ polling ? '刷新中...' : '立即刷新状态' }}</button>
       </view>
     </view>
   </view>
@@ -37,14 +37,18 @@ import { computed, ref } from 'vue'
 import { onLoad, onUnload } from '@dcloudio/uni-app'
 import { fetchMemberPayments } from '@/api/payment'
 import type { MemberPayOrderSummary } from '@/types/payment'
+import { formatPaymentStatus } from '@/utils/display'
 import { ensureMemberSession } from '@/utils/guards'
+import { openAppPage } from '@/utils/navigation'
 
 const MAX_POLL_COUNT = 6
+const FINAL_STATUSES = ['paid', 'closed', 'exception', 'refunded']
 
 const orderNo = ref('')
 const status = ref('')
 const statusMessage = ref('')
 const pollCount = ref(0)
+const polling = ref(false)
 const currentPayment = ref<MemberPayOrderSummary | null>(null)
 let timer: ReturnType<typeof setTimeout> | null = null
 
@@ -80,9 +84,9 @@ onLoad(async (query) => {
     return
   }
 
-  orderNo.value = String(query?.orderNo || '')
-  status.value = String(query?.status || 'paying')
-  statusMessage.value = String(query?.message || '')
+  orderNo.value = String(query?.orderNo || '').trim()
+  status.value = String(query?.status || 'paying').trim()
+  statusMessage.value = String(query?.message || '').trim()
   await pollStatus()
 })
 
@@ -91,39 +95,50 @@ onUnload(() => {
 })
 
 async function pollStatus() {
+  if (polling.value) {
+    return
+  }
+
   if (!orderNo.value) {
     if (!statusMessage.value && status.value === 'exception') {
-      statusMessage.value = '未获取到支付单号，请回到支付记录页核对后端状态。'
+      statusMessage.value = '未获取到支付单号，请回到支付记录页核对后台状态。'
     }
     return
   }
 
+  polling.value = true
   pollCount.value += 1
-  const payments = await fetchMemberPayments()
-  currentPayment.value = payments.find((item) => item.orderNo === orderNo.value) || null
+  try {
+    const payments = await fetchMemberPayments()
+    currentPayment.value = payments.find((item) => item.orderNo === orderNo.value) || null
 
-  if (currentPayment.value) {
-    status.value = currentPayment.value.status
-  }
-
-  if (['paid', 'closed', 'exception', 'refunded'].includes(status.value)) {
-    clearTimer()
-    return
-  }
-
-  if (pollCount.value >= MAX_POLL_COUNT) {
-    status.value = 'timeout'
-    if (!statusMessage.value) {
-      statusMessage.value = '未在预期时间内拉到最终结果。'
+    if (currentPayment.value) {
+      status.value = currentPayment.value.status
+    } else if (!statusMessage.value) {
+      statusMessage.value = '当前支付记录暂未同步到列表，请稍后重试。'
     }
-    clearTimer()
-    return
-  }
 
-  clearTimer()
-  timer = setTimeout(() => {
-    void pollStatus()
-  }, 2500)
+    if (FINAL_STATUSES.includes(status.value)) {
+      clearTimer()
+      return
+    }
+
+    if (pollCount.value >= MAX_POLL_COUNT) {
+      status.value = 'timeout'
+      if (!statusMessage.value) {
+        statusMessage.value = '未在预期时间内拿到最终结果。'
+      }
+      clearTimer()
+      return
+    }
+
+    clearTimer()
+    timer = setTimeout(() => {
+      void pollStatus()
+    }, 2500)
+  } finally {
+    polling.value = false
+  }
 }
 
 function clearTimer() {
@@ -139,15 +154,11 @@ async function pollNow() {
 }
 
 function openPaymentList() {
-  uni.switchTab({
-    url: '/pages/payment/list',
-  })
+  openAppPage('/pages/payment/list')
 }
 
 function openWaybills() {
-  uni.switchTab({
-    url: '/pages/waybill/list',
-  })
+  openAppPage('/pages/waybill/list')
 }
 </script>
 
@@ -158,16 +169,5 @@ function openWaybills() {
 
 .result-lines {
   margin-top: 20rpx;
-}
-
-.detail-line {
-  display: block;
-  margin-top: 10rpx;
-  line-height: 1.6;
-  color: #4f544c;
-}
-
-.top-gap {
-  margin-top: 24rpx;
 }
 </style>

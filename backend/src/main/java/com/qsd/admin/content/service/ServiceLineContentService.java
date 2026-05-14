@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.qsd.admin.common.exception.BusinessException;
 import com.qsd.admin.content.dto.ServiceLineContentResponse;
 import com.qsd.admin.content.dto.ServiceLineSummaryResponse;
 import com.qsd.admin.content.entity.SiteContentPage;
@@ -156,7 +157,7 @@ public class ServiceLineContentService {
 
         ServiceLineDefinition definition = SERVICE_LINE_DEFINITIONS.get(resolvedCode);
         if (definition == null) {
-            throw new IllegalArgumentException("unsupported service line code");
+            throw new BusinessException("不支持的专线编码");
         }
         return definition;
     }
@@ -167,7 +168,7 @@ public class ServiceLineContentService {
 
     private void validateForm(JsonNode form) {
         if (form == null || form.isNull() || !form.isObject()) {
-            throw new IllegalArgumentException("form must be an object");
+            throw new BusinessException("专线内容表单格式不正确");
         }
     }
 
@@ -175,7 +176,7 @@ public class ServiceLineContentService {
         try {
             return objectMapper.writeValueAsString(form);
         } catch (JsonProcessingException ex) {
-            throw new IllegalArgumentException("failed to serialize service line content");
+            throw new BusinessException("专线内容序列化失败");
         }
     }
 

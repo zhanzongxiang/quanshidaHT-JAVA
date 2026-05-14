@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.qsd.admin.common.exception.BusinessException;
 import com.qsd.admin.common.exception.NotFoundException;
 import com.qsd.admin.content.entity.SiteContentPage;
 import com.qsd.admin.content.mapper.SiteContentPageMapper;
@@ -347,7 +348,7 @@ public class PublicWebsiteService {
     public JsonNode getTrackingResult(String trackingNo) {
         String normalizedNo = trackingNo == null ? "" : trackingNo.trim().toUpperCase(Locale.ROOT);
         if (normalizedNo.isBlank()) {
-            throw new NotFoundException("运单号不能为空");
+            throw new BusinessException("运单号不能为空");
         }
 
         JsonNode actualResult = waybillPublicService.findTrackingResult(normalizedNo);
@@ -392,11 +393,11 @@ public class PublicWebsiteService {
         try {
             JsonNode node = objectMapper.readTree(page.getFormJson());
             if (!node.isObject()) {
-                throw new NotFoundException("页面数据格式无效");
+                throw new BusinessException("页面数据格式无效");
             }
             return (ObjectNode) node;
         } catch (JsonProcessingException ex) {
-            throw new NotFoundException("页面数据格式无效");
+            throw new BusinessException("页面数据格式无效");
         }
     }
 
@@ -430,7 +431,7 @@ public class PublicWebsiteService {
             return "";
         }
         if (!trimmed.matches("\\d{4}")) {
-            throw new IllegalArgumentException("year must be a 4-digit number");
+            throw new BusinessException("年份必须为 4 位数字");
         }
         return trimmed;
     }

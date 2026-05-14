@@ -5,7 +5,7 @@
         <div class="space-y-1">
           <p class="text-xs font-semibold uppercase tracking-[0.3em] text-brand">QSD Admin</p>
           <h2 class="m-0 text-3xl font-extrabold text-ink">登录后台</h2>
-          <p class="m-0 text-sm text-mist">请输入账号密码进入系统。</p>
+          <p class="m-0 text-sm text-mist">请输入账号密码进入管理系统。</p>
         </div>
       </template>
 
@@ -18,10 +18,10 @@
         @submit.prevent="onSubmit"
       >
         <el-form-item label="用户名" prop="username">
-          <el-input v-model="form.username" placeholder="admin" />
+          <el-input v-model.trim="form.username" placeholder="请输入用户名" maxlength="64" />
         </el-form-item>
         <el-form-item label="密码" prop="password">
-          <el-input v-model="form.password" type="password" show-password placeholder="admin123" />
+          <el-input v-model.trim="form.password" type="password" show-password placeholder="请输入密码" maxlength="64" />
         </el-form-item>
         <el-button
           type="primary"
@@ -38,9 +38,9 @@
 
 <script setup lang="ts">
 import type { FormInstance, FormRules } from 'element-plus'
-import { ElMessage } from 'element-plus'
 import { reactive, ref } from 'vue'
 import { useAuthStore } from '../stores/auth'
+import { showErrorMessage } from '../utils/message'
 
 const auth = useAuthStore()
 const formRef = ref<FormInstance>()
@@ -56,22 +56,24 @@ const rules: FormRules = {
 }
 
 async function onSubmit() {
-  if (!formRef.value || submitting.value) return
+  if (!formRef.value || submitting.value) {
+    return
+  }
 
-  const valid = await formRef.value.validate().catch(() => false)
-  if (!valid) return
+  const valid = await formRef.value.validate().then(() => true).catch(() => false)
+  if (!valid) {
+    return
+  }
 
   submitting.value = true
   try {
     await auth.loginByPassword(form.username, form.password)
-
     if (!auth.me) {
-      throw new Error('missing me after login')
+      throw new Error('登录成功，但未获取到用户信息')
     }
-
     window.location.href = '/admin/dashboard'
   } catch (error) {
-    ElMessage.error('登录失败，请检查账号密码或接口状态。')
+    showErrorMessage(error, '登录失败，请检查账号密码或接口状态')
   } finally {
     submitting.value = false
   }

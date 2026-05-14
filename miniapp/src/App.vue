@@ -77,10 +77,65 @@ page {
   gap: 20rpx;
 }
 
+.field-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.input {
+  height: 88rpx;
+  padding: 0 24rpx;
+  border-radius: 18rpx;
+  border: 2rpx solid #ddd2c2;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 112rpx;
+  padding: 18rpx 20rpx;
+  border-radius: 16rpx;
+  border: 2rpx solid #ddd2c2;
+  background: #fff;
+  color: #1f2a26;
+  line-height: 1.6;
+  box-sizing: border-box;
+}
+
 .actions {
   display: flex;
   flex-direction: column;
   gap: 18rpx;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+}
+
+.row-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.detail-line {
+  display: block;
+  margin-top: 10rpx;
+  line-height: 1.6;
+  color: #4f544c;
+  word-break: break-all;
+}
+
+.top-gap {
+  margin-top: 24rpx;
+}
+
+.muted {
+  color: #7b756b;
 }
 
 .empty-text {

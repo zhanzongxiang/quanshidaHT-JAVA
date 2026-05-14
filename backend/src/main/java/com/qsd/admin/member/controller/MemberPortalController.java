@@ -1,14 +1,15 @@
 package com.qsd.admin.member.controller;
 
 import com.qsd.admin.common.ApiResponse;
+import com.qsd.admin.common.exception.BusinessException;
 import com.qsd.admin.member.dto.MemberProfileResponse;
 import com.qsd.admin.member.dto.MemberProfileUpdateRequest;
-import com.qsd.admin.member.dto.MemberWechatBindRequest;
 import com.qsd.admin.member.dto.MemberWaybillDetailResponse;
 import com.qsd.admin.member.dto.MemberWaybillSummaryResponse;
+import com.qsd.admin.member.dto.MemberWechatBindRequest;
+import com.qsd.admin.member.service.MemberService;
 import com.qsd.admin.payment.dto.MemberPaymentPrepareRequest;
 import com.qsd.admin.payment.dto.MemberPaymentPrepareResponse;
-import com.qsd.admin.member.service.MemberService;
 import com.qsd.admin.payment.dto.MemberPayOrderSummaryResponse;
 import com.qsd.admin.payment.service.PaymentService;
 import com.qsd.admin.security.AuthenticatedUser;
@@ -83,7 +84,7 @@ public class MemberPortalController {
 
     private Long currentMember(Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof AuthenticatedUser user)) {
-            throw new IllegalArgumentException("member identity is missing");
+            throw new BusinessException("会员身份已失效，请重新登录");
         }
         return user.userId();
     }

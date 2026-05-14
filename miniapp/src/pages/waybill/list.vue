@@ -16,15 +16,15 @@
       <text class="empty-text">当前没有可见运单</text>
     </view>
 
-    <view v-else class="list-stack">
+    <view v-else class="stack">
       <view v-for="item in waybills" :key="item.id" class="card list-item" @click="openDetail(item.id)">
         <view class="row-between">
           <text class="item-title">{{ item.mainTrackingNo }}</text>
           <text class="pill">{{ formatWaybillStatus(item.currentStatus) }}</text>
         </view>
-        <text class="item-line">{{ item.customerName }} · {{ item.destinationCountry }} {{ item.destinationCity }}</text>
-        <text class="item-line">当前节点：{{ item.currentNode || '暂无节点' }}</text>
-        <text class="item-line muted">更新时间：{{ item.updatedAt }}</text>
+        <text class="detail-line">{{ item.customerName }} · {{ item.destinationCountry }} {{ item.destinationCity || '' }}</text>
+        <text class="detail-line">当前节点：{{ item.currentNode || '暂无节点' }}</text>
+        <text class="detail-line muted">更新时间：{{ item.updatedAt }}</text>
       </view>
     </view>
   </view>
@@ -37,6 +37,7 @@ import { fetchMemberWaybills } from '@/api/member'
 import type { MemberWaybillSummary } from '@/types/member'
 import { formatWaybillStatus } from '@/utils/display'
 import { ensureMemberSession } from '@/utils/guards'
+import { openAppPage } from '@/utils/navigation'
 
 const loading = ref(false)
 const waybills = ref<MemberWaybillSummary[]>([])
@@ -59,9 +60,7 @@ async function loadWaybills() {
 }
 
 function openDetail(id: number) {
-  uni.navigateTo({
-    url: `/pages/waybill/detail?id=${id}`,
-  })
+  openAppPage(`/pages/waybill/detail?id=${id}`)
 }
 </script>
 
@@ -70,27 +69,10 @@ function openDetail(id: number) {
   margin-bottom: 24rpx;
 }
 
-.top-gap {
-  margin-top: 20rpx;
-}
-
-.list-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 20rpx;
-}
-
 .list-item {
   display: flex;
   flex-direction: column;
   gap: 10rpx;
-}
-
-.row-between {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16rpx;
 }
 
 .item-title {
@@ -98,14 +80,5 @@ function openDetail(id: number) {
   font-weight: 700;
   color: #1d2f28;
   word-break: break-all;
-}
-
-.item-line {
-  color: #4f544c;
-  line-height: 1.6;
-}
-
-.muted {
-  color: #7b756b;
 }
 </style>

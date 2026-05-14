@@ -39,9 +39,9 @@
 </template>
 
 <script setup lang="ts">
-import { ElMessage } from 'element-plus'
 import { onMounted, reactive, ref } from 'vue'
 import { fetchFooterSettings, saveFooterSettings } from '../api/site-settings'
+import { showErrorMessage, showSuccessMessage } from '../utils/message'
 import type { FooterSettings } from '../types/site-settings'
 
 const saving = ref(false)
@@ -56,14 +56,20 @@ const form = reactive<FooterSettings>({
 })
 
 async function loadSettings() {
-  Object.assign(form, await fetchFooterSettings())
+  try {
+    Object.assign(form, await fetchFooterSettings())
+  } catch (error) {
+    showErrorMessage(error, '页脚设置加载失败')
+  }
 }
 
 async function onSave() {
   saving.value = true
   try {
     await saveFooterSettings({ ...form })
-    ElMessage.success('页脚设置已保存')
+    showSuccessMessage('页脚设置已保存')
+  } catch (error) {
+    showErrorMessage(error, '页脚设置保存失败')
   } finally {
     saving.value = false
   }

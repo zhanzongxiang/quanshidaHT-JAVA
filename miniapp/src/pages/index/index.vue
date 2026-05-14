@@ -11,12 +11,12 @@
     <view v-if="memberStore.profile" class="card profile-card">
       <view class="row-between">
         <text class="section-title">{{ displayName }}</text>
-        <text class="pill">{{ memberStore.profile.status }}</text>
+        <text class="pill">{{ memberStatusText }}</text>
       </view>
       <text class="section-subtitle">手机号：{{ memberStore.profile.phone }}</text>
       <text class="section-subtitle">微信状态：{{ wechatBindStatus }}</text>
       <text v-if="memberStore.profile.wechatOpenid" class="section-subtitle">
-        openid：{{ maskedWechatOpenid }}
+        OpenID：{{ maskedWechatOpenid }}
       </text>
     </view>
 
@@ -24,21 +24,21 @@
       <text class="section-title">先完成登录</text>
       <text class="section-subtitle">支持手机号登录、注册，也预留了微信登录入口。</text>
       <view class="actions top-gap">
-        <button class="button-primary" @click="goToLogin">手机号登录</button>
-        <button class="button-secondary" @click="goToRegister">注册会员</button>
+        <button class="button-primary" @click="goToLogin()">手机号登录</button>
+        <button class="button-secondary" @click="openAppPage('/pages/auth/register')">注册会员</button>
       </view>
     </view>
 
     <view class="grid-links">
-      <view class="link-card" @click="openWaybills">
+      <view class="link-card" @click="openAppPage('/pages/waybill/list')">
         <text class="link-title">我的运单</text>
         <text class="link-text">查看会员可见运单、进入详情并继续支付联调。</text>
       </view>
-      <view class="link-card" @click="openPayments">
+      <view class="link-card" @click="openAppPage('/pages/payment/list')">
         <text class="link-title">支付记录</text>
         <text class="link-text">查看支付状态、回看结果页、校对支付同步情况。</text>
       </view>
-      <view class="link-card" @click="openProfile">
+      <view class="link-card" @click="openAppPage('/pages/profile/index')">
         <text class="link-title">我的资料</text>
         <text class="link-text">维护昵称、姓名、头像，并查看微信绑定状态。</text>
       </view>
@@ -46,11 +46,11 @@
         <text class="link-title">刷新会话</text>
         <text class="link-text">重新拉取当前会员资料，验证登录态和资料回写。</text>
       </view>
-      <view class="link-card" @click="openChecklist">
+      <view class="link-card" @click="openAppPage('/pages/debug/checklist')">
         <text class="link-title">联调工作台</text>
         <text class="link-text">按步骤记录登录、运单、支付和资料链路，并复制联调摘要。</text>
       </view>
-      <view class="link-card" @click="openDiagnostics">
+      <view class="link-card" @click="openAppPage('/pages/debug/diagnostics')">
         <text class="link-title">环境诊断</text>
         <text class="link-text">快速查看后端地址、登录态、微信绑定和最近接口结果。</text>
       </view>
@@ -69,7 +69,9 @@ import { computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { API_BASE_URL } from '@/config/env'
 import { useMemberStore } from '@/stores/member'
-import { formatWechatBindStatus, maskIdentifier } from '@/utils/display'
+import { formatMemberStatus, formatWechatBindStatus, maskIdentifier } from '@/utils/display'
+import { goToLogin, openAppPage } from '@/utils/navigation'
+import { showError, showSuccess } from '@/utils/toast'
 
 const memberStore = useMemberStore()
 const apiBaseUrl = API_BASE_URL
@@ -79,6 +81,7 @@ const displayName = computed(() => {
   return profile?.nickname || profile?.fullName || profile?.phone || '会员'
 })
 
+const memberStatusText = computed(() => formatMemberStatus(memberStore.profile?.status))
 const wechatBindStatus = computed(() => formatWechatBindStatus(memberStore.profile?.wechatOpenid))
 const maskedWechatOpenid = computed(() => maskIdentifier(memberStore.profile?.wechatOpenid))
 
@@ -93,59 +96,18 @@ onShow(async () => {
   }
 })
 
-function goToLogin() {
-  uni.navigateTo({
-    url: '/pages/auth/login',
-  })
-}
-
-function goToRegister() {
-  uni.navigateTo({
-    url: '/pages/auth/register',
-  })
-}
-
-function openWaybills() {
-  uni.switchTab({
-    url: '/pages/waybill/list',
-  })
-}
-
-function openPayments() {
-  uni.switchTab({
-    url: '/pages/payment/list',
-  })
-}
-
-function openProfile() {
-  uni.switchTab({
-    url: '/pages/profile/index',
-  })
-}
-
-function openChecklist() {
-  uni.navigateTo({
-    url: '/pages/debug/checklist',
-  })
-}
-
-function openDiagnostics() {
-  uni.navigateTo({
-    url: '/pages/debug/diagnostics',
-  })
-}
-
 async function refreshProfile() {
   if (!memberStore.isAuthenticated) {
-    goToLogin()
+    goToLogin('/pages/index/index')
     return
   }
 
-  await memberStore.fetchProfile()
-  uni.showToast({
-    title: '资料已刷新',
-    icon: 'success',
-  })
+  try {
+    await memberStore.fetchProfile()
+    showSuccess('资料已刷新')
+  } catch (error) {
+    showError(error, '资料刷新失败')
+  }
 }
 </script>
 
