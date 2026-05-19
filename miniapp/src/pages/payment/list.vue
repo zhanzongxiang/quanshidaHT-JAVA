@@ -45,7 +45,7 @@ import type { MemberPayOrderSummary } from '@/types/payment'
 import { formatPaymentStatus } from '@/utils/display'
 import { ensureMemberSession } from '@/utils/guards'
 import { openAppPage } from '@/utils/navigation'
-import { showError } from '@/utils/toast'
+import { runPageTaskWithLoading } from '@/utils/page'
 
 const loading = ref(false)
 const payments = ref<MemberPayOrderSummary[]>([])
@@ -55,17 +55,19 @@ onShow(async () => {
   if (!ready) {
     return
   }
+
   await loadPayments()
 })
 
 async function loadPayments() {
-  loading.value = true
-  try {
-    payments.value = await fetchMemberPayments()
-  } catch (error) {
-    showError(error, '支付记录加载失败')
-  } finally {
-    loading.value = false
+  const data = await runPageTaskWithLoading(
+    loading,
+    () => fetchMemberPayments(),
+    '支付记录加载失败',
+  )
+
+  if (data) {
+    payments.value = data
   }
 }
 

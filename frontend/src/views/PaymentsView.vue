@@ -576,6 +576,7 @@ import type {
   RefundCreatePayload,
 } from '../types/payment'
 import type { WaybillSummary } from '../types/waybill'
+import { runSafely, runWithLoading } from '../utils/async'
 import { confirmAction, showErrorMessage, showSuccessMessage } from '../utils/message'
 import { hasText, isPositiveAmount } from '../utils/validation'
 
@@ -677,24 +678,23 @@ function resetMerchantForm() {
   Object.assign(merchantForm, createEmptyMerchantPayload())
 }
 
-async function loadDictionaryData() {
-  const data = await fetchDictionaryOptions(['pay_order_status', 'pay_channel'])
-  statusOptions.value = data.pay_order_status ?? []
-  channelOptions.value = data.pay_channel ?? []
+function createPaymentListQuery() {
+  return {
+    keyword: keyword.value || undefined,
+    status: statusFilter.value || undefined,
+    channel: channelFilter.value || undefined,
+  }
 }
 
 async function loadPayments() {
-  loading.value = true
-  try {
-    payments.value = await fetchPayments({
-      keyword: keyword.value || undefined,
-      status: statusFilter.value || undefined,
-      channel: channelFilter.value || undefined,
-    })
-  } catch (error) {
-    showErrorMessage(error, '支付单列表加载失败')
-  } finally {
-    loading.value = false
+  const data = await runWithLoading(
+    loading,
+    () => fetchPayments(createPaymentListQuery()),
+    '支付单列表加载失败',
+  )
+
+  if (data) {
+    payments.value = data
   }
 }
 
@@ -706,12 +706,6 @@ async function loadOpsOverview() {
   opsOverview.value = await fetchPaymentOpsOverview()
 }
 
-async function loadSelectorData() {
-  const [members, waybills] = await Promise.all([fetchMembers(), fetchWaybills()])
-  memberOptions.value = members
-  waybillOptions.value = waybills
-}
-
 async function loadMerchantConfigs() {
   merchantConfigs.value = await fetchPaymentMerchants()
 }
@@ -719,26 +713,43 @@ async function loadMerchantConfigs() {
 async function refreshListAndDetail(paymentId?: number | null) {
   await loadPayments()
   if (paymentId) {
-    detail.value = await fetchPayment(paymentId)
+    const nextDetail = await runSafely(() => fetchPayment(paymentId), '支付详情刷新失败')
+    if (nextDetail) {
+      detail.value = nextDetail
+    }
   }
 }
 
 async function loadData() {
-  loading.value = true
-  try {
-    await Promise.all([
-      loadDictionaryData(),
-      loadSelectorData(),
-      loadPayments(),
-      loadReconcileRecords(),
-      loadMerchantConfigs(),
-      loadOpsOverview(),
-    ])
-  } catch (error) {
-    showErrorMessage(error, '支付管理数据加载失败')
-  } finally {
-    loading.value = false
+  const data = await runWithLoading(
+    loading,
+    async () => {
+      const [dictionaryData, selectorData, paymentList, reconcileList, merchants, overview] = await Promise.all([
+        fetchDictionaryOptions(['pay_order_status', 'pay_channel']),
+        Promise.all([fetchMembers(), fetchWaybills()]),
+        fetchPayments(createPaymentListQuery()),
+        fetchReconcileRecords(channelFilter.value || undefined),
+        fetchPaymentMerchants(),
+        fetchPaymentOpsOverview(),
+      ])
+
+      return { dictionaryData, selectorData, paymentList, reconcileList, merchants, overview }
+    },
+    '支付管理数据加载失败',
+  )
+
+  if (!data) {
+    return
   }
+
+  statusOptions.value = data.dictionaryData.pay_order_status ?? []
+  channelOptions.value = data.dictionaryData.pay_channel ?? []
+  memberOptions.value = data.selectorData[0]
+  waybillOptions.value = data.selectorData[1]
+  payments.value = data.paymentList
+  reconcileRecords.value = data.reconcileList
+  merchantConfigs.value = data.merchants
+  opsOverview.value = data.overview
 }
 
 function openCreateDialog() {
@@ -781,26 +792,18 @@ function openMerchantDialog(item?: PayMerchantConfig) {
 }
 
 async function openDetailDialog(id: number) {
-  loading.value = true
-  try {
-    detail.value = await fetchPayment(id)
+  const paymentDetail = await runWithLoading(loading, () => fetchPayment(id), '支付详情加载失败')
+  if (paymentDetail) {
+    detail.value = paymentDetail
     detailDialogVisible.value = true
-  } catch (error) {
-    showErrorMessage(error, '支付详情加载失败')
-  } finally {
-    loading.value = false
   }
 }
 
 async function openReconcileDiffDialog(id: number) {
-  loading.value = true
-  try {
-    reconcileDiffDetail.value = await fetchReconcileDiffDetail(id)
+  const diffDetail = await runWithLoading(loading, () => fetchReconcileDiffDetail(id), '对账差异详情加载失败')
+  if (diffDetail) {
+    reconcileDiffDetail.value = diffDetail
     reconcileDiffDialogVisible.value = true
-  } catch (error) {
-    showErrorMessage(error, '对账差异详情加载失败')
-  } finally {
-    loading.value = false
   }
 }
 
@@ -813,21 +816,25 @@ async function onSaveMerchant() {
     return
   }
 
-  saving.value = true
-  try {
-    if (merchantEditingId.value) {
-      await updatePaymentMerchant(merchantEditingId.value, merchantForm)
-      showSuccessMessage('商户更新成功')
-    } else {
-      await createPaymentMerchant(merchantForm)
-      showSuccessMessage('商户创建成功')
-    }
+  const saved = await runWithLoading(
+    saving,
+    async () => {
+      if (merchantEditingId.value) {
+        await updatePaymentMerchant(merchantEditingId.value, merchantForm)
+        showSuccessMessage('商户更新成功')
+      } else {
+        await createPaymentMerchant(merchantForm)
+        showSuccessMessage('商户创建成功')
+      }
+
+      return true
+    },
+    '商户保存失败',
+  )
+
+  if (saved) {
     merchantDialogVisible.value = false
     await Promise.all([loadMerchantConfigs(), loadOpsOverview()])
-  } catch (error) {
-    showErrorMessage(error, '商户保存失败')
-  } finally {
-    saving.value = false
   }
 }
 
@@ -837,33 +844,37 @@ async function onActivateMerchant(id: number) {
     return
   }
 
-  try {
+  const activated = await runSafely(async () => {
     await activatePaymentMerchant(id)
     showSuccessMessage('当前商户切换成功')
+    return true
+  }, '当前商户切换失败')
+
+  if (activated) {
     await Promise.all([loadMerchantConfigs(), loadOpsOverview()])
-  } catch (error) {
-    showErrorMessage(error, '当前商户切换失败')
   }
 }
 
 async function onRefreshCertificate() {
-  certificateRefreshing.value = true
-  try {
-    const certificateStatus: MerchantCertificateStatus = await refreshCurrentMerchantCertificate()
-    if (opsOverview.value) {
-      opsOverview.value = {
-        ...opsOverview.value,
-        currentMerchantCertificate: certificateStatus,
-      }
-    } else {
-      await loadOpsOverview()
-    }
-    showSuccessMessage('平台证书刷新成功')
-  } catch (error) {
-    showErrorMessage(error, '平台证书刷新失败')
-  } finally {
-    certificateRefreshing.value = false
+  const certificateStatus = await runWithLoading(
+    certificateRefreshing,
+    () => refreshCurrentMerchantCertificate(),
+    '平台证书刷新失败',
+  )
+
+  if (!certificateStatus) {
+    return
   }
+
+  if (opsOverview.value) {
+    opsOverview.value = {
+      ...opsOverview.value,
+      currentMerchantCertificate: certificateStatus as MerchantCertificateStatus,
+    }
+  } else {
+    await loadOpsOverview()
+  }
+  showSuccessMessage('平台证书刷新成功')
 }
 
 async function onReplayPaymentNotify(id: number) {
@@ -871,15 +882,18 @@ async function onReplayPaymentNotify(id: number) {
     return
   }
 
-  saving.value = true
-  try {
-    await replayPaymentNotifyLog(id)
+  const replayed = await runWithLoading(
+    saving,
+    async () => {
+      await replayPaymentNotifyLog(id)
+      return true
+    },
+    '支付回调重放失败',
+  )
+
+  if (replayed) {
     await Promise.all([refreshListAndDetail(detail.value.id), loadOpsOverview()])
     showSuccessMessage('支付回调重放成功')
-  } catch (error) {
-    showErrorMessage(error, '支付回调重放失败')
-  } finally {
-    saving.value = false
   }
 }
 
@@ -888,15 +902,18 @@ async function onReplayRefundNotify(id: number) {
     return
   }
 
-  saving.value = true
-  try {
-    await replayRefundNotifyLog(id)
+  const replayed = await runWithLoading(
+    saving,
+    async () => {
+      await replayRefundNotifyLog(id)
+      return true
+    },
+    '退款回调重放失败',
+  )
+
+  if (replayed) {
     await Promise.all([refreshListAndDetail(detail.value.id), loadOpsOverview()])
     showSuccessMessage('退款回调重放成功')
-  } catch (error) {
-    showErrorMessage(error, '退款回调重放失败')
-  } finally {
-    saving.value = false
   }
 }
 
@@ -905,15 +922,18 @@ async function onRetryRefund(id: number) {
     return
   }
 
-  saving.value = true
-  try {
-    await retryRefund(id)
+  const retried = await runWithLoading(
+    saving,
+    async () => {
+      await retryRefund(id)
+      return true
+    },
+    '退款重试失败',
+  )
+
+  if (retried) {
     await Promise.all([refreshListAndDetail(detail.value.id), loadOpsOverview()])
     showSuccessMessage('退款重试成功')
-  } catch (error) {
-    showErrorMessage(error, '退款重试失败')
-  } finally {
-    saving.value = false
   }
 }
 
@@ -940,16 +960,19 @@ async function onCreatePayment() {
     return
   }
 
-  saving.value = true
-  try {
-    await createPayment(form)
-    showSuccessMessage('支付单创建成功')
+  const created = await runWithLoading(
+    saving,
+    async () => {
+      await createPayment(form)
+      showSuccessMessage('支付单创建成功')
+      return true
+    },
+    '支付单创建失败',
+  )
+
+  if (created) {
     createDialogVisible.value = false
     await loadPayments()
-  } catch (error) {
-    showErrorMessage(error, '支付单创建失败')
-  } finally {
-    saving.value = false
   }
 }
 
@@ -963,31 +986,38 @@ async function onChangeStatus(id: number, status: string) {
     return
   }
 
-  try {
+  const updated = await runSafely(async () => {
     await updatePaymentStatus(id, status)
     showSuccessMessage('支付状态更新成功')
+    return true
+  }, '支付状态更新失败')
+
+  if (updated) {
     await refreshListAndDetail(detail.value?.id === id ? id : null)
-  } catch (error) {
-    showErrorMessage(error, '支付状态更新失败')
   }
 }
 
 async function onCreateRefund() {
-  if (!selectedPaymentId.value || !isPositiveAmount(refundForm.amountRefund)) {
+  const paymentId = selectedPaymentId.value
+
+  if (!paymentId || !isPositiveAmount(refundForm.amountRefund)) {
     showErrorMessage('请输入正确的退款金额')
     return
   }
 
-  saving.value = true
-  try {
-    await createRefund(selectedPaymentId.value, refundForm)
-    showSuccessMessage('退款单创建成功')
+  const created = await runWithLoading(
+    saving,
+    async () => {
+      await createRefund(paymentId, refundForm)
+      showSuccessMessage('退款单创建成功')
+      return true
+    },
+    '退款单创建失败',
+  )
+
+  if (created) {
     refundDialogVisible.value = false
-    await refreshListAndDetail(detail.value?.id === selectedPaymentId.value ? selectedPaymentId.value : null)
-  } catch (error) {
-    showErrorMessage(error, '退款单创建失败')
-  } finally {
-    saving.value = false
+    await refreshListAndDetail(detail.value?.id === paymentId ? paymentId : null)
   }
 }
 
@@ -997,16 +1027,19 @@ async function onCreateReconcile() {
     return
   }
 
-  saving.value = true
-  try {
-    await createReconcileRecord(reconcileForm)
-    showSuccessMessage('对账记录保存成功')
+  const saved = await runWithLoading(
+    saving,
+    async () => {
+      await createReconcileRecord(reconcileForm)
+      showSuccessMessage('对账记录保存成功')
+      return true
+    },
+    '对账记录保存失败',
+  )
+
+  if (saved) {
     reconcileDialogVisible.value = false
     await loadReconcileRecords()
-  } catch (error) {
-    showErrorMessage(error, '对账记录保存失败')
-  } finally {
-    saving.value = false
   }
 }
 
@@ -1040,6 +1073,6 @@ function onMerchantDialogClosed() {
 }
 
 onMounted(() => {
-  loadData()
+  void loadData()
 })
 </script>

@@ -240,6 +240,7 @@ import {
 import { useAuthStore } from '../stores/auth'
 import type { DictionaryOption } from '../types/dictionary'
 import type { WaybillDetail, WaybillEvent, WaybillLeg, WaybillSavePayload, WaybillSummary } from '../types/waybill'
+import { runSafely, runWithLoading } from '../utils/async'
 import { confirmAction, showErrorMessage, showSuccessMessage } from '../utils/message'
 import { hasText, isDateTimeText } from '../utils/validation'
 
@@ -332,17 +333,48 @@ function resetForm() {
   Object.assign(form, createInitialWaybillForm())
 }
 
+function fillFormFromWaybill(waybill: WaybillDetail) {
+  Object.assign(form, {
+    mainTrackingNo: waybill.mainTrackingNo,
+    referenceNo: waybill.referenceNo,
+    customerName: waybill.customerName,
+    customerPhone: waybill.customerPhone,
+    originWarehouse: waybill.originWarehouse,
+    destinationCountry: waybill.destinationCountry,
+    destinationCity: waybill.destinationCity,
+    routeType: waybill.routeType,
+    currentStatus: waybill.currentStatus,
+    currentNode: waybill.currentNode,
+    cargoDescription: waybill.cargoDescription,
+    packageCount: waybill.packageCount,
+    weightKg: waybill.weightKg,
+    remark: waybill.remark,
+    legs: cloneLegs(waybill.legs),
+    events: cloneEvents(waybill.events),
+  })
+}
+
+function createSavePayload(): WaybillSavePayload {
+  return {
+    ...form,
+    legs: cloneLegs(form.legs),
+    events: cloneEvents(form.events),
+  }
+}
+
 async function loadWaybills() {
-  loading.value = true
-  try {
-    waybills.value = await fetchWaybills({
-      keyword: keyword.value || undefined,
-      status: statusFilter.value || undefined,
-    })
-  } catch (error) {
-    showErrorMessage(error, '运单列表加载失败')
-  } finally {
-    loading.value = false
+  const data = await runWithLoading(
+    loading,
+    () =>
+      fetchWaybills({
+        keyword: keyword.value || undefined,
+        status: statusFilter.value || undefined,
+      }),
+    '运单列表加载失败',
+  )
+
+  if (data) {
+    waybills.value = data
   }
 }
 
@@ -353,34 +385,14 @@ function openCreateDialog() {
 }
 
 async function openEditDialog(id: number) {
-  loading.value = true
-  try {
-    const waybill: WaybillDetail = await fetchWaybill(id)
-    editingId.value = id
-    Object.assign(form, {
-      mainTrackingNo: waybill.mainTrackingNo,
-      referenceNo: waybill.referenceNo,
-      customerName: waybill.customerName,
-      customerPhone: waybill.customerPhone,
-      originWarehouse: waybill.originWarehouse,
-      destinationCountry: waybill.destinationCountry,
-      destinationCity: waybill.destinationCity,
-      routeType: waybill.routeType,
-      currentStatus: waybill.currentStatus,
-      currentNode: waybill.currentNode,
-      cargoDescription: waybill.cargoDescription,
-      packageCount: waybill.packageCount,
-      weightKg: waybill.weightKg,
-      remark: waybill.remark,
-      legs: cloneLegs(waybill.legs),
-      events: cloneEvents(waybill.events),
-    })
-    dialogVisible.value = true
-  } catch (error) {
-    showErrorMessage(error, '运单详情加载失败')
-  } finally {
-    loading.value = false
+  const waybill = await runWithLoading(loading, () => fetchWaybill(id), '运单详情加载失败')
+  if (!waybill) {
+    return
   }
+
+  editingId.value = id
+  fillFormFromWaybill(waybill)
+  dialogVisible.value = true
 }
 
 function onAddLeg() {
@@ -487,27 +499,27 @@ async function onSave() {
     return
   }
 
-  saving.value = true
-  try {
-    const payload: WaybillSavePayload = {
-      ...form,
-      legs: cloneLegs(form.legs),
-      events: cloneEvents(form.events),
-    }
+  const saved = await runWithLoading(
+    saving,
+    async () => {
+      const payload = createSavePayload()
 
-    if (editingId.value) {
-      await updateWaybill(editingId.value, payload)
-      showSuccessMessage('运单更新成功')
-    } else {
-      await createWaybill(payload)
-      showSuccessMessage('运单创建成功')
-    }
+      if (editingId.value) {
+        await updateWaybill(editingId.value, payload)
+        showSuccessMessage('运单更新成功')
+      } else {
+        await createWaybill(payload)
+        showSuccessMessage('运单创建成功')
+      }
+
+      return true
+    },
+    '运单保存失败',
+  )
+
+  if (saved) {
     dialogVisible.value = false
     await loadWaybills()
-  } catch (error) {
-    showErrorMessage(error, '运单保存失败')
-  } finally {
-    saving.value = false
   }
 }
 
@@ -517,12 +529,14 @@ async function onDelete(id: number) {
     return
   }
 
-  try {
+  const deleted = await runSafely(async () => {
     await deleteWaybill(id)
     showSuccessMessage('运单删除成功')
+    return true
+  }, '运单删除失败')
+
+  if (deleted) {
     await loadWaybills()
-  } catch (error) {
-    showErrorMessage(error, '运单删除失败')
   }
 }
 
@@ -533,8 +547,6 @@ function onDialogClosed() {
 }
 
 onMounted(() => {
-  Promise.all([loadDictionaryData(), loadWaybills()]).catch((error) => {
-    showErrorMessage(error, '运单页面初始化失败')
-  })
+  runSafely(() => Promise.all([loadDictionaryData(), loadWaybills()]), '运单页面初始化失败')
 })
 </script>

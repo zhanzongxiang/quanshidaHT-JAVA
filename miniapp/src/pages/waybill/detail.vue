@@ -87,6 +87,7 @@ import type { MemberWaybillDetail } from '@/types/member'
 import { formatWaybillStatus } from '@/utils/display'
 import { ensureMemberSession } from '@/utils/guards'
 import { openAppPage } from '@/utils/navigation'
+import { runPageTaskWithLoading } from '@/utils/page'
 import { showError } from '@/utils/toast'
 import { parsePaymentAmount } from '@/utils/validation'
 import { normalizePaymentResultMessage } from '@/utils/wechat'
@@ -94,6 +95,7 @@ import { normalizePaymentResultMessage } from '@/utils/wechat'
 const loading = ref(false)
 const paying = ref(false)
 const detail = ref<MemberWaybillDetail | null>(null)
+const waybillId = ref<number | null>(null)
 const payAmount = ref('')
 const payDescription = ref('Waybill payment')
 
@@ -109,17 +111,19 @@ onLoad(async (query) => {
     return
   }
 
+  waybillId.value = id
   await loadDetail(id)
 })
 
 async function loadDetail(id: number) {
-  loading.value = true
-  try {
-    detail.value = await fetchMemberWaybillDetail(id)
-  } catch (error) {
-    showError(error, '运单详情加载失败')
-  } finally {
-    loading.value = false
+  const data = await runPageTaskWithLoading(
+    loading,
+    () => fetchMemberWaybillDetail(id),
+    '运单详情加载失败',
+  )
+
+  if (data) {
+    detail.value = data
   }
 }
 
@@ -134,15 +138,23 @@ async function submitPayment() {
     return
   }
 
-  paying.value = true
-  try {
-    const payload = await prepareMemberPayment({
-      waybillId: detail.value.id,
-      amountTotal,
-      description: payDescription.value.trim() || `Waybill payment ${detail.value.mainTrackingNo}`,
-      channel: 'wechat_pay',
-    })
+  const payload = await runPageTaskWithLoading(
+    paying,
+    () =>
+      prepareMemberPayment({
+        waybillId: detail.value!.id,
+        amountTotal,
+        description: payDescription.value.trim() || `Waybill payment ${detail.value!.mainTrackingNo}`,
+        channel: 'wechat_pay',
+      }),
+    '支付发起失败',
+  )
 
+  if (!payload) {
+    return
+  }
+
+  try {
     await uni.requestPayment({
       provider: 'wxpay',
       timeStamp: payload.timeStamp,
@@ -152,12 +164,14 @@ async function submitPayment() {
       paySign: payload.paySign,
     })
 
+    if (waybillId.value) {
+      await loadDetail(waybillId.value)
+    }
+
       openAppPage(`/pages/payment/result?orderNo=${encodeURIComponent(payload.orderNo)}&status=${encodeURIComponent(payload.status)}`)
   } catch (error) {
     const result = normalizePaymentResultMessage(error)
       openAppPage(`/pages/payment/result?orderNo=&status=${encodeURIComponent(result.status)}&message=${encodeURIComponent(result.message)}`)
-  } finally {
-    paying.value = false
   }
 }
 

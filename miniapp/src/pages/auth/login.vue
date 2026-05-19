@@ -3,7 +3,7 @@
     <view class="card">
       <text class="section-title">手机号登录</text>
       <text class="section-subtitle">
-        如需把微信身份绑定到已有会员，请先填写手机号，再使用微信登录。
+        如需将微信身份绑定到已有会员，请先填写手机号，再使用微信登录。
       </text>
     </view>
 
@@ -45,6 +45,7 @@ import { reactive, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useMemberStore } from '@/stores/member'
 import { navigateAfterAuth, openAppPage, resolveRedirectUrl } from '@/utils/navigation'
+import { runPageTaskWithLoading } from '@/utils/page'
 import { showError } from '@/utils/toast'
 import { isValidPassword, isValidPhone, normalizePhone } from '@/utils/validation'
 import { getWechatLoginCode } from '@/utils/wechat'
@@ -87,34 +88,32 @@ async function submitLogin() {
     return
   }
 
-  submitting.value = true
-  try {
-    await memberStore.login({
-      phone: normalizePhone(form.phone),
-      password: form.password.trim(),
-    })
-    navigateAfterAuth(redirectUrl.value)
-  } catch (error) {
-    showError(error, '登录失败')
-  } finally {
-    submitting.value = false
-  }
+  await runPageTaskWithLoading(
+    submitting,
+    async () => {
+      await memberStore.login({
+        phone: normalizePhone(form.phone),
+        password: form.password.trim(),
+      })
+      navigateAfterAuth(redirectUrl.value)
+    },
+    '登录失败',
+  )
 }
 
 async function submitWechatLogin() {
-  wechatLoading.value = true
-  try {
-    const code = await getWechatLoginCode()
-    await memberStore.wechatLogin({
-      code,
-      phone: isValidPhone(form.phone) ? normalizePhone(form.phone) : undefined,
-    })
-    navigateAfterAuth(redirectUrl.value)
-  } catch (error) {
-    showError(error, '微信登录失败')
-  } finally {
-    wechatLoading.value = false
-  }
+  await runPageTaskWithLoading(
+    wechatLoading,
+    async () => {
+      const code = await getWechatLoginCode()
+      await memberStore.wechatLogin({
+        code,
+        phone: isValidPhone(form.phone) ? normalizePhone(form.phone) : undefined,
+      })
+      navigateAfterAuth(redirectUrl.value)
+    },
+    '微信登录失败',
+  )
 }
 
 function goToRegister() {

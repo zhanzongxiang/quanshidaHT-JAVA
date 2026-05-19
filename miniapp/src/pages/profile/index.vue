@@ -81,6 +81,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { useMemberStore } from '@/stores/member'
 import { formatMemberStatus, formatWechatBindStatus, maskIdentifier } from '@/utils/display'
 import { ensureMemberSession } from '@/utils/guards'
+import { runPageTaskWithLoading } from '@/utils/page'
 import { showError, showSuccess } from '@/utils/toast'
 import { getWechatLoginCode } from '@/utils/wechat'
 
@@ -112,7 +113,8 @@ const wechatSummary = computed(() => {
   if (!profile.value?.wechatOpenid) {
     return '当前账号还未绑定微信身份，可先走微信登录，也可以手工填写 openid 和 unionid 完成联调。'
   }
-  return '当前账号已绑定微信身份，可继续验证登录回写、资料刷新和支付前置校验。'
+
+  return '当前账号已绑定微信身份，可继续验证登录回填、资料刷新和支付前置校验。'
 })
 
 onShow(async () => {
@@ -120,6 +122,7 @@ onShow(async () => {
   if (!ready) {
     return
   }
+
   await refreshProfile(false)
 })
 
@@ -136,18 +139,21 @@ function syncForm() {
 }
 
 async function refreshProfile(showToast = true) {
-  refreshing.value = true
-  try {
-    const latest = await memberStore.fetchProfile()
-    profile.value = latest
-    syncForm()
-    if (showToast) {
-      showSuccess('资料已刷新')
-    }
-  } catch (error) {
-    showError(error, '资料加载失败')
-  } finally {
-    refreshing.value = false
+  const latest = await runPageTaskWithLoading(
+    refreshing,
+    () => memberStore.fetchProfile(),
+    '资料加载失败',
+  )
+
+  if (!latest) {
+    return
+  }
+
+  profile.value = latest
+  syncForm()
+
+  if (showToast) {
+    showSuccess('资料已刷新')
   }
 }
 
@@ -156,21 +162,23 @@ async function handleRefreshProfile() {
 }
 
 async function saveProfile() {
-  saving.value = true
-  try {
-    const latest = await memberStore.saveProfile({
+  const latest = await runPageTaskWithLoading(
+    saving,
+    () => memberStore.saveProfile({
       nickname: form.nickname.trim(),
       fullName: form.fullName.trim(),
       avatarUrl: form.avatarUrl.trim(),
-    })
-    profile.value = latest
-    syncForm()
-    showSuccess('资料已保存')
-  } catch (error) {
-    showError(error, '保存资料失败')
-  } finally {
-    saving.value = false
+    }),
+    '保存资料失败',
+  )
+
+  if (!latest) {
+    return
   }
+
+  profile.value = latest
+  syncForm()
+  showSuccess('资料已保存')
 }
 
 async function bindWechat() {
@@ -179,38 +187,45 @@ async function bindWechat() {
     return
   }
 
-  binding.value = true
-  try {
-    const latest = await memberStore.bindWechat({
+  const latest = await runPageTaskWithLoading(
+    binding,
+    () => memberStore.bindWechat({
       openid: wechatForm.openid.trim(),
       unionid: wechatForm.unionid.trim(),
-    })
-    profile.value = latest
-    syncForm()
-    showSuccess('微信绑定成功')
-  } catch (error) {
-    showError(error, '微信绑定失败')
-  } finally {
-    binding.value = false
+    }),
+    '微信绑定失败',
+  )
+
+  if (!latest) {
+    return
   }
+
+  profile.value = latest
+  syncForm()
+  showSuccess('微信绑定成功')
 }
 
 async function reloginWithWechat() {
-  wechatLoggingIn.value = true
-  try {
-    const code = await getWechatLoginCode()
-    await memberStore.wechatLogin({
-      code,
-      phone: profile.value?.phone || undefined,
-    })
-    profile.value = memberStore.profile
-    syncForm()
-    showSuccess('微信登录成功')
-  } catch (error) {
-    showError(error, '微信登录失败')
-  } finally {
-    wechatLoggingIn.value = false
+  const result = await runPageTaskWithLoading(
+    wechatLoggingIn,
+    async () => {
+      const code = await getWechatLoginCode()
+      await memberStore.wechatLogin({
+        code,
+        phone: profile.value?.phone || undefined,
+      })
+      return memberStore.profile
+    },
+    '微信登录失败',
+  )
+
+  if (!result) {
+    return
   }
+
+  profile.value = result
+  syncForm()
+  showSuccess('微信登录成功')
 }
 
 function logout() {
