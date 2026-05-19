@@ -5,9 +5,12 @@ import com.qsd.admin.member.entity.MemberUser;
 import com.qsd.admin.member.mapper.MemberUserMapper;
 import com.qsd.admin.payment.dto.MemberPaymentPrepareRequest;
 import com.qsd.admin.payment.dto.MemberPaymentPrepareResponse;
+import com.qsd.admin.payment.dto.PaymentStatusUpdateRequest;
 import com.qsd.admin.payment.dto.RefundCallbackRequest;
+import com.qsd.admin.payment.dto.RefundOrderResponse;
 import com.qsd.admin.payment.dto.WechatMiniProgramPayParams;
 import com.qsd.admin.payment.dto.WechatPayCallbackRequest;
+import com.qsd.admin.payment.dto.WechatRefundResult;
 import com.qsd.admin.payment.entity.PayMerchantConfig;
 import com.qsd.admin.payment.entity.PayNotifyLog;
 import com.qsd.admin.payment.entity.PayOrder;
@@ -388,6 +391,87 @@ class PaymentServiceTest {
         assertTrue(ex.getMessage() != null && !ex.getMessage().isBlank());
         verify(wechatPayGateway, never()).createRefund(any(PayOrder.class), any(RefundOrder.class), any(PayMerchantConfig.class));
         verify(refundOrderMapper, never()).insert(any(RefundOrder.class));
+    }
+
+    @Test
+    void shouldResetPaidFieldsWhenAdminClosesPayment() {
+        PayOrder order = new PayOrder();
+        order.setId(90L);
+        order.setOrderNo("PO202605090123");
+        order.setStatus("paid");
+        order.setAmountTotal(new BigDecimal("19.90"));
+        order.setAmountPaid(new BigDecimal("19.90"));
+        order.setExternalTransactionNo("wx-old-001");
+        order.setPaidAt(java.time.LocalDateTime.of(2026, 5, 9, 10, 0));
+        order.setRefundedAt(java.time.LocalDateTime.of(2026, 5, 9, 11, 0));
+
+        when(payOrderMapper.selectActiveById(90L)).thenReturn(order);
+
+        paymentService.updateAdminPayOrderStatus(90L, new PaymentStatusUpdateRequest("closed", ""));
+
+        ArgumentCaptor<PayOrder> orderCaptor = ArgumentCaptor.forClass(PayOrder.class);
+        verify(payOrderMapper).updateById(orderCaptor.capture());
+        PayOrder updatedOrder = orderCaptor.getValue();
+        assertEquals("closed", updatedOrder.getStatus());
+        assertEquals(BigDecimal.ZERO, updatedOrder.getAmountPaid());
+        assertNull(updatedOrder.getPaidAt());
+        assertNull(updatedOrder.getRefundedAt());
+        assertNotNull(updatedOrder.getClosedAt());
+        assertEquals("", updatedOrder.getExternalTransactionNo());
+    }
+
+    @Test
+    void shouldCreateRetryRefundFromFailedRefund() {
+        RefundOrder failedRefund = new RefundOrder();
+        failedRefund.setId(91L);
+        failedRefund.setRefundNo("RF202605090005");
+        failedRefund.setPayOrderId(92L);
+        failedRefund.setStatus("failed");
+        failedRefund.setAmountRefund(new BigDecimal("9.90"));
+        failedRefund.setReason("manual retry");
+
+        PayOrder order = new PayOrder();
+        order.setId(92L);
+        order.setOrderNo("PO202605090124");
+        order.setStatus("paid");
+        order.setExternalTransactionNo("wx-txn-009");
+        order.setMerchantConfigId(13L);
+
+        PayMerchantConfig merchant = new PayMerchantConfig();
+        merchant.setId(13L);
+        merchant.setMerchantName("Acme Merchant");
+
+        WechatRefundResult refundResult = new WechatRefundResult("wx-rf-009", "processing", "{\"status\":\"processing\"}");
+
+        when(refundOrderMapper.selectByIdValue(91L)).thenReturn(failedRefund);
+        when(payOrderMapper.selectActiveById(92L)).thenReturn(order);
+        when(paymentMerchantService.requireMerchantById(13L)).thenReturn(merchant);
+        when(wechatPayGateway.createRefund(eq(order), any(RefundOrder.class), eq(merchant))).thenReturn(refundResult);
+
+        RefundOrderResponse response = paymentService.retryRefund(91L);
+
+        ArgumentCaptor<RefundOrder> refundCaptor = ArgumentCaptor.forClass(RefundOrder.class);
+        verify(refundOrderMapper).insert(refundCaptor.capture());
+        RefundOrder insertedRefund = refundCaptor.getValue();
+        assertEquals(92L, insertedRefund.getPayOrderId());
+        assertEquals(new BigDecimal("9.90"), insertedRefund.getAmountRefund());
+        assertEquals("processing", insertedRefund.getStatus());
+        assertEquals("manual retry", insertedRefund.getReason());
+        assertEquals("wx-rf-009", insertedRefund.getExternalRefundNo());
+
+        ArgumentCaptor<PayOrder> orderCaptor = ArgumentCaptor.forClass(PayOrder.class);
+        verify(payOrderMapper).updateById(orderCaptor.capture());
+        assertEquals("refunding", orderCaptor.getValue().getStatus());
+
+        ArgumentCaptor<PayTransaction> transactionCaptor = ArgumentCaptor.forClass(PayTransaction.class);
+        verify(payTransactionMapper).insert(transactionCaptor.capture());
+        assertEquals("refund_retry", transactionCaptor.getValue().getTransactionType());
+        assertEquals("refunding", transactionCaptor.getValue().getTransactionStatus());
+        assertEquals("wx-txn-009", transactionCaptor.getValue().getExternalTransactionNo());
+
+        assertEquals("processing", response.status());
+        assertEquals("manual retry", response.reason());
+        assertEquals("wx-rf-009", response.externalRefundNo());
     }
 
     @Test

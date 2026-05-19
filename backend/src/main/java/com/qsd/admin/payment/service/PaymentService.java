@@ -147,20 +147,11 @@ public class PaymentService {
             throw new BusinessException("支付状态不合法");
         }
 
+        LocalDateTime now = LocalDateTime.now();
         order.setStatus(status);
         order.setExternalTransactionNo(trimToEmpty(request.externalTransactionNo()));
-        order.setUpdatedAt(LocalDateTime.now());
-
-        if ("paid".equals(status)) {
-            order.setAmountPaid(order.getAmountTotal());
-            order.setPaidAt(LocalDateTime.now());
-        }
-        if ("closed".equals(status)) {
-            order.setClosedAt(LocalDateTime.now());
-        }
-        if ("refunded".equals(status)) {
-            order.setRefundedAt(LocalDateTime.now());
-        }
+        order.setUpdatedAt(now);
+        applyAdminStatusSnapshot(order, status, now);
 
         payOrderMapper.updateById(order);
         createTransactionLog(
@@ -171,7 +162,7 @@ public class PaymentService {
             "{\"status\":\"" + status + "\"}",
             trimToNull(request.externalTransactionNo()),
             order.getOrderNo(),
-            "paid".equals(status) ? LocalDateTime.now() : null
+            "paid".equals(status) ? now : null
         );
 
         return toAdminDetail(requirePayOrder(order.getId()));
@@ -794,6 +785,31 @@ public class PaymentService {
 
     private String safe(String value) {
         return value == null ? "" : value;
+    }
+
+    private void applyAdminStatusSnapshot(PayOrder order, String status, LocalDateTime now) {
+        order.setAmountPaid(shouldKeepPaidAmount(status) ? order.getAmountTotal() : BigDecimal.ZERO);
+        order.setPaidAt(shouldKeepPaidTimestamp(status) ? order.getPaidAt() : null);
+        order.setClosedAt("closed".equals(status) ? order.getClosedAt() : null);
+        order.setRefundedAt("refunded".equals(status) ? order.getRefundedAt() : null);
+
+        if ("paid".equals(status)) {
+            order.setPaidAt(now);
+        }
+        if ("closed".equals(status)) {
+            order.setClosedAt(now);
+        }
+        if ("refunded".equals(status)) {
+            order.setRefundedAt(now);
+        }
+    }
+
+    private boolean shouldKeepPaidAmount(String status) {
+        return "paid".equals(status) || "refunding".equals(status) || "refunded".equals(status);
+    }
+
+    private boolean shouldKeepPaidTimestamp(String status) {
+        return shouldKeepPaidAmount(status);
     }
 
     private PayMerchantConfig resolveMerchantForAdminCreate(Long merchantConfigId) {

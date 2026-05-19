@@ -190,11 +190,11 @@
           <template #default="{ row }">
             <div class="flex flex-wrap gap-2">
               <el-button size="small" @click="openDetailDialog(row.id)">详情</el-button>
-              <el-button v-if="canEdit && row.status === 'paid'" size="small" type="warning" plain @click="openRefundDialog(row.id)">
+              <el-button v-if="canEdit && canRefund(row.status)" size="small" type="warning" plain @click="openRefundDialog(row.id)">
                 退款
               </el-button>
               <el-button
-                v-if="canEdit && row.status !== 'paid'"
+                v-if="canEdit && canMarkAsPaid(row.status)"
                 size="small"
                 type="success"
                 plain
@@ -203,7 +203,7 @@
                 标记已支付
               </el-button>
               <el-button
-                v-if="canEdit && row.status !== 'closed'"
+                v-if="canEdit && canClosePayment(row.status)"
                 size="small"
                 type="danger"
                 plain
@@ -662,6 +662,18 @@ function isReplayableRefundNotify(status: string) {
   return !['succeeded', 'SUCCESS', 'received'].includes(status)
 }
 
+function canRefund(status: string) {
+  return status === 'paid'
+}
+
+function canMarkAsPaid(status: string) {
+  return ['pending', 'paying', 'exception'].includes(status)
+}
+
+function canClosePayment(status: string) {
+  return ['pending', 'paying', 'paid', 'exception'].includes(status)
+}
+
 function resetForm() {
   Object.assign(form, createEmptyPaymentPayload())
 }
@@ -710,13 +722,25 @@ async function loadMerchantConfigs() {
   merchantConfigs.value = await fetchPaymentMerchants()
 }
 
+async function refreshDetail(paymentId: number) {
+  const nextDetail = await runSafely(() => fetchPayment(paymentId), '支付详情刷新失败')
+  if (nextDetail) {
+    detail.value = nextDetail
+  }
+}
+
+async function refreshMerchantAndOverview() {
+  await Promise.all([loadMerchantConfigs(), loadOpsOverview()])
+}
+
+async function refreshOpsAndDetail(paymentId: number) {
+  await Promise.all([refreshListAndDetail(paymentId), loadOpsOverview()])
+}
+
 async function refreshListAndDetail(paymentId?: number | null) {
   await loadPayments()
   if (paymentId) {
-    const nextDetail = await runSafely(() => fetchPayment(paymentId), '支付详情刷新失败')
-    if (nextDetail) {
-      detail.value = nextDetail
-    }
+    await refreshDetail(paymentId)
   }
 }
 
@@ -834,7 +858,7 @@ async function onSaveMerchant() {
 
   if (saved) {
     merchantDialogVisible.value = false
-    await Promise.all([loadMerchantConfigs(), loadOpsOverview()])
+    await refreshMerchantAndOverview()
   }
 }
 
@@ -851,7 +875,7 @@ async function onActivateMerchant(id: number) {
   }, '当前商户切换失败')
 
   if (activated) {
-    await Promise.all([loadMerchantConfigs(), loadOpsOverview()])
+    await refreshMerchantAndOverview()
   }
 }
 
@@ -892,7 +916,7 @@ async function onReplayPaymentNotify(id: number) {
   )
 
   if (replayed) {
-    await Promise.all([refreshListAndDetail(detail.value.id), loadOpsOverview()])
+    await refreshOpsAndDetail(detail.value.id)
     showSuccessMessage('支付回调重放成功')
   }
 }
@@ -912,7 +936,7 @@ async function onReplayRefundNotify(id: number) {
   )
 
   if (replayed) {
-    await Promise.all([refreshListAndDetail(detail.value.id), loadOpsOverview()])
+    await refreshOpsAndDetail(detail.value.id)
     showSuccessMessage('退款回调重放成功')
   }
 }
@@ -932,7 +956,7 @@ async function onRetryRefund(id: number) {
   )
 
   if (retried) {
-    await Promise.all([refreshListAndDetail(detail.value.id), loadOpsOverview()])
+    await refreshOpsAndDetail(detail.value.id)
     showSuccessMessage('退款重试成功')
   }
 }
