@@ -16,7 +16,7 @@
       <text class="section-subtitle">手机号：{{ memberStore.profile.phone }}</text>
       <text class="section-subtitle">微信状态：{{ wechatBindStatus }}</text>
       <text v-if="memberStore.profile.wechatOpenid" class="section-subtitle">
-        OpenID：{{ maskedWechatOpenid }}
+        微信 OpenID：{{ maskedWechatOpenid }}
       </text>
     </view>
 
@@ -59,7 +59,7 @@
     <view class="card env-card">
       <text class="section-title">联调提示</text>
       <text class="section-subtitle">后端地址：{{ apiBaseUrl }}</text>
-      <text class="section-subtitle">真实微信支付前，请确认后台当前商户状态为 Ready。</text>
+      <text class="section-subtitle">真实微信支付前，请确认后台当前商户状态为已就绪。</text>
     </view>
   </view>
 </template>

@@ -28,8 +28,8 @@
           <div v-if="activeMerchant" class="grid gap-3 text-sm text-ink md:grid-cols-2">
             <div><strong>商户名称：</strong>{{ activeMerchant.merchantName }}</div>
             <div><strong>商户编码：</strong>{{ activeMerchant.merchantCode }}</div>
-            <div><strong>Mch ID：</strong>{{ activeMerchant.mchId }}</div>
-            <div><strong>App ID：</strong>{{ activeMerchant.appId }}</div>
+            <div><strong>商户号：</strong>{{ activeMerchant.mchId }}</div>
+            <div><strong>应用 ID：</strong>{{ activeMerchant.appId }}</div>
             <div class="md:col-span-2"><strong>通知地址：</strong>{{ activeMerchant.notifyUrl }}</div>
             <div><strong>状态：</strong><el-tag type="success">已启用</el-tag></div>
             <div>
@@ -65,8 +65,8 @@
                   <el-tag size="small" :type="item.configurationReady ? 'success' : 'warning'">
                     {{ item.configurationReady ? '配置完整' : '配置未完成' }}
                   </el-tag>
-                  <el-tag size="small" :type="item.appSecretConfigured ? 'success' : 'danger'">AppSecret</el-tag>
-                  <el-tag size="small" :type="item.apiV3KeyConfigured ? 'success' : 'danger'">APIv3Key</el-tag>
+                  <el-tag size="small" :type="item.appSecretConfigured ? 'success' : 'danger'">应用密钥</el-tag>
+                  <el-tag size="small" :type="item.apiV3KeyConfigured ? 'success' : 'danger'">APIv3 密钥</el-tag>
                   <el-tag size="small" :type="item.privateKeyConfigured ? 'success' : 'danger'">私钥</el-tag>
                   <el-tag size="small" :type="item.merchantSerialNoConfigured ? 'success' : 'danger'">证书序列号</el-tag>
                   <el-tag size="small" :type="item.platformCertificateConfigured ? 'success' : 'danger'">平台证书</el-tag>
@@ -113,7 +113,7 @@
           <div class="mb-3 text-sm font-semibold text-ink">商户证书状态</div>
           <div v-if="opsOverview?.currentMerchantCertificate" class="space-y-2 text-sm text-ink">
             <div><strong>商户：</strong>{{ opsOverview.currentMerchantCertificate.merchantName }}</div>
-            <div><strong>Mch ID：</strong>{{ opsOverview.currentMerchantCertificate.mchId }}</div>
+            <div><strong>商户号：</strong>{{ opsOverview.currentMerchantCertificate.mchId }}</div>
             <div><strong>自动刷新：</strong>{{ opsOverview.currentMerchantCertificate.autoRefreshEnabled ? '已开启' : '未开启' }}</div>
             <div><strong>最近更新：</strong>{{ opsOverview.currentMerchantCertificate.lastUpdatedAt || '-' }}</div>
             <div class="break-all"><strong>证书路径：</strong>{{ opsOverview.currentMerchantCertificate.certificatePath || '-' }}</div>
@@ -255,19 +255,19 @@
           <el-form-item label="商户编码" prop="merchantCode">
             <el-input v-model="merchantForm.merchantCode" :disabled="merchantEditingId !== null" />
           </el-form-item>
-          <el-form-item label="Mch ID" prop="mchId">
+          <el-form-item label="商户号" prop="mchId">
             <el-input v-model="merchantForm.mchId" />
           </el-form-item>
-          <el-form-item label="App ID" prop="appId">
+          <el-form-item label="应用 ID" prop="appId">
             <el-input v-model="merchantForm.appId" />
           </el-form-item>
-          <el-form-item label="App Secret">
+          <el-form-item label="应用密钥">
             <el-input v-model="merchantForm.appSecret" show-password />
           </el-form-item>
           <el-form-item label="通知地址" prop="notifyUrl" class="md:col-span-2">
             <el-input v-model="merchantForm.notifyUrl" />
           </el-form-item>
-          <el-form-item label="APIv3 Key">
+          <el-form-item label="APIv3 密钥">
             <el-input v-model="merchantForm.apiV3Key" />
           </el-form-item>
           <el-form-item label="商户证书序列号">
@@ -626,8 +626,8 @@ const rules: FormRules = {
 const merchantRules: FormRules = {
   merchantName: [{ required: true, message: '请输入商户名称', trigger: 'blur' }],
   merchantCode: [{ required: true, message: '请输入商户编码', trigger: 'blur' }],
-  mchId: [{ required: true, message: '请输入 Mch ID', trigger: 'blur' }],
-  appId: [{ required: true, message: '请输入 App ID', trigger: 'blur' }],
+  mchId: [{ required: true, message: '请输入商户号', trigger: 'blur' }],
+  appId: [{ required: true, message: '请输入应用 ID', trigger: 'blur' }],
   notifyUrl: [{ required: true, message: '请输入通知地址', trigger: 'blur' }],
 }
 

@@ -13,12 +13,12 @@
         <text class="detail-line">始发仓：{{ detail.originWarehouse || '暂无' }}</text>
         <text class="detail-line">货物描述：{{ detail.cargoDescription || '暂无' }}</text>
         <text class="detail-line">包裹数量：{{ detail.packageCount }}</text>
-        <text class="detail-line">重量：{{ detail.weightKg ?? 0 }} kg</text>
+        <text class="detail-line">重量：{{ detail.weightKg ?? 0 }} 千克</text>
       </view>
 
       <view class="card section">
         <text class="section-title">支付入口</text>
-        <text class="section-subtitle">这里对接 `payments/prepare`，用于联调小程序支付链路。</text>
+        <text class="section-subtitle">这里已接入支付预下单能力，用于联调小程序支付链路。</text>
         <view class="field-stack top-gap">
           <view class="field-block">
             <text class="field-label">支付金额</text>
@@ -36,7 +36,7 @@
               v-model.trim="payDescription"
               class="input"
               maxlength="50"
-              placeholder="例如 Waybill payment"
+              placeholder="例如 运单支付"
             />
           </view>
         </view>
@@ -97,7 +97,7 @@ const paying = ref(false)
 const detail = ref<MemberWaybillDetail | null>(null)
 const waybillId = ref<number | null>(null)
 const payAmount = ref('')
-const payDescription = ref('Waybill payment')
+const payDescription = ref('运单支付')
 
 onLoad(async (query) => {
   const ready = await ensureMemberSession()
@@ -144,7 +144,7 @@ async function submitPayment() {
       prepareMemberPayment({
         waybillId: detail.value!.id,
         amountTotal,
-        description: payDescription.value.trim() || `Waybill payment ${detail.value!.mainTrackingNo}`,
+        description: payDescription.value.trim() || `运单支付 ${detail.value!.mainTrackingNo}`,
         channel: 'wechat_pay',
       }),
     '支付发起失败',

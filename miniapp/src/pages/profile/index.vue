@@ -21,8 +21,8 @@
         <text class="section-subtitle">{{ wechatStatusLabel }}</text>
         <text class="detail-line">{{ wechatSummary }}</text>
         <text v-if="profile.wechatBindTime" class="detail-line">绑定时间：{{ profile.wechatBindTime }}</text>
-        <text v-if="profile.wechatOpenid" class="detail-line">OpenID：{{ maskedWechatOpenid }}</text>
-        <text v-if="profile.wechatUnionid" class="detail-line">UnionID：{{ maskedWechatUnionid }}</text>
+        <text v-if="profile.wechatOpenid" class="detail-line">微信 OpenID：{{ maskedWechatOpenid }}</text>
+        <text v-if="profile.wechatUnionid" class="detail-line">微信 UnionID：{{ maskedWechatUnionid }}</text>
         <view class="actions top-gap">
           <button class="button-secondary" :loading="wechatLoggingIn" @click="reloginWithWechat">重新走微信登录</button>
           <button plain :loading="refreshing" @click="handleRefreshProfile">刷新资料</button>
@@ -54,15 +54,15 @@
       <view class="card section">
         <text class="section-title">手工绑定微信</text>
         <text class="section-subtitle">
-          当前后端保留了按 openid / unionid 直接绑定的接口，这里提供联调入口，方便排查登录和资料同步问题。
+          当前后端保留了按微信 OpenID / UnionID 直接绑定的接口，这里提供联调入口，方便排查登录和资料同步问题。
         </text>
         <view class="field-stack top-gap">
           <view class="field-block">
-            <text class="field-label">OpenID</text>
-            <input v-model.trim="wechatForm.openid" class="input" maxlength="64" placeholder="请输入 openid" />
+            <text class="field-label">微信 OpenID</text>
+            <input v-model.trim="wechatForm.openid" class="input" maxlength="64" placeholder="请输入微信 OpenID" />
           </view>
           <view class="field-block">
-            <text class="field-label">UnionID</text>
+            <text class="field-label">微信 UnionID</text>
             <input v-model.trim="wechatForm.unionid" class="input" maxlength="64" placeholder="可选" />
           </view>
         </view>
@@ -111,7 +111,7 @@ const maskedWechatUnionid = computed(() => maskIdentifier(profile.value?.wechatU
 
 const wechatSummary = computed(() => {
   if (!profile.value?.wechatOpenid) {
-    return '当前账号还未绑定微信身份，可先走微信登录，也可以手工填写 openid 和 unionid 完成联调。'
+    return '当前账号还未绑定微信身份，可先走微信登录，也可以手工填写微信 OpenID 和 UnionID 完成联调。'
   }
 
   return '当前账号已绑定微信身份，可继续验证登录回填、资料刷新和支付前置校验。'
@@ -183,7 +183,7 @@ async function saveProfile() {
 
 async function bindWechat() {
   if (!wechatForm.openid.trim()) {
-    showError('请输入 openid')
+    showError('请输入微信 OpenID')
     return
   }
 

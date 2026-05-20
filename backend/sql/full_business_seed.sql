@@ -63,7 +63,15 @@ INSERT INTO permission (
     (5, 'news:view', '查看新闻'),
     (6, 'news:edit', '编辑新闻'),
     (7, 'settings:view', '查看设置'),
-    (8, 'settings:edit', '编辑设置');
+    (8, 'settings:edit', '编辑设置'),
+    (9, 'waybill:view', '查看运单'),
+    (10, 'waybill:edit', '编辑运单'),
+    (11, 'dict:view', '查看字典'),
+    (12, 'dict:edit', '编辑字典'),
+    (13, 'member:view', '查看会员'),
+    (14, 'member:edit', '编辑会员'),
+    (15, 'payment:view', '查看支付'),
+    (16, 'payment:edit', '管理支付');
 
 INSERT INTO admin_menu (
     id,
@@ -82,7 +90,11 @@ INSERT INTO admin_menu (
     (6, 0, '全局配置', '/settings', 'MenuGroup', 'Setting', 30),
     (7, 6, '导航设置', '/settings/navigation', 'NavigationSettings', 'Guide', 31),
     (8, 6, '页脚设置', '/settings/footer', 'FooterSettings', 'Bottom', 32),
-    (9, 6, '联系方式', '/settings/contact', 'ContactSettings', 'Phone', 33);
+    (9, 6, '联系方式', '/settings/contact', 'ContactSettings', 'Phone', 33),
+    (10, 2, '运单管理', '/waybills', 'Waybill', 'Van', 24),
+    (11, 0, '会员管理', '/members', 'Members', 'User', 25),
+    (12, 0, '支付管理', '/payments', 'Payments', 'CreditCard', 26),
+    (13, 6, '字典管理', '/settings/dictionaries', 'DictionarySettings', 'Collection', 34);
 
 INSERT INTO admin_user_role (
     id,
@@ -106,7 +118,15 @@ INSERT INTO admin_role_permission (
     (5, 1, 5),
     (6, 1, 6),
     (7, 1, 7),
-    (8, 1, 8);
+    (8, 1, 8),
+    (9, 1, 9),
+    (10, 1, 10),
+    (11, 1, 11),
+    (12, 1, 12),
+    (13, 1, 13),
+    (14, 1, 14),
+    (15, 1, 15),
+    (16, 1, 16);
 
 INSERT INTO admin_role_menu (
     id,
@@ -121,7 +141,11 @@ INSERT INTO admin_role_menu (
     (6, 1, 6),
     (7, 1, 7),
     (8, 1, 8),
-    (9, 1, 9);
+    (9, 1, 9),
+    (10, 1, 10),
+    (11, 1, 11),
+    (12, 1, 12),
+    (13, 1, 13);
 
 INSERT INTO site_content_page (
     id,
@@ -503,11 +527,11 @@ INSERT INTO login_log (
 
 ALTER TABLE admin_user AUTO_INCREMENT = 2;
 ALTER TABLE admin_role AUTO_INCREMENT = 2;
-ALTER TABLE permission AUTO_INCREMENT = 9;
-ALTER TABLE admin_menu AUTO_INCREMENT = 10;
+ALTER TABLE permission AUTO_INCREMENT = 17;
+ALTER TABLE admin_menu AUTO_INCREMENT = 14;
 ALTER TABLE admin_user_role AUTO_INCREMENT = 2;
-ALTER TABLE admin_role_permission AUTO_INCREMENT = 9;
-ALTER TABLE admin_role_menu AUTO_INCREMENT = 10;
+ALTER TABLE admin_role_permission AUTO_INCREMENT = 17;
+ALTER TABLE admin_role_menu AUTO_INCREMENT = 14;
 ALTER TABLE site_content_page AUTO_INCREMENT = 5;
 ALTER TABLE news_article AUTO_INCREMENT = 4;
 ALTER TABLE operation_log AUTO_INCREMENT = 5;

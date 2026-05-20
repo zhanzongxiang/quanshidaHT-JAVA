@@ -118,7 +118,7 @@ interface ChecklistItem {
 
 const envItems: ChecklistItem[] = [
   { key: 'env_backend', text: '后端已启动，且 VITE_API_BASE_URL 指向当前可访问地址' },
-  { key: 'env_merchant', text: '当前商户状态为 Ready，或已明确仍处于 mock 模式' },
+  { key: 'env_merchant', text: '当前商户状态为已就绪，或已明确仍处于模拟模式' },
   { key: 'env_appid', text: '小程序 appid、后端支付 appId 和域名配置与当前环境一致' },
 ]
 
@@ -135,7 +135,7 @@ const observeItems: ChecklistItem[] = [
   { key: 'observe_redirect', text: '未登录进入受限页时，是否先跳登录并在成功后回到原页面' },
   { key: 'observe_payment_message', text: '支付失败、取消或处理中时，结果页提示是否清晰' },
   { key: 'observe_status_copy', text: '首页、支付记录页和资料页的状态文案是否统一' },
-  { key: 'observe_wechat_sync', text: '资料页刷新微信状态后，openid 和 unionid 是否同步正确' },
+  { key: 'observe_wechat_sync', text: '资料页刷新微信状态后，微信 OpenID 和 UnionID 是否同步正确' },
 ]
 
 const checklistState = reactive<ChecklistState>({})
