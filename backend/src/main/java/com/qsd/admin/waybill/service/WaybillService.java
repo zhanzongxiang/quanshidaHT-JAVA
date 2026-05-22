@@ -86,8 +86,9 @@ public class WaybillService {
         order.setDeleted(1);
         order.setUpdatedAt(LocalDateTime.now());
         waybillOrderMapper.updateById(order);
-        waybillLegMapper.deleteByWaybillId(id);
-        waybillTrackEventMapper.deleteByWaybillId(id);
+        // Children (legs, events) are intentionally preserved.
+        // They become inaccessible since the parent is soft-deleted.
+        // This allows potential restoration without data loss.
     }
 
     public WaybillOrder findByTrackingNo(String trackingNo) {

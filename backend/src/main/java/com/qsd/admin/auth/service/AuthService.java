@@ -8,6 +8,7 @@ import com.qsd.admin.auth.mapper.AdminMenuMapper;
 import com.qsd.admin.auth.mapper.AdminUserMapper;
 import com.qsd.admin.common.exception.BusinessException;
 import com.qsd.admin.security.JwtTokenService;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -20,11 +21,13 @@ public class AuthService {
     private final AdminUserMapper adminUserMapper;
     private final AdminMenuMapper adminMenuMapper;
     private final JwtTokenService jwtTokenService;
+    private final PasswordEncoder passwordEncoder;
 
-    public AuthService(AdminUserMapper adminUserMapper, AdminMenuMapper adminMenuMapper, JwtTokenService jwtTokenService) {
+    public AuthService(AdminUserMapper adminUserMapper, AdminMenuMapper adminMenuMapper, JwtTokenService jwtTokenService, PasswordEncoder passwordEncoder) {
         this.adminUserMapper = adminUserMapper;
         this.adminMenuMapper = adminMenuMapper;
         this.jwtTokenService = jwtTokenService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public LoginResponse login(String username, String password) {
@@ -35,8 +38,14 @@ public class AuthService {
         if (!"ENABLED".equals(user.getStatus())) {
             throw new BusinessException("账号已被禁用");
         }
-        if (!user.getPasswordHash().equals(password)) {
-            throw new BusinessException("用户名或密码错误");
+        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+            // Backward compatibility: try plaintext match for pre-BCrypt passwords
+            if (!user.getPasswordHash().equals(password)) {
+                throw new BusinessException("用户名或密码错误");
+            }
+            // Auto-upgrade plaintext password to BCrypt
+            user.setPasswordHash(passwordEncoder.encode(password));
+            adminUserMapper.updateById(user);
         }
 
         List<String> permissions = adminUserMapper.selectPermissionCodes(user.getId());

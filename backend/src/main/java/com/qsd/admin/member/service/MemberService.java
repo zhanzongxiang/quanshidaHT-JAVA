@@ -24,6 +24,7 @@ import com.qsd.admin.payment.service.PaymentMerchantService;
 import com.qsd.admin.payment.service.WechatPayGateway;
 import com.qsd.admin.security.JwtTokenService;
 import com.qsd.admin.waybill.dto.WaybillEventPayload;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import com.qsd.admin.waybill.dto.WaybillLegPayload;
 import com.qsd.admin.waybill.entity.WaybillLeg;
 import com.qsd.admin.waybill.entity.WaybillOrder;
@@ -41,6 +42,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -58,6 +60,7 @@ public class MemberService {
     private final JwtTokenService jwtTokenService;
     private final WechatPayGateway wechatPayGateway;
     private final PaymentMerchantService paymentMerchantService;
+    private final PasswordEncoder passwordEncoder;
 
     public MemberService(
         MemberUserMapper memberUserMapper,
@@ -66,7 +69,8 @@ public class MemberService {
         WaybillService waybillService,
         JwtTokenService jwtTokenService,
         WechatPayGateway wechatPayGateway,
-        PaymentMerchantService paymentMerchantService
+        PaymentMerchantService paymentMerchantService,
+        PasswordEncoder passwordEncoder
     ) {
         this.memberUserMapper = memberUserMapper;
         this.memberWaybillRelationMapper = memberWaybillRelationMapper;
@@ -75,6 +79,7 @@ public class MemberService {
         this.jwtTokenService = jwtTokenService;
         this.wechatPayGateway = wechatPayGateway;
         this.paymentMerchantService = paymentMerchantService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public List<MemberAdminSummaryResponse> listAdminMembers(String keyword, String status) {
@@ -112,7 +117,7 @@ public class MemberService {
         LocalDateTime now = LocalDateTime.now();
         MemberUser member = new MemberUser();
         member.setPhone(request.phone().trim());
-        member.setPasswordHash(request.password().trim());
+        member.setPasswordHash(passwordEncoder.encode(request.password().trim()));
         member.setNickname(trimToEmpty(request.nickname()));
         member.setFullName(trimToEmpty(request.fullName()));
         member.setAvatarUrl(trimToEmpty(request.avatarUrl()));
@@ -137,7 +142,7 @@ public class MemberService {
 
         member.setPhone(request.phone().trim());
         if (trimToNull(request.password()) != null) {
-            member.setPasswordHash(request.password().trim());
+            member.setPasswordHash(passwordEncoder.encode(request.password().trim()));
         }
         member.setNickname(trimToEmpty(request.nickname()));
         member.setFullName(trimToEmpty(request.fullName()));
@@ -169,7 +174,7 @@ public class MemberService {
         LocalDateTime now = LocalDateTime.now();
         MemberUser member = new MemberUser();
         member.setPhone(request.phone().trim());
-        member.setPasswordHash(request.password().trim());
+        member.setPasswordHash(passwordEncoder.encode(request.password().trim()));
         member.setNickname(trimToEmpty(request.nickname()));
         member.setFullName(trimToEmpty(request.fullName()));
         member.setAvatarUrl("");
@@ -188,8 +193,17 @@ public class MemberService {
     @Transactional
     public LoginResponse login(MemberLoginRequest request) {
         MemberUser member = memberUserMapper.selectByPhone(request.phone().trim());
-        if (member == null || !member.getPasswordHash().equals(request.password().trim())) {
+        if (member == null) {
             throw new BusinessException("手机号或密码错误");
+        }
+        String rawPassword = request.password().trim();
+        if (!passwordEncoder.matches(rawPassword, member.getPasswordHash())) {
+            // Backward compatibility: try plaintext match for pre-BCrypt passwords
+            if (!member.getPasswordHash().equals(rawPassword)) {
+                throw new BusinessException("手机号或密码错误");
+            }
+            // Auto-upgrade plaintext password to BCrypt
+            member.setPasswordHash(passwordEncoder.encode(rawPassword));
         }
         if (STATUS_DISABLED.equals(member.getStatus())) {
             throw new BusinessException("会员已被停用");
@@ -226,7 +240,7 @@ public class MemberService {
             if (member == null) {
                 member = new MemberUser();
                 member.setPhone(phone == null ? generateVirtualPhone(openid) : phone);
-                member.setPasswordHash("wechat-login");
+                member.setPasswordHash(passwordEncoder.encode(UUID.randomUUID().toString()));
                 member.setNickname(trimToEmpty(request.nickname()));
                 member.setFullName(trimToEmpty(request.fullName()));
                 member.setAvatarUrl("");
@@ -277,9 +291,16 @@ public class MemberService {
         MemberUser member = requireMember(memberId);
         ensureMemberUsable(member);
 
-        String openid = trimToNull(request.openid());
+        String code = trimToNull(request.code());
+        if (code == null) {
+            throw new BusinessException("微信授权 code 不能为空");
+        }
+
+        PayMerchantConfig merchantConfig = paymentMerchantService.requireCurrentMerchant();
+        WechatCodeSessionResponse session = wechatPayGateway.exchangeCode(code, merchantConfig);
+        String openid = trimToNull(session.openid());
         if (openid == null) {
-            throw new BusinessException("openid 不能为空");
+            throw new BusinessException("未获取到微信身份，请稍后重试");
         }
 
         MemberUser existing = memberUserMapper.selectByWechatOpenid(openid);
@@ -289,7 +310,7 @@ public class MemberService {
 
         LocalDateTime now = LocalDateTime.now();
         member.setWechatOpenid(openid);
-        member.setWechatUnionid(trimToEmpty(request.unionid()));
+        member.setWechatUnionid(trimToEmpty(session.unionid()));
         member.setWechatBindTime(now);
         member.setUpdatedAt(now);
         memberUserMapper.updateById(member);
