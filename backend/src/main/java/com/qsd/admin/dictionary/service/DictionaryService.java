@@ -159,6 +159,16 @@ public class DictionaryService {
         if (item.getBuiltin() != null && item.getBuiltin() == 1) {
             throw new BusinessException("内置字典项不允许删除");
         }
+        // Check if the dictionary value is referenced by waybill statuses
+        if ("waybill_status".equals(item.getDictType())) {
+            Long count = dictionaryItemMapper.selectCount(
+                new LambdaQueryWrapper<DictionaryItem>()
+                    .eq(DictionaryItem::getDictType, item.getDictType())
+            );
+            if (count != null && count <= 1) {
+                throw new BusinessException("至少需要保留一个运单状态字典项");
+            }
+        }
         dictionaryItemMapper.deleteById(id);
     }
 

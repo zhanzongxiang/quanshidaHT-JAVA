@@ -5,6 +5,8 @@ import com.qsd.admin.waybill.entity.WaybillOrder;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import java.util.List;
+import java.util.Map;
 
 import java.util.List;
 
@@ -29,6 +31,7 @@ public interface WaybillOrderMapper extends BaseMapper<WaybillOrder> {
             and current_status = #{status}
           </if>
         order by updated_at desc, id desc
+        limit 500
         </script>
         """)
     List<WaybillOrder> selectActiveList(@Param("keyword") String keyword, @Param("status") String status);
@@ -54,6 +57,14 @@ public interface WaybillOrderMapper extends BaseMapper<WaybillOrder> {
         limit 1
         """)
     WaybillOrder selectActiveByMainTrackingNo(String mainTrackingNo);
+
+    @Select("""
+        select id, main_tracking_no, deleted
+        from waybill_order
+        where main_tracking_no = #{mainTrackingNo}
+        limit 1
+        """)
+    WaybillOrder selectByMainTrackingNoIncludingDeleted(String mainTrackingNo);
 
     @Select("""
         <script>
@@ -146,4 +157,13 @@ public interface WaybillOrderMapper extends BaseMapper<WaybillOrder> {
           and current_status = #{status}
         """)
     long countByCurrentStatus(@Param("status") String status);
+
+    @Select("""
+        select r.member_id as memberId, count(distinct w.id) as cnt
+        from member_waybill_relation r
+        join waybill_order w on w.id = r.waybill_id and w.deleted = 0
+        where r.member_id in (${memberIds})
+        group by r.member_id
+        """)
+    List<Map<String, Object>> countAccessibleByMemberIds(@Param("memberIds") String memberIds);
 }

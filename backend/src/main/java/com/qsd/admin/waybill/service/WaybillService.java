@@ -212,9 +212,10 @@ public class WaybillService {
             throw new BusinessException("主运单号不能为空");
         }
 
-        WaybillOrder existing = waybillOrderMapper.selectActiveByMainTrackingNo(normalized);
+        // Check against ALL records (including soft-deleted) to match DB unique constraint
+        WaybillOrder existing = waybillOrderMapper.selectByMainTrackingNoIncludingDeleted(normalized);
         if (existing != null && !existing.getId().equals(currentId)) {
-            throw new BusinessException("主运单号已存在");
+            throw new BusinessException("主运单号已被使用（包括已删除的运单），请使用其他单号");
         }
     }
 

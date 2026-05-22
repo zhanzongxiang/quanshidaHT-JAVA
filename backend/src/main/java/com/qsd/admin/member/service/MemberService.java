@@ -87,7 +87,30 @@ public class MemberService {
     }
 
     public List<MemberAdminSummaryResponse> listAdminMembers(String keyword, String status) {
-        return memberUserMapper.selectAdminList(trimToNull(keyword), trimToNull(status)).stream()
+        List<MemberUser> members = memberUserMapper.selectAdminList(trimToNull(keyword), trimToNull(status));
+        if (members.isEmpty()) {
+            return List.of();
+        }
+
+        // Batch query for waybill counts to avoid N+1
+        String memberIds = members.stream()
+            .map(m -> String.valueOf(m.getId()))
+            .collect(java.util.stream.Collectors.joining(","));
+        Map<Long, Integer> waybillCountMap = new java.util.HashMap<>();
+        try {
+            List<Map<String, Object>> counts = waybillOrderMapper.countAccessibleByMemberIds(memberIds);
+            for (Map<String, Object> row : counts) {
+                waybillCountMap.put(
+                    ((Number) row.get("memberId")).longValue(),
+                    ((Number) row.get("cnt")).intValue()
+                );
+            }
+        } catch (Exception e) {
+            // Fallback: counts will be 0 if batch query fails
+        }
+
+        Map<Long, Integer> finalCountMap = waybillCountMap;
+        return members.stream()
             .map(member -> new MemberAdminSummaryResponse(
                 member.getId(),
                 member.getPhone(),
@@ -97,7 +120,7 @@ public class MemberService {
                 safe(member.getNickname()),
                 safe(member.getFullName()),
                 member.getStatus(),
-                waybillOrderMapper.countAccessibleByMember(member.getId(), member.getPhone()),
+                finalCountMap.getOrDefault(member.getId(), 0),
                 formatDateTime(member.getLastLoginAt()),
                 formatDateTime(member.getCreatedAt())
             ))
