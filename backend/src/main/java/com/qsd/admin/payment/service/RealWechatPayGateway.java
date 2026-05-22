@@ -327,10 +327,13 @@ public class RealWechatPayGateway implements WechatPayGateway {
 
     private String resolveRefundNotifyUrl(String notifyUrl) {
         String normalized = trimToDefault(notifyUrl, "http://localhost:8080/api/payment/callback/wechat");
-        if (normalized.endsWith("/wechat")) {
-            return normalized + "-refund";
+        // Always derive refund URL by appending -refund to the path
+        // Works for both /wechat and /wechat-suffix patterns
+        int lastSlash = normalized.lastIndexOf('/');
+        if (lastSlash >= 0) {
+            return normalized.substring(0, lastSlash + 1) + "wechat-refund";
         }
-        return normalized;
+        return normalized + "-refund";
     }
 
     private void validateMiniProgramIdentity(PayMerchantConfig merchantConfig) {
