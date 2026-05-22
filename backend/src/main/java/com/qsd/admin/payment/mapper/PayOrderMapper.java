@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Mapper
@@ -70,9 +71,9 @@ public interface PayOrderMapper extends BaseMapper<PayOrder> {
     List<PayOrder> selectByMemberId(Long memberId);
 
     @Select("""
-        select id, order_no, member_id, waybill_id, business_type, scene_type, channel,
-               merchant_config_id, merchant_name, merchant_mch_id, merchant_app_id,
-               currency, amount_total, amount_paid, status, description, external_transaction_no,
+        select id, order_no, member_id, merchant_config_id, merchant_name, merchant_mch_id,
+               waybill_id, business_type, scene_type, channel, currency,
+               amount_total, amount_paid, status, external_transaction_no,
                paid_at, expired_at, closed_at, refunded_at, remark, deleted, created_at, updated_at
         from pay_order
         where order_no = #{orderNo}
@@ -80,6 +81,17 @@ public interface PayOrderMapper extends BaseMapper<PayOrder> {
         limit 1
         """)
     PayOrder selectByOrderNo(String orderNo);
+
+    @Select("""
+        select id, order_no, member_id, merchant_config_id, status, expired_at
+        from pay_order
+        where status in ('pending', 'paying')
+          and expired_at < #{now}
+          and deleted = 0
+        order by id asc
+        limit 100
+        """)
+    List<PayOrder> selectExpiredPayingOrders(LocalDateTime now);
 
     @Select("""
         select id, order_no, member_id, waybill_id, business_type, scene_type, channel,

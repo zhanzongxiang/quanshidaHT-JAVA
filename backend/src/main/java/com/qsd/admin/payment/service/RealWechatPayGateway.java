@@ -230,6 +230,39 @@ public class RealWechatPayGateway implements WechatPayGateway {
         }
     }
 
+    @Override
+    public void closeOrder(PayOrder order, PayMerchantConfig merchantConfig) {
+        validatePayMerchant(merchantConfig);
+        try {
+            String canonicalUrl = "/v3/pay/transactions/out-trade-no/" + order.getOrderNo() + "/close";
+            String requestBody = "{\"mchid\":\"" + merchantConfig.getMchId() + "\"}";
+            String nonceStr = UUID.randomUUID().toString().replace("-", "");
+            String timestamp = String.valueOf(Instant.now().getEpochSecond());
+            String authorization = buildAuthorizationHeader("POST", canonicalUrl, timestamp, nonceStr, requestBody, merchantConfig);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("Authorization", authorization);
+            headers.set("Wechatpay-Serial", merchantConfig.getMerchantSerialNo());
+            HttpEntity<String> entity = new HttpEntity<>(requestBody, headers);
+
+            ResponseEntity<String> response = restTemplate.exchange(
+                "https://api.mch.weixin.qq.com" + canonicalUrl,
+                HttpMethod.POST,
+                entity,
+                String.class
+            );
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                throw new IllegalStateException("微信关单请求失败: " + response.getStatusCode());
+            }
+        } catch (Exception ex) {
+            if (ex instanceof IllegalStateException stateException) {
+                throw stateException;
+            }
+            throw new IllegalStateException("关闭微信支付订单失败", ex);
+        }
+    }
+
     private String buildPrepayRequestBody(PayOrder order, String openid, PayMerchantConfig merchantConfig) throws JsonProcessingException {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("appid", merchantConfig.getAppId());

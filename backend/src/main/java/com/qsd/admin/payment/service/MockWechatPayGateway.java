@@ -59,6 +59,11 @@ public class MockWechatPayGateway implements WechatPayGateway {
     }
 
     @Override
+    public void closeOrder(PayOrder order, PayMerchantConfig merchantConfig) {
+        // No-op for mock gateway
+    }
+
+    @Override
     public WechatReconcileDownloadResult downloadTradeBill(LocalDate billDate, PayMerchantConfig merchantConfig) {
         String content = """
             `交易时间`,`公众账号ID`,`商户号`,`商户订单号`,`微信支付订单号`,`订单金额`,`申请退款金额`,`退款金额`,`订单状态`
