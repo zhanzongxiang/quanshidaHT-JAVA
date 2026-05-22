@@ -27,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -56,6 +57,9 @@ class MemberServiceTest {
     @Mock
     private PaymentMerchantService paymentMerchantService;
 
+    @Mock
+    private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+
     private MemberService memberService;
 
     @BeforeEach
@@ -67,7 +71,8 @@ class MemberServiceTest {
             waybillService,
             jwtTokenService,
             wechatPayGateway,
-            paymentMerchantService
+            paymentMerchantService,
+            passwordEncoder
         );
     }
 
@@ -158,7 +163,7 @@ class MemberServiceTest {
 
         MemberProfileResponse response = memberService.bindWechatIdentity(
             21L,
-            new MemberWechatBindRequest("openid-003", "unionid-003")
+new MemberWechatBindRequest("test-code")
         );
 
         ArgumentCaptor<MemberUser> memberCaptor = ArgumentCaptor.forClass(MemberUser.class);
@@ -212,11 +217,14 @@ class MemberServiceTest {
         existingMember.setPhone("13900139000");
 
         when(memberUserMapper.selectActiveById(21L)).thenReturn(currentMember);
+        when(paymentMerchantService.requireCurrentMerchant()).thenReturn(new com.qsd.admin.payment.entity.PayMerchantConfig());
+        when(wechatPayGateway.exchangeCode(eq("code-occupied"), any())).thenReturn(
+            new com.qsd.admin.payment.dto.WechatCodeSessionResponse("openid-occupied", "", ""));
         when(memberUserMapper.selectByWechatOpenid("openid-occupied")).thenReturn(existingMember);
 
         BusinessException ex = assertThrows(
             BusinessException.class,
-            () -> memberService.bindWechatIdentity(21L, new MemberWechatBindRequest("openid-occupied", "unionid-occupied"))
+            () -> memberService.bindWechatIdentity(21L, new MemberWechatBindRequest("code-occupied"))
         );
 
         assertEquals("该微信身份已绑定其他会员", ex.getMessage());
