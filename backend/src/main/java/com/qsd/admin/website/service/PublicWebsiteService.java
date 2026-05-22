@@ -356,31 +356,13 @@ public class PublicWebsiteService {
             return actualResult;
         }
 
-        boolean exception = normalizedNo.contains("ERR") || normalizedNo.endsWith("9");
+        // Return not-found instead of fabricated data
         ObjectNode root = objectMapper.createObjectNode();
         root.put("trackingId", normalizedNo);
-        root.put("status", exception ? "运输异常" : "运输中");
-        root.put("origin", "深圳");
-        root.put("destination", resolveTrackingDestination(normalizedNo));
-        root.put("isException", exception);
-
-        ArrayNode steps = objectMapper.createArrayNode();
-        steps.add(createTrackingStep("2026-04-13 09:15:00", "订单创建", "已接收运单信息，等待分配处理。", "深圳"));
-        steps.add(createTrackingStep("2026-04-13 12:40:00", "货物入仓", "货物已入仓并完成基础核验。", "深圳仓"));
-        steps.add(createTrackingStep(
-            "2026-04-13 18:25:00",
-            exception ? "运输异常" : "国际运输中",
-            exception ? "目的港资料待补充，请联系顾问确认。" : "货物已发出，正在运往下一节点。",
-            exception ? "转运中心" : "国际干线"
-        ));
-        steps.add(createTrackingStep(
-            "2026-04-14 10:10:00",
-            exception ? "待处理" : "预计派送",
-            exception ? "等待资料补充后继续推进。" : "清关完成后将安排末端派送。",
-            "目的港"
-        ));
-        root.set("steps", steps);
-
+        root.put("status", "未找到");
+        root.put("found", false);
+        root.put("message", "未查询到该运单信息，请检查单号是否正确或联系客服。");
+        root.set("steps", objectMapper.createArrayNode());
         return root;
     }
 
