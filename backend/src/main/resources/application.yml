@@ -5,9 +5,9 @@ spring:
   application:
     name: qsd-admin-backend
   datasource:
-    url: ${DB_URL:jdbc:mysql://36.150.237.57:3306/qsd_admin?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=utf8}
+    url: ${DB_URL:jdbc:mysql://localhost:3306/qsd_admin?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=utf8}
     username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:root123456}
+    password: ${DB_PASSWORD:changeme}
     driver-class-name: com.mysql.cj.jdbc.Driver
   flyway:
     enabled: ${FLYWAY_ENABLED:true}
@@ -21,10 +21,10 @@ mybatis-plus:
 app:
   jwt:
     issuer: ${JWT_ISSUER:qsd-admin}
-    secret: ${JWT_SECRET:cXNkLWFkbWluLXNlY3JldC1mb3Itand0LXRva2VuLTIwMjY=}
+    secret: ${JWT_SECRET}
     expire-minutes: ${JWT_EXPIRE_MINUTES:180}
   wechat-pay:
-    mock-enabled: ${WECHAT_PAY_MOCK_ENABLED:true}
+    mock-enabled: ${WECHAT_PAY_MOCK_ENABLED:false}
     auto-refresh-platform-certificates: ${WECHAT_PAY_AUTO_REFRESH_PLATFORM_CERTIFICATES:true}
     certificate-store-dir: ${WECHAT_PAY_CERTIFICATE_STORE_DIR:backend/certs/wechatpay}
     certificate-refresh-hours: ${WECHAT_PAY_CERTIFICATE_REFRESH_HOURS:6}
