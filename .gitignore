@@ -22,3 +22,9 @@ logs/
 # Env
 .env
 .env.local
+
+# Runtime data
+.runtime/
+
+# NPM cache
+.npm-cache/
