@@ -8,13 +8,12 @@ export interface LoginPayload {
   password: string
 }
 
-export interface LoginResult {
-  accessToken: string
-  tokenType: string
+export async function login(payload: LoginPayload): Promise<void> {
+  await http.post<ApiResponse<void>>('/auth/login', payload)
 }
 
-export async function login(payload: LoginPayload): Promise<LoginResult> {
-  return unwrapResponse(await http.post<ApiResponse<LoginResult>>('/auth/login', payload))
+export async function logout(): Promise<void> {
+  await http.post<ApiResponse<void>>('/auth/logout')
 }
 
 export async function fetchMe(): Promise<MeInfo> {

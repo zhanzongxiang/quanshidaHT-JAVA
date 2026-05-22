@@ -1,6 +1,5 @@
 package com.qsd.admin.auth.service;
 
-import com.qsd.admin.auth.dto.LoginResponse;
 import com.qsd.admin.auth.dto.MeResponse;
 import com.qsd.admin.auth.entity.AdminMenu;
 import com.qsd.admin.auth.entity.AdminUser;
@@ -33,7 +32,7 @@ public class AuthService {
         this.rateLimiterService = rateLimiterService;
     }
 
-    public LoginResponse login(String username, String password, String clientIp) {
+    public String login(String username, String password, String clientIp) {
         String rateLimitKey = "admin:" + (clientIp != null ? clientIp : "unknown") + ":" + username;
         if (!rateLimiterService.isAllowed(rateLimitKey)) {
             long remaining = rateLimiterService.getRemainingLockoutSeconds(rateLimitKey);
@@ -60,8 +59,7 @@ public class AuthService {
 
         rateLimiterService.recordSuccess(rateLimitKey);
         List<String> permissions = adminUserMapper.selectPermissionCodes(user.getId());
-        String token = jwtTokenService.createAdminToken(user.getId(), user.getUsername(), permissions);
-        return new LoginResponse(token, "Bearer");
+        return jwtTokenService.createAdminToken(user.getId(), user.getUsername(), permissions);
     }
 
     public MeResponse me(String username) {

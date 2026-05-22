@@ -3,6 +3,7 @@ package com.qsd.admin.security;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -25,6 +26,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.jwtTokenService = jwtTokenService;
     }
 
+    public static final String COOKIE_NAME = "qsd_token";
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
         throws ServletException, IOException {
@@ -33,13 +36,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        String authHeader = request.getHeader("Authorization");
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        // Try cookie first (httpOnly, XSS-safe), then fall back to Authorization header
+        String token = extractTokenFromCookie(request);
+        if (token == null) {
+            String authHeader = request.getHeader("Authorization");
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                token = authHeader.substring(7);
+            }
+        }
+
+        if (token == null) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String token = authHeader.substring(7);
         Claims claims;
         try {
             claims = jwtTokenService.parse(token);
@@ -78,5 +88,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             .collect(Collectors.toList());
         authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
         return authorities;
+    }
+
+    private String extractTokenFromCookie(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
+            return null;
+        }
+        for (Cookie cookie : cookies) {
+            if (COOKIE_NAME.equals(cookie.getName())) {
+                String value = cookie.getValue();
+                if (value != null && !value.isEmpty()) {
+                    return value;
+                }
+            }
+        }
+        return null;
     }
 }

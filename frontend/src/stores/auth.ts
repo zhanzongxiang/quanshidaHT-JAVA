@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { fetchMe, login } from '../api/auth'
+import { fetchMe, login, logout } from '../api/auth'
 import type { MeInfo } from '../types/auth'
 
 interface AuthState {
@@ -15,19 +15,16 @@ export const useAuthStore = defineStore('auth', {
     me: null,
   }),
   getters: {
-    token: () => localStorage.getItem('access_token'),
-    isAuthenticated: (state) => Boolean(localStorage.getItem('access_token') && state.me),
+    isAuthenticated: (state) => state.me !== null,
   },
   actions: {
     async loginByPassword(username: string, password: string) {
       this.loading = true
       try {
-        const result = await login({ username, password })
-        localStorage.setItem('access_token', result.accessToken)
+        await login({ username, password })
         this.me = await fetchMe()
         this.initialized = true
       } catch (error) {
-        localStorage.removeItem('access_token')
         this.me = null
         this.initialized = true
         throw error
@@ -36,25 +33,22 @@ export const useAuthStore = defineStore('auth', {
       }
     },
     async initialize() {
-      if (!localStorage.getItem('access_token')) {
-        this.me = null
-        this.initialized = true
-        return
-      }
-
       this.loading = true
       try {
         this.me = await fetchMe()
       } catch (error) {
-        localStorage.removeItem('access_token')
         this.me = null
       } finally {
         this.initialized = true
         this.loading = false
       }
     },
-    logout() {
-      localStorage.removeItem('access_token')
+    async logout() {
+      try {
+        await logout()
+      } catch {
+        // ignore logout API errors
+      }
       this.me = null
       this.initialized = true
     },
