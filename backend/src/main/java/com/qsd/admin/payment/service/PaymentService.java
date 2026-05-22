@@ -44,6 +44,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class PaymentService {
@@ -771,11 +772,13 @@ public class PaymentService {
     }
 
     private String generateOrderNo(LocalDateTime now) {
-        return "PO" + now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + System.nanoTime() % 100000;
+        return "PO" + now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
+            + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
     }
 
     private String generateRefundNo(LocalDateTime now) {
-        return "RF" + now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + System.nanoTime() % 100000;
+        return "RF" + now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
+            + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
     }
 
     private String formatDateTime(LocalDateTime value) {
