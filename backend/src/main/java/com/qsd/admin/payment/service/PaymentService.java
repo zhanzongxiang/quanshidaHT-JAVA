@@ -44,6 +44,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class PaymentService {
@@ -325,6 +326,12 @@ public class PaymentService {
             throw new BusinessException("退款金额不能超过实付金额");
         }
 
+        BigDecimal alreadyRefunded = refundOrderMapper.sumSucceededAmountByPayOrderId(order.getId());
+        BigDecimal remainingRefundable = order.getAmountPaid().subtract(alreadyRefunded);
+        if (request.amountRefund().compareTo(remainingRefundable) > 0) {
+            throw new BusinessException("退款金额超过可退款余额，当前可退: " + remainingRefundable);
+        }
+
         LocalDateTime now = LocalDateTime.now();
         RefundOrder refund = new RefundOrder();
         refund.setRefundNo(generateRefundNo(now));
@@ -428,8 +435,13 @@ public class PaymentService {
             refund.setUpdatedAt(now);
             refundOrderMapper.updateById(refund);
 
-            order.setStatus("refunded");
-            order.setRefundedAt(now);
+            BigDecimal totalRefunded = refundOrderMapper.sumSucceededAmountByPayOrderId(order.getId());
+            if (totalRefunded.compareTo(order.getAmountPaid()) >= 0) {
+                order.setStatus("refunded");
+                order.setRefundedAt(now);
+            } else {
+                order.setStatus("paid");
+            }
             order.setUpdatedAt(now);
             payOrderMapper.updateById(order);
             return;
@@ -440,7 +452,12 @@ public class PaymentService {
         refund.setUpdatedAt(LocalDateTime.now());
         refundOrderMapper.updateById(refund);
 
-        order.setStatus("paid");
+        int processingCount = refundOrderMapper.countProcessingByPayOrderId(order.getId());
+        if (processingCount > 0) {
+            order.setStatus("refunding");
+        } else {
+            order.setStatus("paid");
+        }
         order.setUpdatedAt(LocalDateTime.now());
         payOrderMapper.updateById(order);
     }
@@ -755,11 +772,13 @@ public class PaymentService {
     }
 
     private String generateOrderNo(LocalDateTime now) {
-        return "PO" + now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + System.nanoTime() % 100000;
+        return "PO" + now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
+            + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
     }
 
     private String generateRefundNo(LocalDateTime now) {
-        return "RF" + now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + System.nanoTime() % 100000;
+        return "RF" + now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
+            + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
     }
 
     private String formatDateTime(LocalDateTime value) {

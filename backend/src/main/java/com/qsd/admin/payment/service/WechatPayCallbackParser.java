@@ -6,6 +6,8 @@ import com.qsd.admin.payment.dto.RefundCallbackRequest;
 import com.qsd.admin.payment.dto.WechatCallbackContext;
 import com.qsd.admin.payment.dto.WechatPayCallbackRequest;
 import com.qsd.admin.payment.entity.PayMerchantConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -13,6 +15,7 @@ import java.util.Map;
 @Service
 public class WechatPayCallbackParser {
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
+    private static final Logger log = LoggerFactory.getLogger(WechatPayCallbackParser.class);
 
     private final ObjectMapper objectMapper;
     private final PaymentMerchantService paymentMerchantService;
@@ -107,7 +110,7 @@ public class WechatPayCallbackParser {
     }
 
     private Map<String, Object> decryptNotifyResource(Map<String, Object> payload, String body) {
-        PayMerchantConfig config = resolveMerchantForNotify(payload, body, null, null, null);
+        PayMerchantConfig config = resolveMerchantForDecrypt(payload);
         return wechatPayCryptoService.decryptNotifyResource(body, config.getApiV3Key());
     }
 
@@ -122,7 +125,7 @@ public class WechatPayCallbackParser {
         if (!mchId.isEmpty()) {
             PayMerchantConfig byMchId = paymentMerchantService.findMerchantByMchId(mchId);
             if (isUsableForNotify(byMchId)) {
-                verifySignatureIfPresent(body, timestamp, nonce, signature, byMchId);
+                verifySignature(body, timestamp, nonce, signature, byMchId);
                 return byMchId;
             }
         }
@@ -130,16 +133,40 @@ public class WechatPayCallbackParser {
         for (PayMerchantConfig config : paymentMerchantService.listMerchantEntities()) {
             if (isUsableForNotify(config)) {
                 try {
-                    verifySignatureIfPresent(body, timestamp, nonce, signature, config);
+                    verifySignature(body, timestamp, nonce, signature, config);
                     return config;
-                } catch (IllegalStateException | IllegalArgumentException ignored) {
+                } catch (WechatCallbackException ignored) {
                     // Try next merchant until one signature can be verified or one key can decrypt.
                 }
             }
         }
         PayMerchantConfig fallback = paymentMerchantService.buildFallbackMerchantFromProperties();
         if (isUsableForNotify(fallback)) {
-            verifySignatureIfPresent(body, timestamp, nonce, signature, fallback);
+            log.warn("Falling back to property-based merchant config for WeChat callback verification");
+            verifySignature(body, timestamp, nonce, signature, fallback);
+            return fallback;
+        }
+        throw new WechatCallbackException("merchant_config_missing", "没有可用于验签或解密微信回调的商户配置", true);
+    }
+
+    private PayMerchantConfig resolveMerchantForDecrypt(Map<String, Object> payload) {
+        String mchId = extractMchId(payload);
+        if (!mchId.isEmpty()) {
+            PayMerchantConfig byMchId = paymentMerchantService.findMerchantByMchId(mchId);
+            if (isUsableForNotify(byMchId)) {
+                return byMchId;
+            }
+        }
+
+        for (PayMerchantConfig config : paymentMerchantService.listMerchantEntities()) {
+            if (isUsableForNotify(config)) {
+                return config;
+            }
+        }
+
+        PayMerchantConfig fallback = paymentMerchantService.buildFallbackMerchantFromProperties();
+        if (isUsableForNotify(fallback)) {
+            log.warn("Falling back to property-based merchant config for WeChat callback decryption");
             return fallback;
         }
         throw new WechatCallbackException("merchant_config_missing", "没有可用于验签或解密微信回调的商户配置", true);
@@ -155,7 +182,7 @@ public class WechatPayCallbackParser {
             && !config.getApiV3Key().isBlank();
     }
 
-    private void verifySignatureIfPresent(
+    private void verifySignature(
         String body,
         String timestamp,
         String nonce,
@@ -164,7 +191,7 @@ public class WechatPayCallbackParser {
     ) {
         if (timestamp == null || nonce == null || signature == null
             || timestamp.isBlank() || nonce.isBlank() || signature.isBlank()) {
-            return;
+            throw new WechatCallbackException("signature_missing", "微信回调缺少验签参数", false);
         }
         try {
             wechatPayCryptoService.verifyCallbackSignature(body, timestamp, nonce, signature, merchantConfig);

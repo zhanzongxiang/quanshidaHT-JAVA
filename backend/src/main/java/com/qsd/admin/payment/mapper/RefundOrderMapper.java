@@ -5,6 +5,7 @@ import com.qsd.admin.payment.entity.RefundOrder;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Mapper
@@ -36,4 +37,20 @@ public interface RefundOrderMapper extends BaseMapper<RefundOrder> {
         limit 1
         """)
     RefundOrder selectByIdValue(Long id);
+
+    @Select("""
+        select coalesce(sum(amount_refund), 0)
+        from refund_order
+        where pay_order_id = #{payOrderId}
+          and status = 'succeeded'
+        """)
+    BigDecimal sumSucceededAmountByPayOrderId(Long payOrderId);
+
+    @Select("""
+        select count(1)
+        from refund_order
+        where pay_order_id = #{payOrderId}
+          and status = 'processing'
+        """)
+    int countProcessingByPayOrderId(Long payOrderId);
 }

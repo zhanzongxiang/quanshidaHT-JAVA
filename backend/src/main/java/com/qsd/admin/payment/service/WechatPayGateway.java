@@ -18,4 +18,6 @@ public interface WechatPayGateway {
     WechatRefundResult createRefund(PayOrder order, RefundOrder refundOrder, PayMerchantConfig merchantConfig);
 
     WechatReconcileDownloadResult downloadTradeBill(LocalDate billDate, PayMerchantConfig merchantConfig);
+
+    void closeOrder(PayOrder order, PayMerchantConfig merchantConfig);
 }
