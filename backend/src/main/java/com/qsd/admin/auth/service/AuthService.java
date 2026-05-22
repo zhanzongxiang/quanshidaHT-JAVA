@@ -47,14 +47,8 @@ public class AuthService {
             throw new BusinessException("账号已被禁用");
         }
         if (!passwordEncoder.matches(password, user.getPasswordHash())) {
-            // Backward compatibility: try plaintext match for pre-BCrypt passwords
-            if (!user.getPasswordHash().equals(password)) {
-                rateLimiterService.recordFailure(rateLimitKey);
-                throw new BusinessException("用户名或密码错误");
-            }
-            // Auto-upgrade plaintext password to BCrypt
-            user.setPasswordHash(passwordEncoder.encode(password));
-            adminUserMapper.updateById(user);
+            rateLimiterService.recordFailure(rateLimitKey);
+            throw new BusinessException("用户名或密码错误");
         }
 
         rateLimiterService.recordSuccess(rateLimitKey);

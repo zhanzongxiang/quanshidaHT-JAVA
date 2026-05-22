@@ -46,8 +46,8 @@ const auth = useAuthStore()
 const formRef = ref<FormInstance>()
 const submitting = ref(false)
 const form = reactive({
-  username: 'admin',
-  password: 'admin123',
+  username: '',
+  password: '',
 })
 
 const rules: FormRules = {

@@ -34,7 +34,7 @@ public class AuthController {
         cookie.setHttpOnly(true);
         cookie.setPath("/api");
         cookie.setMaxAge(24 * 60 * 60); // 24 hours
-        cookie.setSecure(false); // set to true if using HTTPS
+        cookie.setSecure(httpRequest.isSecure());
         cookie.setAttribute("SameSite", "Lax");
         httpResponse.addCookie(cookie);
 

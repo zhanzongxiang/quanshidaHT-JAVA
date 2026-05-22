@@ -2,6 +2,8 @@ package com.qsd.admin.member.service;
 
 import com.qsd.admin.auth.dto.LoginResponse;
 import com.qsd.admin.common.exception.BusinessException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.qsd.admin.common.exception.NotFoundException;
 import com.qsd.admin.common.service.RateLimiterService;
 import com.qsd.admin.member.dto.MemberAdminDetailResponse;
@@ -48,6 +50,7 @@ import java.util.stream.Collectors;
 
 @Service
 public class MemberService {
+    private static final Logger log = LoggerFactory.getLogger(MemberService.class);
     private static final String STATUS_ACTIVE = "active";
     private static final String STATUS_DISABLED = "disabled";
     private static final String STATUS_PENDING = "pending";
@@ -93,9 +96,9 @@ public class MemberService {
         }
 
         // Batch query for waybill counts to avoid N+1
-        String memberIds = members.stream()
-            .map(m -> String.valueOf(m.getId()))
-            .collect(java.util.stream.Collectors.joining(","));
+        List<Long> memberIds = members.stream()
+            .map(MemberUser::getId)
+            .toList();
         Map<Long, Integer> waybillCountMap = new java.util.HashMap<>();
         try {
             List<Map<String, Object>> counts = waybillOrderMapper.countAccessibleByMemberIds(memberIds);
@@ -106,7 +109,7 @@ public class MemberService {
                 );
             }
         } catch (Exception e) {
-            // Fallback: counts will be 0 if batch query fails
+            log.warn("Failed to batch query waybill counts for {} members", members.size(), e);
         }
 
         Map<Long, Integer> finalCountMap = waybillCountMap;
@@ -232,13 +235,8 @@ public class MemberService {
         }
         String rawPassword = request.password().trim();
         if (!passwordEncoder.matches(rawPassword, member.getPasswordHash())) {
-            // Backward compatibility: try plaintext match for pre-BCrypt passwords
-            if (!member.getPasswordHash().equals(rawPassword)) {
-                rateLimiterService.recordFailure(rateLimitKey);
-                throw new BusinessException("手机号或密码错误");
-            }
-            // Auto-upgrade plaintext password to BCrypt
-            member.setPasswordHash(passwordEncoder.encode(rawPassword));
+            rateLimiterService.recordFailure(rateLimitKey);
+            throw new BusinessException("手机号或密码错误");
         }
         if (STATUS_DISABLED.equals(member.getStatus())) {
             throw new BusinessException("会员已被停用");

@@ -157,13 +157,17 @@ public interface WaybillOrderMapper extends BaseMapper<WaybillOrder> {
           and current_status = #{status}
         """)
     long countByCurrentStatus(@Param("status") String status);
-
     @Select("""
+        <script>
         select r.member_id as memberId, count(distinct w.id) as cnt
         from member_waybill_relation r
         join waybill_order w on w.id = r.waybill_id and w.deleted = 0
-        where r.member_id in (${memberIds})
+        where r.member_id in
+        <foreach collection="memberIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
         group by r.member_id
+        </script>
         """)
-    List<Map<String, Object>> countAccessibleByMemberIds(@Param("memberIds") String memberIds);
+    List<Map<String, Object>> countAccessibleByMemberIds(@Param("memberIds") List<Long> memberIds);
 }

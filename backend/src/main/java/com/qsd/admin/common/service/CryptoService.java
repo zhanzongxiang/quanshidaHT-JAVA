@@ -18,7 +18,7 @@ public class CryptoService {
 
     private final SecretKeySpec secretKey;
 
-    public CryptoService(@Value("${app.crypto.master-key:qsd-default-encryption-key-32bytes!}") String masterKey) {
+    public CryptoService(@Value("${app.crypto.master-key}") String masterKey) {
         byte[] keyBytes = masterKey.getBytes(StandardCharsets.UTF_8);
         // Ensure 32 bytes for AES-256
         byte[] paddedKey = new byte[32];

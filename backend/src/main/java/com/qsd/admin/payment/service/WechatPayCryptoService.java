@@ -140,6 +140,7 @@ public class WechatPayCryptoService {
     }
 
     private PrivateKey readPrivateKey(String keyPath) {
+        validatePath(keyPath);
         try {
             String pem = Files.readString(Path.of(keyPath), StandardCharsets.UTF_8);
             String normalized = pem
@@ -156,6 +157,7 @@ public class WechatPayCryptoService {
     }
 
     private PublicKey readPlatformPublicKey(String certPath) {
+        validatePath(certPath);
         try {
             try (var inputStream = Files.newInputStream(Path.of(certPath))) {
                 CertificateFactory factory = CertificateFactory.getInstance("X.509");
@@ -169,6 +171,22 @@ public class WechatPayCryptoService {
 
     private String stringValue(Object value) {
         return value == null ? "" : String.valueOf(value);
+    }
+
+    private void validatePath(String path) {
+        if (path == null || path.isEmpty()) {
+            return;
+        }
+        // Prevent path traversal
+        if (path.contains("..") || path.contains("~")) {
+            throw new IllegalStateException("文件路径包含非法字符: " + path);
+        }
+        // Ensure path is within allowed directories
+        Path normalizedPath = Path.of(path).normalize();
+        String normalizedStr = normalizedPath.toString();
+        if (!normalizedStr.startsWith("backend/certs/") && !normalizedStr.startsWith("/etc/ssl/")) {
+            throw new IllegalStateException("文件路径必须在允许的目录内: " + path);
+        }
     }
 
     private String trimToNull(String value) {
