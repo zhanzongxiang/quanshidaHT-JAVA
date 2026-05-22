@@ -7,6 +7,7 @@ import com.qsd.admin.auth.entity.AdminUser;
 import com.qsd.admin.auth.mapper.AdminMenuMapper;
 import com.qsd.admin.auth.mapper.AdminUserMapper;
 import com.qsd.admin.common.exception.BusinessException;
+import com.qsd.admin.common.service.RateLimiterService;
 import com.qsd.admin.security.JwtTokenService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -22,15 +23,23 @@ public class AuthService {
     private final AdminMenuMapper adminMenuMapper;
     private final JwtTokenService jwtTokenService;
     private final PasswordEncoder passwordEncoder;
+    private final RateLimiterService rateLimiterService;
 
-    public AuthService(AdminUserMapper adminUserMapper, AdminMenuMapper adminMenuMapper, JwtTokenService jwtTokenService, PasswordEncoder passwordEncoder) {
+    public AuthService(AdminUserMapper adminUserMapper, AdminMenuMapper adminMenuMapper, JwtTokenService jwtTokenService, PasswordEncoder passwordEncoder, RateLimiterService rateLimiterService) {
         this.adminUserMapper = adminUserMapper;
         this.adminMenuMapper = adminMenuMapper;
         this.jwtTokenService = jwtTokenService;
         this.passwordEncoder = passwordEncoder;
+        this.rateLimiterService = rateLimiterService;
     }
 
-    public LoginResponse login(String username, String password) {
+    public LoginResponse login(String username, String password, String clientIp) {
+        String rateLimitKey = "admin:" + (clientIp != null ? clientIp : "unknown") + ":" + username;
+        if (!rateLimiterService.isAllowed(rateLimitKey)) {
+            long remaining = rateLimiterService.getRemainingLockoutSeconds(rateLimitKey);
+            throw new BusinessException("登录尝试过于频繁，请 " + remaining + " 秒后再试");
+        }
+
         AdminUser user = adminUserMapper.selectByUsername(username);
         if (user == null) {
             throw new BusinessException("用户不存在");
@@ -41,6 +50,7 @@ public class AuthService {
         if (!passwordEncoder.matches(password, user.getPasswordHash())) {
             // Backward compatibility: try plaintext match for pre-BCrypt passwords
             if (!user.getPasswordHash().equals(password)) {
+                rateLimiterService.recordFailure(rateLimitKey);
                 throw new BusinessException("用户名或密码错误");
             }
             // Auto-upgrade plaintext password to BCrypt
@@ -48,6 +58,7 @@ public class AuthService {
             adminUserMapper.updateById(user);
         }
 
+        rateLimiterService.recordSuccess(rateLimitKey);
         List<String> permissions = adminUserMapper.selectPermissionCodes(user.getId());
         String token = jwtTokenService.createAdminToken(user.getId(), user.getUsername(), permissions);
         return new LoginResponse(token, "Bearer");

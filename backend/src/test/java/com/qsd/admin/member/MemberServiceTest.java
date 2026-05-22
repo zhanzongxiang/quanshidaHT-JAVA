@@ -60,6 +60,9 @@ class MemberServiceTest {
     @Mock
     private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
+    @Mock
+    private com.qsd.admin.common.service.RateLimiterService rateLimiterService;
+
     private MemberService memberService;
 
     @BeforeEach
@@ -72,7 +75,8 @@ class MemberServiceTest {
             jwtTokenService,
             wechatPayGateway,
             paymentMerchantService,
-            passwordEncoder
+            passwordEncoder,
+            rateLimiterService
         );
     }
 

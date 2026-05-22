@@ -37,8 +37,10 @@ import com.qsd.admin.payment.mapper.RefundNotifyLogMapper;
 import com.qsd.admin.payment.mapper.RefundOrderMapper;
 import com.qsd.admin.waybill.entity.WaybillOrder;
 import com.qsd.admin.waybill.mapper.WaybillOrderMapper;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.qsd.admin.security.AuthenticatedUser;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -148,6 +150,12 @@ public class PaymentService {
             throw new BusinessException("支付状态不合法");
         }
 
+        // Audit: require externalTransactionNo when manually marking as paid
+        if ("paid".equals(status) && trimToNull(request.externalTransactionNo()) == null) {
+            throw new BusinessException("手动标记已支付时必须填写外部交易凭证号");
+        }
+
+        String operator = getCurrentOperator();
         LocalDateTime now = LocalDateTime.now();
         order.setStatus(status);
         order.setExternalTransactionNo(trimToEmpty(request.externalTransactionNo()));
@@ -160,7 +168,7 @@ public class PaymentService {
             "admin_status_update",
             status,
             "{}",
-            "{\"status\":\"" + status + "\"}",
+            "{\"status\":\"" + status + "\",\"operator\":\"" + operator + "\"}",
             trimToNull(request.externalTransactionNo()),
             order.getOrderNo(),
             "paid".equals(status) ? now : null
@@ -746,6 +754,16 @@ public class PaymentService {
         log.setNotifiedAt(LocalDateTime.now());
         log.setCreatedAt(LocalDateTime.now());
         refundNotifyLogMapper.insert(log);
+    }
+
+    private String getCurrentOperator() {
+        try {
+            var auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.getPrincipal() instanceof AuthenticatedUser user) {
+                return user.username();
+            }
+        } catch (Exception ignored) {}
+        return "unknown";
     }
 
     private PayOrder requirePayOrder(Long id) {

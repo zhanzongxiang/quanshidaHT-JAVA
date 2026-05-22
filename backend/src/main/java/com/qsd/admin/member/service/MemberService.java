@@ -3,6 +3,7 @@ package com.qsd.admin.member.service;
 import com.qsd.admin.auth.dto.LoginResponse;
 import com.qsd.admin.common.exception.BusinessException;
 import com.qsd.admin.common.exception.NotFoundException;
+import com.qsd.admin.common.service.RateLimiterService;
 import com.qsd.admin.member.dto.MemberAdminDetailResponse;
 import com.qsd.admin.member.dto.MemberAdminSaveRequest;
 import com.qsd.admin.member.dto.MemberAdminSummaryResponse;
@@ -61,6 +62,7 @@ public class MemberService {
     private final WechatPayGateway wechatPayGateway;
     private final PaymentMerchantService paymentMerchantService;
     private final PasswordEncoder passwordEncoder;
+    private final RateLimiterService rateLimiterService;
 
     public MemberService(
         MemberUserMapper memberUserMapper,
@@ -70,7 +72,8 @@ public class MemberService {
         JwtTokenService jwtTokenService,
         WechatPayGateway wechatPayGateway,
         PaymentMerchantService paymentMerchantService,
-        PasswordEncoder passwordEncoder
+        PasswordEncoder passwordEncoder,
+        RateLimiterService rateLimiterService
     ) {
         this.memberUserMapper = memberUserMapper;
         this.memberWaybillRelationMapper = memberWaybillRelationMapper;
@@ -80,6 +83,7 @@ public class MemberService {
         this.wechatPayGateway = wechatPayGateway;
         this.paymentMerchantService = paymentMerchantService;
         this.passwordEncoder = passwordEncoder;
+        this.rateLimiterService = rateLimiterService;
     }
 
     public List<MemberAdminSummaryResponse> listAdminMembers(String keyword, String status) {
@@ -191,15 +195,23 @@ public class MemberService {
     }
 
     @Transactional
-    public LoginResponse login(MemberLoginRequest request) {
+    public LoginResponse login(MemberLoginRequest request, String clientIp) {
+        String rateLimitKey = "member:" + (clientIp != null ? clientIp : "unknown") + ":" + request.phone();
+        if (!rateLimiterService.isAllowed(rateLimitKey)) {
+            long remaining = rateLimiterService.getRemainingLockoutSeconds(rateLimitKey);
+            throw new BusinessException("登录尝试过于频繁，请 " + remaining + " 秒后再试");
+        }
+
         MemberUser member = memberUserMapper.selectByPhone(request.phone().trim());
         if (member == null) {
+            rateLimiterService.recordFailure(rateLimitKey);
             throw new BusinessException("手机号或密码错误");
         }
         String rawPassword = request.password().trim();
         if (!passwordEncoder.matches(rawPassword, member.getPasswordHash())) {
             // Backward compatibility: try plaintext match for pre-BCrypt passwords
             if (!member.getPasswordHash().equals(rawPassword)) {
+                rateLimiterService.recordFailure(rateLimitKey);
                 throw new BusinessException("手机号或密码错误");
             }
             // Auto-upgrade plaintext password to BCrypt
@@ -212,6 +224,7 @@ public class MemberService {
             throw new BusinessException("会员待审核，暂不可登录");
         }
 
+        rateLimiterService.recordSuccess(rateLimitKey);
         LocalDateTime now = LocalDateTime.now();
         member.setLastLoginAt(now);
         member.setUpdatedAt(now);

@@ -2,6 +2,7 @@ package com.qsd.admin.payment.service;
 
 import com.qsd.admin.common.exception.BusinessException;
 import com.qsd.admin.common.exception.NotFoundException;
+import com.qsd.admin.common.service.CryptoService;
 import com.qsd.admin.config.WechatPayProperties;
 import com.qsd.admin.payment.dto.PayMerchantConfigCreateRequest;
 import com.qsd.admin.payment.dto.PayMerchantConfigSummaryResponse;
@@ -22,13 +23,16 @@ public class PaymentMerchantService {
 
     private final PayMerchantConfigMapper payMerchantConfigMapper;
     private final WechatPayProperties wechatPayProperties;
+    private final CryptoService cryptoService;
 
     public PaymentMerchantService(
         PayMerchantConfigMapper payMerchantConfigMapper,
-        WechatPayProperties wechatPayProperties
+        WechatPayProperties wechatPayProperties,
+        CryptoService cryptoService
     ) {
         this.payMerchantConfigMapper = payMerchantConfigMapper;
         this.wechatPayProperties = wechatPayProperties;
+        this.cryptoService = cryptoService;
     }
 
     public List<PayMerchantConfigSummaryResponse> listMerchantConfigs() {
@@ -42,7 +46,7 @@ public class PaymentMerchantService {
         ensureDefaultMerchantExists();
         PayMerchantConfig config = payMerchantConfigMapper.selectCurrentActive();
         if (config != null) {
-            return config;
+            return decryptMerchantConfig(config);
         }
         throw new IllegalStateException(PaymentMerchantExceptionMessages.CURRENT_MERCHANT_MISSING);
     }
@@ -53,6 +57,13 @@ public class PaymentMerchantService {
         if (config == null) {
             throw new NotFoundException(PaymentMerchantExceptionMessages.MERCHANT_NOT_FOUND);
         }
+        return decryptMerchantConfig(config);
+    }
+
+    private PayMerchantConfig decryptMerchantConfig(PayMerchantConfig config) {
+        if (config == null) return null;
+        config.setAppSecret(decryptSensitive(config.getAppSecret()));
+        config.setApiV3Key(decryptSensitive(config.getApiV3Key()));
         return config;
     }
 
@@ -62,7 +73,7 @@ public class PaymentMerchantService {
             return null;
         }
         ensureDefaultMerchantExists();
-        return payMerchantConfigMapper.selectByMchId(normalized);
+        return decryptMerchantConfig(payMerchantConfigMapper.selectByMchId(normalized));
     }
 
     public List<PayMerchantConfig> listMerchantEntities() {
@@ -120,9 +131,9 @@ public class PaymentMerchantService {
         config.setMerchantCode(request.merchantCode().trim());
         config.setMchId(request.mchId().trim());
         config.setAppId(request.appId().trim());
-        config.setAppSecret(trimToEmpty(request.appSecret()));
+        config.setAppSecret(encryptSensitive(request.appSecret()));
         config.setNotifyUrl(request.notifyUrl().trim());
-        config.setApiV3Key(trimToEmpty(request.apiV3Key()));
+        config.setApiV3Key(encryptSensitive(request.apiV3Key()));
         config.setPrivateKeyPath(trimToEmpty(request.privateKeyPath()));
         config.setMerchantSerialNo(trimToEmpty(request.merchantSerialNo()));
         config.setPlatformCertificatePath(trimToEmpty(request.platformCertificatePath()));
@@ -236,5 +247,18 @@ public class PaymentMerchantService {
     private String trimToDefault(String value, String fallback) {
         String normalized = trimToNull(value);
         return normalized == null || normalized.isEmpty() ? fallback : normalized;
+    }
+
+    private String encryptSensitive(String value) {
+        String trimmed = trimToEmpty(value);
+        if (trimmed.isEmpty() || cryptoService.isEncrypted(trimmed)) {
+            return trimmed;
+        }
+        return cryptoService.encrypt(trimmed);
+    }
+
+    public String decryptSensitive(String value) {
+        if (value == null || value.isEmpty()) return value;
+        return cryptoService.decrypt(value);
     }
 }
