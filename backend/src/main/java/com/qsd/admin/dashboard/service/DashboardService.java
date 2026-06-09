@@ -4,6 +4,7 @@ import com.qsd.admin.content.entity.SiteContentPage;
 import com.qsd.admin.content.mapper.SiteContentPageMapper;
 import com.qsd.admin.dashboard.dto.DashboardSummaryResponse;
 import com.qsd.admin.news.mapper.NewsArticleMapper;
+import com.qsd.admin.tenant.TenantContextHolder;
 import com.qsd.admin.waybill.mapper.WaybillOrderMapper;
 import org.springframework.stereotype.Service;
 
@@ -28,12 +29,13 @@ public class DashboardService {
     }
 
     public DashboardSummaryResponse getSummary() {
-        long waybillTotal = waybillOrderMapper.countActive();
-        long waybillInTransit = waybillOrderMapper.countByCurrentStatus("in_transit");
-        long newsTotal = newsArticleMapper.countActive();
-        long newsPublished = newsArticleMapper.countPublished(null, null);
-        int serviceLineTotal = siteContentPageMapper.countServiceLinePages();
-        SiteContentPage homeContent = siteContentPageMapper.selectByPageCode("home");
+        Long tenantId = TenantContextHolder.requireTenantId();
+        long waybillTotal = waybillOrderMapper.countActive(tenantId);
+        long waybillInTransit = waybillOrderMapper.countByCurrentStatus(tenantId, "in_transit");
+        long newsTotal = newsArticleMapper.countActive(tenantId);
+        long newsPublished = newsArticleMapper.countPublished(tenantId, null, null);
+        int serviceLineTotal = siteContentPageMapper.countServiceLinePages(tenantId);
+        SiteContentPage homeContent = siteContentPageMapper.selectByPageCode(tenantId, "home");
 
         return new DashboardSummaryResponse(
             waybillTotal,

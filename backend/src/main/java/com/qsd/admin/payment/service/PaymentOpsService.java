@@ -9,6 +9,7 @@ import com.qsd.admin.payment.entity.PayReconcileRecord;
 import com.qsd.admin.payment.mapper.PayNotifyLogMapper;
 import com.qsd.admin.payment.mapper.PayReconcileRecordMapper;
 import com.qsd.admin.payment.mapper.RefundNotifyLogMapper;
+import com.qsd.admin.tenant.TenantContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.format.DateTimeFormatter;
@@ -40,11 +41,12 @@ public class PaymentOpsService {
     }
 
     public PaymentOpsOverviewResponse getOverview() {
+        Long tenantId = TenantContextHolder.requireTenantId();
         PayMerchantConfig merchant = paymentMerchantService.requireCurrentMerchant();
         return new PaymentOpsOverviewResponse(
             buildCertificateStatus(merchant, merchant.getPlatformCertificatePath()),
-            payNotifyLogMapper.selectFailureStats(),
-            refundNotifyLogMapper.selectFailureStats()
+            payNotifyLogMapper.selectFailureStats(tenantId),
+            refundNotifyLogMapper.selectFailureStats(tenantId)
         );
     }
 
@@ -55,7 +57,7 @@ public class PaymentOpsService {
     }
 
     public ReconcileDiffDetailResponse getReconcileDiffDetail(Long id) {
-        PayReconcileRecord record = payReconcileRecordMapper.selectById(id);
+        PayReconcileRecord record = payReconcileRecordMapper.selectActiveById(TenantContextHolder.requireTenantId(), id);
         if (record == null) {
             throw new NotFoundException("对账记录不存在");
         }

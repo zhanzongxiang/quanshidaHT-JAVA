@@ -15,14 +15,15 @@ public interface PayOrderMapper extends BaseMapper<PayOrder> {
 
     @Select("""
         <script>
-        select po.id, po.order_no, po.member_id, po.waybill_id, po.business_type, po.scene_type, po.channel,
+        select po.id, po.tenant_id, po.order_no, po.member_id, po.waybill_id, po.business_type, po.scene_type, po.channel,
                po.merchant_config_id, po.merchant_name, po.merchant_mch_id, po.merchant_app_id,
                po.currency, po.amount_total, po.amount_paid, po.status, po.description, po.external_transaction_no,
                po.paid_at, po.expired_at, po.closed_at, po.refunded_at, po.remark, po.deleted, po.created_at, po.updated_at
         from pay_order po
-        left join member_user mu on mu.id = po.member_id
-        left join waybill_order wo on wo.id = po.waybill_id
-        where po.deleted = 0
+        left join member_user mu on mu.id = po.member_id and mu.tenant_id = #{tenantId}
+        left join waybill_order wo on wo.id = po.waybill_id and wo.tenant_id = #{tenantId}
+        where po.tenant_id = #{tenantId}
+          and po.deleted = 0
           <if test="keyword != null and keyword != ''">
             and (
               po.order_no like concat('%', #{keyword}, '%')
@@ -41,49 +42,65 @@ public interface PayOrderMapper extends BaseMapper<PayOrder> {
         </script>
         """)
     List<PayOrder> selectAdminList(
+        @Param("tenantId") Long tenantId,
         @Param("keyword") String keyword,
         @Param("status") String status,
         @Param("channel") String channel
     );
 
     @Select("""
-        select id, order_no, member_id, waybill_id, business_type, scene_type, channel,
+        select id, tenant_id, order_no, member_id, waybill_id, business_type, scene_type, channel,
                merchant_config_id, merchant_name, merchant_mch_id, merchant_app_id,
                currency, amount_total, amount_paid, status, description, external_transaction_no,
                paid_at, expired_at, closed_at, refunded_at, remark, deleted, created_at, updated_at
         from pay_order
-        where id = #{id}
+        where tenant_id = #{tenantId}
+          and id = #{id}
           and deleted = 0
         limit 1
         """)
-    PayOrder selectActiveById(Long id);
+    PayOrder selectActiveById(@Param("tenantId") Long tenantId, @Param("id") Long id);
 
     @Select("""
-        select id, order_no, member_id, waybill_id, business_type, scene_type, channel,
+        select id, tenant_id, order_no, member_id, waybill_id, business_type, scene_type, channel,
                merchant_config_id, merchant_name, merchant_mch_id, merchant_app_id,
                currency, amount_total, amount_paid, status, description, external_transaction_no,
                paid_at, expired_at, closed_at, refunded_at, remark, deleted, created_at, updated_at
         from pay_order
-        where member_id = #{memberId}
+        where tenant_id = #{tenantId}
+          and member_id = #{memberId}
           and deleted = 0
         order by updated_at desc, id desc
         """)
-    List<PayOrder> selectByMemberId(Long memberId);
+    List<PayOrder> selectByMemberId(@Param("tenantId") Long tenantId, @Param("memberId") Long memberId);
 
     @Select("""
-        select id, order_no, member_id, merchant_config_id, merchant_name, merchant_mch_id,
+        select id, tenant_id, order_no, member_id, merchant_config_id, merchant_name, merchant_mch_id,
                waybill_id, business_type, scene_type, channel, currency,
                amount_total, amount_paid, status, external_transaction_no,
                paid_at, expired_at, closed_at, refunded_at, remark, deleted, created_at, updated_at
         from pay_order
-        where order_no = #{orderNo}
+        where tenant_id = #{tenantId}
+          and order_no = #{orderNo}
           and deleted = 0
         limit 1
         """)
-    PayOrder selectByOrderNo(String orderNo);
+    PayOrder selectByOrderNo(@Param("tenantId") Long tenantId, @Param("orderNo") String orderNo);
 
     @Select("""
-        select id, order_no, member_id, merchant_config_id, status, expired_at
+        select id, tenant_id, order_no, member_id, merchant_config_id, status, expired_at
+        from pay_order
+        where tenant_id = #{tenantId}
+          and status in ('pending', 'paying')
+          and expired_at < #{now}
+          and deleted = 0
+        order by id asc
+        limit 100
+        """)
+    List<PayOrder> selectExpiredPayingOrders(@Param("tenantId") Long tenantId, @Param("now") LocalDateTime now);
+
+    @Select("""
+        select id, tenant_id, order_no, member_id, merchant_config_id, status, expired_at
         from pay_order
         where status in ('pending', 'paying')
           and expired_at < #{now}
@@ -91,17 +108,18 @@ public interface PayOrderMapper extends BaseMapper<PayOrder> {
         order by id asc
         limit 100
         """)
-    List<PayOrder> selectExpiredPayingOrders(LocalDateTime now);
+    List<PayOrder> selectExpiredPayingOrdersGlobal(@Param("now") LocalDateTime now);
 
     @Select("""
-        select id, order_no, member_id, waybill_id, business_type, scene_type, channel,
+        select id, tenant_id, order_no, member_id, waybill_id, business_type, scene_type, channel,
                merchant_config_id, merchant_name, merchant_mch_id, merchant_app_id,
                currency, amount_total, amount_paid, status, description, external_transaction_no,
                paid_at, expired_at, closed_at, refunded_at, remark, deleted, created_at, updated_at
         from pay_order
-        where deleted = 0
+        where tenant_id = #{tenantId}
+          and deleted = 0
           and date(created_at) = #{billDate}
         order by id asc
         """)
-    List<PayOrder> selectByBillDate(@Param("billDate") LocalDate billDate);
+    List<PayOrder> selectByBillDate(@Param("tenantId") Long tenantId, @Param("billDate") LocalDate billDate);
 }

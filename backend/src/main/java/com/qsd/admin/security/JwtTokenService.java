@@ -28,18 +28,30 @@ public class JwtTokenService {
         this.secretKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtProperties.secret()));
     }
 
-    public String createAdminToken(Long userId, String username, List<String> permissions) {
+    public String createAdminToken(Long userId, String username, Long tenantId, String tenantCode, List<String> permissions) {
         Map<String, Object> claims = new LinkedHashMap<>();
         claims.put("uid", userId);
         claims.put("tokenType", TOKEN_TYPE_ADMIN);
+        if (tenantId != null) {
+            claims.put("tenantId", tenantId);
+        }
+        if (tenantCode != null && !tenantCode.isBlank()) {
+            claims.put("tenantCode", tenantCode);
+        }
         claims.put("permissions", permissions);
         return createToken(username, claims);
     }
 
-    public String createMemberToken(Long memberId, String phone) {
+    public String createMemberToken(Long memberId, String phone, Long tenantId, String tenantCode) {
         Map<String, Object> claims = new LinkedHashMap<>();
         claims.put("uid", memberId);
         claims.put("tokenType", TOKEN_TYPE_MEMBER);
+        if (tenantId != null) {
+            claims.put("tenantId", tenantId);
+        }
+        if (tenantCode != null && !tenantCode.isBlank()) {
+            claims.put("tenantCode", tenantCode);
+        }
         return createToken(phone, claims);
     }
 

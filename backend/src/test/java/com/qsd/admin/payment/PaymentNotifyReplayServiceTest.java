@@ -12,6 +12,8 @@ import com.qsd.admin.payment.mapper.RefundNotifyLogMapper;
 import com.qsd.admin.payment.service.PaymentNotifyReplayService;
 import com.qsd.admin.payment.service.PaymentService;
 import com.qsd.admin.payment.service.WechatPayCallbackParser;
+import com.qsd.admin.tenant.TenantContext;
+import com.qsd.admin.tenant.TenantContextHolder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,6 +32,7 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentNotifyReplayServiceTest {
+    private static final long TENANT_ID = 1L;
 
     @Mock
     private PayNotifyLogMapper payNotifyLogMapper;
@@ -47,6 +50,7 @@ class PaymentNotifyReplayServiceTest {
 
     @BeforeEach
     void setUp() {
+        TenantContextHolder.set(new TenantContext(TENANT_ID, "default", "Default Tenant"));
         paymentNotifyReplayService = new PaymentNotifyReplayService(
             payNotifyLogMapper,
             refundNotifyLogMapper,
@@ -63,7 +67,7 @@ class PaymentNotifyReplayServiceTest {
 
         WechatPayCallbackRequest request = new WechatPayCallbackRequest("PO202605130001", "wx-txn-001", "SUCCESS", "{\"event\":\"pay\"}");
 
-        when(payNotifyLogMapper.selectById(10L)).thenReturn(log);
+        when(payNotifyLogMapper.selectActiveById(TENANT_ID, 10L)).thenReturn(log);
         when(wechatPayCallbackParser.parsePaymentCallback(log.getRawPayload())).thenReturn(request);
         doNothing().when(paymentService).handleWechatCallback(request);
 
@@ -78,7 +82,7 @@ class PaymentNotifyReplayServiceTest {
 
     @Test
     void shouldRejectPaymentReplayWhenLogDoesNotExist() {
-        when(payNotifyLogMapper.selectById(10L)).thenReturn(null);
+        when(payNotifyLogMapper.selectActiveById(TENANT_ID, 10L)).thenReturn(null);
 
         NotFoundException ex = assertThrows(
             NotFoundException.class,
@@ -95,7 +99,7 @@ class PaymentNotifyReplayServiceTest {
         log.setId(11L);
         log.setRawPayload("   ");
 
-        when(refundNotifyLogMapper.selectById(11L)).thenReturn(log);
+        when(refundNotifyLogMapper.selectActiveById(TENANT_ID, 11L)).thenReturn(log);
 
         BusinessException ex = assertThrows(
             BusinessException.class,
@@ -114,7 +118,7 @@ class PaymentNotifyReplayServiceTest {
 
         RefundCallbackRequest request = new RefundCallbackRequest("RF202605130001", "SUCCESS", "wx-rf-001", "{\"event\":\"refund\"}");
 
-        when(refundNotifyLogMapper.selectById(12L)).thenReturn(log);
+        when(refundNotifyLogMapper.selectActiveById(TENANT_ID, 12L)).thenReturn(log);
         when(wechatPayCallbackParser.parseRefundCallback(log.getRawPayload())).thenReturn(request);
         doThrow(new RuntimeException("refund replay failed")).when(paymentService).handleRefundCallback(request);
 

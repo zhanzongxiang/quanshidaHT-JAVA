@@ -10,6 +10,7 @@ import com.qsd.admin.content.dto.ServiceLineContentResponse;
 import com.qsd.admin.content.dto.ServiceLineSummaryResponse;
 import com.qsd.admin.content.entity.SiteContentPage;
 import com.qsd.admin.content.mapper.SiteContentPageMapper;
+import com.qsd.admin.tenant.TenantContextHolder;
 import com.qsd.admin.website.service.PublicWebsiteService;
 import org.springframework.stereotype.Service;
 
@@ -123,9 +124,10 @@ public class ServiceLineContentService {
     }
 
     private SiteContentPage ensureServiceLineContent(ServiceLineDefinition definition) {
-        SiteContentPage page = siteContentPageMapper.selectByPageCode(toPageCode(definition.lineCode()));
+        Long tenantId = TenantContextHolder.requireTenantId();
+        SiteContentPage page = siteContentPageMapper.selectByPageCode(tenantId, toPageCode(definition.lineCode()));
         if (page == null && definition.legacyCode() != null) {
-            page = siteContentPageMapper.selectByPageCode(toPageCode(definition.legacyCode()));
+            page = siteContentPageMapper.selectByPageCode(tenantId, toPageCode(definition.legacyCode()));
             if (page != null) {
                 page.setPageCode(toPageCode(definition.lineCode()));
                 siteContentPageMapper.updateById(page);
@@ -139,6 +141,7 @@ public class ServiceLineContentService {
 
         LocalDateTime now = LocalDateTime.now();
         SiteContentPage initial = new SiteContentPage();
+        initial.setTenantId(tenantId);
         initial.setPageCode(toPageCode(definition.lineCode()));
         initial.setStatus(STATUS_DRAFT);
         initial.setFormJson(writeFormJson(createDefaultForm(definition)));

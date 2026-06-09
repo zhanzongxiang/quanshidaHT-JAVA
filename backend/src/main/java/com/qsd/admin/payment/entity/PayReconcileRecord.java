@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 public class PayReconcileRecord {
     @TableId(type = IdType.AUTO)
     private Long id;
+    private Long tenantId;
     private LocalDate reconcileDate;
     private String channel;
     private String reconcileStatus;
@@ -21,6 +22,8 @@ public class PayReconcileRecord {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+    public Long getTenantId() { return tenantId; }
+    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
     public LocalDate getReconcileDate() { return reconcileDate; }
     public void setReconcileDate(LocalDate reconcileDate) { this.reconcileDate = reconcileDate; }
     public String getChannel() { return channel; }

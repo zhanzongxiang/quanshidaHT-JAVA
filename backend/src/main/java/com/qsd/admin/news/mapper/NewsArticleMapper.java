@@ -13,35 +13,40 @@ import java.util.List;
 public interface NewsArticleMapper extends BaseMapper<NewsArticle> {
 
     @Select("""
-        select id, title, summary, cover_image_url, content, author, status, published_at, created_at, updated_at, deleted
+        select id, tenant_id, title, summary, cover_image_url, content, author, status, published_at, created_at, updated_at, deleted
         from news_article
-        where deleted = 0
+        where tenant_id = #{tenantId}
+          and deleted = 0
         order by coalesce(published_at, updated_at) desc, id desc
         """)
-    List<NewsArticle> selectActiveList();
+    List<NewsArticle> selectActiveList(@Param("tenantId") Long tenantId);
 
     @Select("""
-        select id, title, summary, cover_image_url, content, author, status, published_at, created_at, updated_at, deleted
+        select id, tenant_id, title, summary, cover_image_url, content, author, status, published_at, created_at, updated_at, deleted
         from news_article
-        where id = #{id} and deleted = 0
+        where tenant_id = #{tenantId}
+          and id = #{id}
+          and deleted = 0
         limit 1
         """)
-    NewsArticle selectActiveById(Long id);
+    NewsArticle selectActiveById(@Param("tenantId") Long tenantId, @Param("id") Long id);
 
     @Select("""
-        select id, title, summary, cover_image_url, content, author, status, published_at, created_at, updated_at, deleted
+        select id, tenant_id, title, summary, cover_image_url, content, author, status, published_at, created_at, updated_at, deleted
         from news_article
-        where deleted = 0
+        where tenant_id = #{tenantId}
+          and deleted = 0
           and status = 'published'
         order by published_at desc, id desc
         """)
-    List<NewsArticle> selectPublishedList();
+    List<NewsArticle> selectPublishedList(@Param("tenantId") Long tenantId);
 
     @Select("""
         <script>
-        select id, title, summary, cover_image_url, author, published_at
+        select id, tenant_id, title, summary, cover_image_url, author, published_at
         from news_article
-        where deleted = 0
+        where tenant_id = #{tenantId}
+          and deleted = 0
           and status = 'published'
           <if test="publishedFrom != null">
             and published_at <![CDATA[>=]]> #{publishedFrom}
@@ -54,6 +59,7 @@ public interface NewsArticleMapper extends BaseMapper<NewsArticle> {
         </script>
         """)
     List<NewsArticle> selectPublishedPageSummaries(
+        @Param("tenantId") Long tenantId,
         @Param("publishedFrom") LocalDateTime publishedFrom,
         @Param("publishedTo") LocalDateTime publishedTo,
         @Param("offset") int offset,
@@ -64,7 +70,8 @@ public interface NewsArticleMapper extends BaseMapper<NewsArticle> {
         <script>
         select count(1)
         from news_article
-        where deleted = 0
+        where tenant_id = #{tenantId}
+          and deleted = 0
           and status = 'published'
           <if test="publishedFrom != null">
             and published_at <![CDATA[>=]]> #{publishedFrom}
@@ -75,6 +82,7 @@ public interface NewsArticleMapper extends BaseMapper<NewsArticle> {
         </script>
         """)
     long countPublished(
+        @Param("tenantId") Long tenantId,
         @Param("publishedFrom") LocalDateTime publishedFrom,
         @Param("publishedTo") LocalDateTime publishedTo
     );
@@ -82,27 +90,30 @@ public interface NewsArticleMapper extends BaseMapper<NewsArticle> {
     @Select("""
         select distinct year(published_at)
         from news_article
-        where deleted = 0
+        where tenant_id = #{tenantId}
+          and deleted = 0
           and status = 'published'
           and published_at is not null
         order by year(published_at) desc
         """)
-    List<Integer> selectPublishedYears();
+    List<Integer> selectPublishedYears(@Param("tenantId") Long tenantId);
 
     @Select("""
-        select id, title, summary, cover_image_url, content, author, status, published_at, created_at, updated_at, deleted
+        select id, tenant_id, title, summary, cover_image_url, content, author, status, published_at, created_at, updated_at, deleted
         from news_article
-        where id = #{id}
+        where tenant_id = #{tenantId}
+          and id = #{id}
           and deleted = 0
           and status = 'published'
         limit 1
         """)
-    NewsArticle selectPublishedById(Long id);
+    NewsArticle selectPublishedById(@Param("tenantId") Long tenantId, @Param("id") Long id);
 
     @Select("""
         select count(1)
         from news_article
-        where deleted = 0
+        where tenant_id = #{tenantId}
+          and deleted = 0
         """)
-    long countActive();
+    long countActive(@Param("tenantId") Long tenantId);
 }

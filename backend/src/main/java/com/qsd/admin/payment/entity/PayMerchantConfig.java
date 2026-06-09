@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 public class PayMerchantConfig {
     @TableId(type = IdType.AUTO)
     private Long id;
+    private Long tenantId;
     private String merchantName;
     private String merchantCode;
     private String mchId;
@@ -29,6 +30,8 @@ public class PayMerchantConfig {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+    public Long getTenantId() { return tenantId; }
+    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
     public String getMerchantName() { return merchantName; }
     public void setMerchantName(String merchantName) { this.merchantName = merchantName; }
     public String getMerchantCode() { return merchantCode; }

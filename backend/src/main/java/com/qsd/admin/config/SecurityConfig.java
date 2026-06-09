@@ -1,6 +1,7 @@
 package com.qsd.admin.config;
 
 import com.qsd.admin.security.JwtAuthenticationFilter;
+import com.qsd.admin.tenant.TenantContextFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -34,7 +35,11 @@ public class SecurityConfig {
     }
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
+    SecurityFilterChain securityFilterChain(
+        HttpSecurity http,
+        TenantContextFilter tenantContextFilter,
+        JwtAuthenticationFilter jwtAuthenticationFilter
+    ) throws Exception {
         return http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
@@ -52,6 +57,7 @@ public class SecurityConfig {
                 ).permitAll()
                 .requestMatchers("/api/member/**").hasRole("MEMBER")
                 .anyRequest().hasRole("ADMIN"))
+            .addFilterBefore(tenantContextFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .build();
     }

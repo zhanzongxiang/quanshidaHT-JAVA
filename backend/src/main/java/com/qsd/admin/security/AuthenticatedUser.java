@@ -5,7 +5,9 @@ import java.security.Principal;
 public record AuthenticatedUser(
     Long userId,
     String username,
-    String tokenType
+    String tokenType,
+    Long tenantId,
+    String tenantCode
 ) implements Principal {
 
     @Override

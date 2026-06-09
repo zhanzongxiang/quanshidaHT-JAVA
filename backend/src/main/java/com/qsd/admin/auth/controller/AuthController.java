@@ -4,6 +4,8 @@ import com.qsd.admin.auth.dto.LoginRequest;
 import com.qsd.admin.auth.dto.MeResponse;
 import com.qsd.admin.auth.service.AuthService;
 import com.qsd.admin.common.ApiResponse;
+import com.qsd.admin.common.exception.BusinessException;
+import com.qsd.admin.security.AuthenticatedUser;
 import com.qsd.admin.security.JwtAuthenticationFilter;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -33,7 +35,7 @@ public class AuthController {
         Cookie cookie = new Cookie(JwtAuthenticationFilter.COOKIE_NAME, token);
         cookie.setHttpOnly(true);
         cookie.setPath("/api");
-        cookie.setMaxAge(24 * 60 * 60); // 24 hours
+        cookie.setMaxAge(24 * 60 * 60);
         cookie.setSecure(httpRequest.isSecure());
         cookie.setAttribute("SameSite", "Lax");
         httpResponse.addCookie(cookie);
@@ -51,16 +53,19 @@ public class AuthController {
         return ApiResponse.ok(null);
     }
 
+    @GetMapping("/me")
+    public ApiResponse<MeResponse> me(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof AuthenticatedUser user)) {
+            throw new BusinessException("not logged in");
+        }
+        return ApiResponse.ok(authService.me(user));
+    }
+
     private String getClientIp(HttpServletRequest request) {
         String forwarded = request.getHeader("X-Forwarded-For");
         if (forwarded != null && !forwarded.isEmpty()) {
             return forwarded.split(",")[0].trim();
         }
         return request.getRemoteAddr();
-    }
-
-    @GetMapping("/me")
-    public ApiResponse<MeResponse> me(Authentication authentication) {
-        return ApiResponse.ok(authService.me(authentication.getName()));
     }
 }

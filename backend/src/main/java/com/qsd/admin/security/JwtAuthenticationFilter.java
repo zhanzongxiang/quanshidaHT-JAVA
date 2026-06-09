@@ -62,7 +62,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         Long userId = uidValue instanceof Number number ? number.longValue() : null;
         String username = claims.getSubject();
         String tokenType = claims.get("tokenType", String.class);
-        AuthenticatedUser principal = new AuthenticatedUser(userId, username, tokenType);
+        Object tenantIdValue = claims.get("tenantId");
+        Long tenantId = tenantIdValue instanceof Number number ? number.longValue() : null;
+        String tenantCode = claims.get("tenantCode", String.class);
+        AuthenticatedUser principal = new AuthenticatedUser(userId, username, tokenType, tenantId, tenantCode);
         Collection<SimpleGrantedAuthority> authorities = extractAuthorities(claims, tokenType);
         UsernamePasswordAuthenticationToken authenticationToken =
             new UsernamePasswordAuthenticationToken(principal, null, authorities);

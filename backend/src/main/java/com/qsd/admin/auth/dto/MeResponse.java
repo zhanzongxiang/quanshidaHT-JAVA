@@ -5,6 +5,9 @@ import java.util.List;
 public record MeResponse(
     Long userId,
     String username,
+    Long tenantId,
+    String tenantCode,
+    String tenantName,
     List<String> permissions,
     List<MenuNode> menus
 ) {

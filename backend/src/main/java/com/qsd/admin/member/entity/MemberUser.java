@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 public class MemberUser {
     @TableId(type = IdType.AUTO)
     private Long id;
+    private Long tenantId;
     private String phone;
     private String wechatOpenid;
     private String wechatUnionid;
@@ -27,6 +28,8 @@ public class MemberUser {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+    public Long getTenantId() { return tenantId; }
+    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
     public String getWechatOpenid() { return wechatOpenid; }

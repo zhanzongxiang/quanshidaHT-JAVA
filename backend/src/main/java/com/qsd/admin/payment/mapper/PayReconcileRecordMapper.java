@@ -14,23 +14,37 @@ public interface PayReconcileRecordMapper extends BaseMapper<PayReconcileRecord>
 
     @Select("""
         <script>
-        select id, reconcile_date, channel, reconcile_status, diff_count, summary, created_at, updated_at
+        select id, tenant_id, reconcile_date, channel, reconcile_status, diff_count, summary, created_at, updated_at
         from pay_reconcile_record
-        where 1 = 1
+        where tenant_id = #{tenantId}
           <if test="channel != null and channel != ''">
             and channel = #{channel}
           </if>
         order by reconcile_date desc, id desc
         </script>
         """)
-    List<PayReconcileRecord> selectListByChannel(@Param("channel") String channel);
+    List<PayReconcileRecord> selectListByChannel(@Param("tenantId") Long tenantId, @Param("channel") String channel);
 
     @Select("""
-        select id, reconcile_date, channel, reconcile_status, diff_count, summary, created_at, updated_at
+        select id, tenant_id, reconcile_date, channel, reconcile_status, diff_count, summary, created_at, updated_at
         from pay_reconcile_record
-        where reconcile_date = #{reconcileDate}
+        where tenant_id = #{tenantId}
+          and reconcile_date = #{reconcileDate}
           and channel = #{channel}
         limit 1
         """)
-    PayReconcileRecord selectByDateAndChannel(@Param("reconcileDate") LocalDate reconcileDate, @Param("channel") String channel);
+    PayReconcileRecord selectByDateAndChannel(
+        @Param("tenantId") Long tenantId,
+        @Param("reconcileDate") LocalDate reconcileDate,
+        @Param("channel") String channel
+    );
+
+    @Select("""
+        select id, tenant_id, reconcile_date, channel, reconcile_status, diff_count, summary, created_at, updated_at
+        from pay_reconcile_record
+        where tenant_id = #{tenantId}
+          and id = #{id}
+        limit 1
+        """)
+    PayReconcileRecord selectActiveById(@Param("tenantId") Long tenantId, @Param("id") Long id);
 }

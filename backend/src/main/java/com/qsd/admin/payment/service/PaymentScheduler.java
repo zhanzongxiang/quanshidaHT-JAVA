@@ -31,7 +31,7 @@ public class PaymentScheduler {
 
     @Scheduled(fixedDelay = 300000)
     public void closeExpiredOrders() {
-        List<PayOrder> expired = payOrderMapper.selectExpiredPayingOrders(LocalDateTime.now());
+        List<PayOrder> expired = payOrderMapper.selectExpiredPayingOrdersGlobal(LocalDateTime.now());
         if (expired.isEmpty()) {
             return;
         }

@@ -35,6 +35,8 @@ import com.qsd.admin.payment.mapper.PayReconcileRecordMapper;
 import com.qsd.admin.payment.mapper.PayTransactionMapper;
 import com.qsd.admin.payment.mapper.RefundNotifyLogMapper;
 import com.qsd.admin.payment.mapper.RefundOrderMapper;
+import com.qsd.admin.tenant.mapper.TenantMapper;
+import com.qsd.admin.tenant.TenantContextHolder;
 import com.qsd.admin.waybill.entity.WaybillOrder;
 import com.qsd.admin.waybill.mapper.WaybillOrderMapper;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -64,6 +66,7 @@ public class PaymentService {
     private final WechatPayGateway wechatPayGateway;
     private final PaymentMerchantService paymentMerchantService;
     private final PaymentReconcileService paymentReconcileService;
+    private final TenantMapper tenantMapper;
 
     public PaymentService(
         PayOrderMapper payOrderMapper,
@@ -76,7 +79,8 @@ public class PaymentService {
         WaybillOrderMapper waybillOrderMapper,
         WechatPayGateway wechatPayGateway,
         PaymentMerchantService paymentMerchantService,
-        PaymentReconcileService paymentReconcileService
+        PaymentReconcileService paymentReconcileService,
+        TenantMapper tenantMapper
     ) {
         this.payOrderMapper = payOrderMapper;
         this.payTransactionMapper = payTransactionMapper;
@@ -89,10 +93,16 @@ public class PaymentService {
         this.wechatPayGateway = wechatPayGateway;
         this.paymentMerchantService = paymentMerchantService;
         this.paymentReconcileService = paymentReconcileService;
+        this.tenantMapper = tenantMapper;
     }
 
     public List<PaymentAdminSummaryResponse> listAdminPayOrders(String keyword, String status, String channel) {
-        return payOrderMapper.selectAdminList(trimToNull(keyword), trimToNull(status), trimToNull(channel)).stream()
+        return payOrderMapper.selectAdminList(
+                TenantContextHolder.requireTenantId(),
+                trimToNull(keyword),
+                trimToNull(status),
+                trimToNull(channel)
+            ).stream()
             .map(this::toAdminSummary)
             .toList();
     }
@@ -104,14 +114,15 @@ public class PaymentService {
 
     @Transactional
     public PaymentAdminDetailResponse createAdminPayOrder(PaymentAdminCreateRequest request) {
-        MemberUser member = memberUserMapper.selectActiveById(request.memberId());
+        Long tenantId = TenantContextHolder.requireTenantId();
+        MemberUser member = memberUserMapper.selectActiveById(tenantId, request.memberId());
         if (member == null) {
             throw new BusinessException("会员不存在或已禁用");
         }
 
         WaybillOrder waybill = null;
         if (request.waybillId() != null) {
-            waybill = waybillOrderMapper.selectActiveById(request.waybillId());
+            waybill = waybillOrderMapper.selectActiveById(tenantId, request.waybillId());
             if (waybill == null) {
                 throw new BusinessException("运单不存在");
             }
@@ -120,6 +131,7 @@ public class PaymentService {
         PayMerchantConfig merchantConfig = resolveMerchantForAdminCreate(request.merchantConfigId());
         LocalDateTime now = LocalDateTime.now();
         PayOrder order = new PayOrder();
+        order.setTenantId(tenantId);
         order.setOrderNo(generateOrderNo(now));
         order.setMemberId(member.getId());
         applyMerchantSnapshot(order, merchantConfig);
@@ -178,19 +190,21 @@ public class PaymentService {
     }
 
     public List<MemberPayOrderSummaryResponse> listMemberPayOrders(Long memberId) {
-        MemberUser member = memberUserMapper.selectActiveById(memberId);
+        Long tenantId = TenantContextHolder.requireTenantId();
+        MemberUser member = memberUserMapper.selectActiveById(tenantId, memberId);
         if (member == null) {
             throw new NotFoundException("会员不存在");
         }
 
-        return payOrderMapper.selectByMemberId(memberId).stream()
+        return payOrderMapper.selectByMemberId(tenantId, memberId).stream()
             .map(this::toMemberSummary)
             .toList();
     }
 
     @Transactional
     public MemberPaymentPrepareResponse prepareMemberPayment(Long memberId, MemberPaymentPrepareRequest request) {
-        MemberUser member = memberUserMapper.selectActiveById(memberId);
+        Long tenantId = TenantContextHolder.requireTenantId();
+        MemberUser member = memberUserMapper.selectActiveById(tenantId, memberId);
         if (member == null) {
             throw new NotFoundException("会员不存在");
         }
@@ -198,7 +212,7 @@ public class PaymentService {
             throw new BusinessException("当前会员未绑定微信身份，无法发起小程序支付");
         }
 
-        WaybillOrder waybill = waybillOrderMapper.selectAccessibleDetailByMember(request.waybillId(), memberId, member.getPhone());
+        WaybillOrder waybill = waybillOrderMapper.selectAccessibleDetailByMember(tenantId, request.waybillId(), memberId, member.getPhone());
         if (waybill == null) {
             throw new NotFoundException("会员运单不存在");
         }
@@ -206,6 +220,7 @@ public class PaymentService {
         PayMerchantConfig merchantConfig = paymentMerchantService.requireCurrentMerchant();
         LocalDateTime now = LocalDateTime.now();
         PayOrder order = new PayOrder();
+        order.setTenantId(tenantId);
         order.setOrderNo(generateOrderNo(now));
         order.setMemberId(memberId);
         applyMerchantSnapshot(order, merchantConfig);
@@ -257,7 +272,8 @@ public class PaymentService {
 
     @Transactional
     public void handleWechatCallback(WechatPayCallbackRequest request) {
-        PayOrder order = payOrderMapper.selectByOrderNo(request.orderNo());
+        Long tenantId = TenantContextHolder.requireTenantId();
+        PayOrder order = payOrderMapper.selectByOrderNo(tenantId, request.orderNo());
         if (order == null) {
             throw new NotFoundException("支付订单不存在");
         }
@@ -334,7 +350,7 @@ public class PaymentService {
             throw new BusinessException("退款金额不能超过实付金额");
         }
 
-        BigDecimal alreadyRefunded = refundOrderMapper.sumSucceededAmountByPayOrderId(order.getId());
+        BigDecimal alreadyRefunded = refundOrderMapper.sumSucceededAmountByPayOrderId(TenantContextHolder.requireTenantId(), order.getId());
         BigDecimal remainingRefundable = order.getAmountPaid().subtract(alreadyRefunded);
         if (request.amountRefund().compareTo(remainingRefundable) > 0) {
             throw new BusinessException("退款金额超过可退款余额，当前可退: " + remainingRefundable);
@@ -342,6 +358,7 @@ public class PaymentService {
 
         LocalDateTime now = LocalDateTime.now();
         RefundOrder refund = new RefundOrder();
+        refund.setTenantId(TenantContextHolder.requireTenantId());
         refund.setRefundNo(generateRefundNo(now));
         refund.setPayOrderId(order.getId());
         refund.setAmountRefund(normalizeAmount(request.amountRefund()));
@@ -374,7 +391,7 @@ public class PaymentService {
 
     @Transactional
     public RefundOrderResponse retryRefund(Long refundOrderId) {
-        RefundOrder failedRefund = refundOrderMapper.selectByIdValue(refundOrderId);
+        RefundOrder failedRefund = refundOrderMapper.selectByIdValue(TenantContextHolder.requireTenantId(), refundOrderId);
         if (failedRefund == null) {
             throw new NotFoundException("退款单不存在");
         }
@@ -389,6 +406,7 @@ public class PaymentService {
 
         LocalDateTime now = LocalDateTime.now();
         RefundOrder retryRefund = new RefundOrder();
+        retryRefund.setTenantId(TenantContextHolder.requireTenantId());
         retryRefund.setRefundNo(generateRefundNo(now));
         retryRefund.setPayOrderId(order.getId());
         retryRefund.setAmountRefund(normalizeAmount(failedRefund.getAmountRefund()));
@@ -443,7 +461,7 @@ public class PaymentService {
             refund.setUpdatedAt(now);
             refundOrderMapper.updateById(refund);
 
-            BigDecimal totalRefunded = refundOrderMapper.sumSucceededAmountByPayOrderId(order.getId());
+            BigDecimal totalRefunded = refundOrderMapper.sumSucceededAmountByPayOrderId(TenantContextHolder.requireTenantId(), order.getId());
             if (totalRefunded.compareTo(order.getAmountPaid()) >= 0) {
                 order.setStatus("refunded");
                 order.setRefundedAt(now);
@@ -460,7 +478,7 @@ public class PaymentService {
         refund.setUpdatedAt(LocalDateTime.now());
         refundOrderMapper.updateById(refund);
 
-        int processingCount = refundOrderMapper.countProcessingByPayOrderId(order.getId());
+        int processingCount = refundOrderMapper.countProcessingByPayOrderId(TenantContextHolder.requireTenantId(), order.getId());
         if (processingCount > 0) {
             order.setStatus("refunding");
         } else {
@@ -471,7 +489,7 @@ public class PaymentService {
     }
 
     public List<ReconcileRecordResponse> listReconcileRecords(String channel) {
-        return payReconcileRecordMapper.selectListByChannel(trimToNull(channel)).stream()
+        return payReconcileRecordMapper.selectListByChannel(TenantContextHolder.requireTenantId(), trimToNull(channel)).stream()
             .map(this::toReconcileResponse)
             .toList();
     }
@@ -487,10 +505,16 @@ public class PaymentService {
             }
         }
 
-        PayReconcileRecord existing = payReconcileRecordMapper.selectByDateAndChannel(request.reconcileDate(), request.channel().trim());
+        Long tenantId = TenantContextHolder.requireTenantId();
+        PayReconcileRecord existing = payReconcileRecordMapper.selectByDateAndChannel(
+            tenantId,
+            request.reconcileDate(),
+            request.channel().trim()
+        );
         LocalDateTime now = LocalDateTime.now();
         if (existing == null) {
             existing = new PayReconcileRecord();
+            existing.setTenantId(tenantId);
             existing.setReconcileDate(request.reconcileDate());
             existing.setChannel(request.channel().trim());
             existing.setCreatedAt(now);
@@ -509,7 +533,7 @@ public class PaymentService {
     }
 
     public void validatePayCallbackMerchant(String orderNo, String merchantMchId) {
-        PayOrder order = payOrderMapper.selectByOrderNo(orderNo);
+        PayOrder order = payOrderMapper.selectByOrderNo(TenantContextHolder.requireTenantId(), orderNo);
         if (order == null) {
             throw new WechatCallbackException("order_not_found", "payment order not found", false);
         }
@@ -534,6 +558,7 @@ public class PaymentService {
 
     public void recordPaymentCallbackFailure(String rawPayload, String category, String message) {
         PayNotifyLog log = new PayNotifyLog();
+        log.setTenantId(resolveTenantIdForFailureLog());
         log.setPayOrderId(null);
         log.setNotifyType("wechat_pay");
         log.setResourceId("");
@@ -547,6 +572,7 @@ public class PaymentService {
 
     public void recordRefundCallbackFailure(String rawPayload, String category, String message) {
         RefundNotifyLog log = new RefundNotifyLog();
+        log.setTenantId(resolveTenantIdForFailureLog());
         log.setRefundOrderId(null);
         log.setNotifyType("wechat_refund");
         log.setResourceId("");
@@ -559,8 +585,9 @@ public class PaymentService {
     }
 
     private PaymentAdminSummaryResponse toAdminSummary(PayOrder order) {
-        MemberUser member = memberUserMapper.selectActiveById(order.getMemberId());
-        WaybillOrder waybill = order.getWaybillId() == null ? null : waybillOrderMapper.selectActiveById(order.getWaybillId());
+        Long tenantId = TenantContextHolder.requireTenantId();
+        MemberUser member = memberUserMapper.selectActiveById(tenantId, order.getMemberId());
+        WaybillOrder waybill = order.getWaybillId() == null ? null : waybillOrderMapper.selectActiveById(tenantId, order.getWaybillId());
         return new PaymentAdminSummaryResponse(
             order.getId(),
             order.getOrderNo(),
@@ -586,8 +613,9 @@ public class PaymentService {
     }
 
     private PaymentAdminDetailResponse toAdminDetail(PayOrder order) {
-        MemberUser member = memberUserMapper.selectActiveById(order.getMemberId());
-        WaybillOrder waybill = order.getWaybillId() == null ? null : waybillOrderMapper.selectActiveById(order.getWaybillId());
+        Long tenantId = TenantContextHolder.requireTenantId();
+        MemberUser member = memberUserMapper.selectActiveById(tenantId, order.getMemberId());
+        WaybillOrder waybill = order.getWaybillId() == null ? null : waybillOrderMapper.selectActiveById(tenantId, order.getWaybillId());
         return new PaymentAdminDetailResponse(
             order.getId(),
             order.getOrderNo(),
@@ -616,18 +644,18 @@ public class PaymentService {
             safe(order.getRemark()),
             formatDateTime(order.getCreatedAt()),
             formatDateTime(order.getUpdatedAt()),
-            payTransactionMapper.selectByPayOrderId(order.getId()).stream().map(this::toTransactionResponse).toList(),
-            refundOrderMapper.selectByPayOrderId(order.getId()).stream().map(this::toRefundResponse).toList(),
-            payNotifyLogMapper.selectByPayOrderId(order.getId()).stream().map(this::toNotifyLogResponse).toList(),
-            refundOrderMapper.selectByPayOrderId(order.getId()).stream()
-                .flatMap(refund -> refundNotifyLogMapper.selectByRefundOrderId(refund.getId()).stream())
+            payTransactionMapper.selectByPayOrderId(tenantId, order.getId()).stream().map(this::toTransactionResponse).toList(),
+            refundOrderMapper.selectByPayOrderId(tenantId, order.getId()).stream().map(this::toRefundResponse).toList(),
+            payNotifyLogMapper.selectByPayOrderId(tenantId, order.getId()).stream().map(this::toNotifyLogResponse).toList(),
+            refundOrderMapper.selectByPayOrderId(tenantId, order.getId()).stream()
+                .flatMap(refund -> refundNotifyLogMapper.selectByRefundOrderId(tenantId, refund.getId()).stream())
                 .map(this::toRefundNotifyLogResponse)
                 .toList()
         );
     }
 
     private MemberPayOrderSummaryResponse toMemberSummary(PayOrder order) {
-        WaybillOrder waybill = order.getWaybillId() == null ? null : waybillOrderMapper.selectActiveById(order.getWaybillId());
+        WaybillOrder waybill = order.getWaybillId() == null ? null : waybillOrderMapper.selectActiveById(TenantContextHolder.requireTenantId(), order.getWaybillId());
         return new MemberPayOrderSummaryResponse(
             order.getId(),
             order.getOrderNo(),
@@ -718,6 +746,7 @@ public class PaymentService {
         LocalDateTime successTime
     ) {
         PayTransaction transaction = new PayTransaction();
+        transaction.setTenantId(TenantContextHolder.requireTenantId());
         transaction.setPayOrderId(payOrderId);
         transaction.setTransactionType(transactionType);
         transaction.setTransactionStatus(transactionStatus);
@@ -732,6 +761,7 @@ public class PaymentService {
 
     private void recordNotifyLog(Long payOrderId, String notifyType, String resourceId, String notifyStatus, String rawPayload) {
         PayNotifyLog log = new PayNotifyLog();
+        log.setTenantId(TenantContextHolder.requireTenantId());
         log.setPayOrderId(payOrderId);
         log.setNotifyType(notifyType);
         log.setResourceId(trimToEmpty(resourceId));
@@ -745,6 +775,7 @@ public class PaymentService {
 
     private void recordRefundNotifyLog(Long refundOrderId, String notifyType, String resourceId, String notifyStatus, String rawPayload) {
         RefundNotifyLog log = new RefundNotifyLog();
+        log.setTenantId(TenantContextHolder.requireTenantId());
         log.setRefundOrderId(refundOrderId);
         log.setNotifyType(notifyType);
         log.setResourceId(trimToEmpty(resourceId));
@@ -767,7 +798,7 @@ public class PaymentService {
     }
 
     private PayOrder requirePayOrder(Long id) {
-        PayOrder order = payOrderMapper.selectActiveById(id);
+        PayOrder order = payOrderMapper.selectActiveById(TenantContextHolder.requireTenantId(), id);
         if (order == null) {
             throw new NotFoundException("支付订单不存在");
         }
@@ -775,7 +806,7 @@ public class PaymentService {
     }
 
     private RefundOrder requireRefundByNo(String refundNo) {
-        RefundOrder refund = refundOrderMapper.selectByRefundNo(refundNo);
+        RefundOrder refund = refundOrderMapper.selectByRefundNo(TenantContextHolder.requireTenantId(), refundNo);
         if (refund != null) {
             return refund;
         }
@@ -875,7 +906,11 @@ public class PaymentService {
     }
 
     private ReconcileRecordResponse saveReconcileRecord(PayReconcileRecord generated) {
-        PayReconcileRecord existing = payReconcileRecordMapper.selectByDateAndChannel(generated.getReconcileDate(), generated.getChannel());
+        PayReconcileRecord existing = payReconcileRecordMapper.selectByDateAndChannel(
+            TenantContextHolder.requireTenantId(),
+            generated.getReconcileDate(),
+            generated.getChannel()
+        );
         LocalDateTime now = LocalDateTime.now();
         if (existing == null) {
             generated.setCreatedAt(now);
@@ -902,6 +937,14 @@ public class PaymentService {
                 && trimToNull(merchant.getPrivateKeyPath()) != null;
         } catch (Exception ex) {
             return false;
+        }
+    }
+
+    private Long resolveTenantIdForFailureLog() {
+        try {
+            return TenantContextHolder.requireTenantId();
+        } catch (Exception ex) {
+            return tenantMapper.selectDefaultTenant().getId();
         }
     }
 }

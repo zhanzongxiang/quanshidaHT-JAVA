@@ -12,41 +12,45 @@ import java.util.List;
 public interface MemberUserMapper extends BaseMapper<MemberUser> {
 
     @Select("""
-        select id, phone, wechat_openid, wechat_unionid, wechat_bind_time, password_hash, nickname, full_name, avatar_url, status, remark,
+        select id, tenant_id, phone, wechat_openid, wechat_unionid, wechat_bind_time, password_hash, nickname, full_name, avatar_url, status, remark,
                last_login_at, deleted, created_at, updated_at
         from member_user
-        where phone = #{phone}
+        where tenant_id = #{tenantId}
+          and phone = #{phone}
           and deleted = 0
         limit 1
         """)
-    MemberUser selectByPhone(String phone);
+    MemberUser selectByPhone(@Param("tenantId") Long tenantId, @Param("phone") String phone);
 
     @Select("""
-        select id, phone, wechat_openid, wechat_unionid, wechat_bind_time, password_hash, nickname, full_name, avatar_url, status, remark,
+        select id, tenant_id, phone, wechat_openid, wechat_unionid, wechat_bind_time, password_hash, nickname, full_name, avatar_url, status, remark,
                last_login_at, deleted, created_at, updated_at
         from member_user
-        where id = #{id}
+        where tenant_id = #{tenantId}
+          and id = #{id}
           and deleted = 0
         limit 1
         """)
-    MemberUser selectActiveById(Long id);
+    MemberUser selectActiveById(@Param("tenantId") Long tenantId, @Param("id") Long id);
 
     @Select("""
-        select id, phone, wechat_openid, wechat_unionid, wechat_bind_time, password_hash, nickname, full_name, avatar_url, status, remark,
+        select id, tenant_id, phone, wechat_openid, wechat_unionid, wechat_bind_time, password_hash, nickname, full_name, avatar_url, status, remark,
                last_login_at, deleted, created_at, updated_at
         from member_user
-        where wechat_openid = #{openid}
+        where tenant_id = #{tenantId}
+          and wechat_openid = #{openid}
           and deleted = 0
         limit 1
         """)
-    MemberUser selectByWechatOpenid(String openid);
+    MemberUser selectByWechatOpenid(@Param("tenantId") Long tenantId, @Param("openid") String openid);
 
     @Select("""
         <script>
-        select id, phone, wechat_openid, wechat_unionid, wechat_bind_time, password_hash, nickname, full_name, avatar_url, status, remark,
+        select id, tenant_id, phone, wechat_openid, wechat_unionid, wechat_bind_time, password_hash, nickname, full_name, avatar_url, status, remark,
                last_login_at, deleted, created_at, updated_at
         from member_user
-        where deleted = 0
+        where tenant_id = #{tenantId}
+          and deleted = 0
           <if test="keyword != null and keyword != ''">
             and (
               phone like concat('%', #{keyword}, '%')
@@ -60,5 +64,9 @@ public interface MemberUserMapper extends BaseMapper<MemberUser> {
         order by updated_at desc, id desc
         </script>
         """)
-    List<MemberUser> selectAdminList(@Param("keyword") String keyword, @Param("status") String status);
+    List<MemberUser> selectAdminList(
+        @Param("tenantId") Long tenantId,
+        @Param("keyword") String keyword,
+        @Param("status") String status
+    );
 }

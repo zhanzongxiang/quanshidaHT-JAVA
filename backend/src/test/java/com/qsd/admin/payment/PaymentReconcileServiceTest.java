@@ -8,6 +8,8 @@ import com.qsd.admin.payment.mapper.PayOrderMapper;
 import com.qsd.admin.payment.service.PaymentMerchantService;
 import com.qsd.admin.payment.service.PaymentReconcileService;
 import com.qsd.admin.payment.service.WechatPayGateway;
+import com.qsd.admin.tenant.TenantContext;
+import com.qsd.admin.tenant.TenantContextHolder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,6 +26,7 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentReconcileServiceTest {
+    private static final long TENANT_ID = 1L;
 
     @Mock
     private PayOrderMapper payOrderMapper;
@@ -38,6 +41,7 @@ class PaymentReconcileServiceTest {
 
     @BeforeEach
     void setUp() {
+        TenantContextHolder.set(new TenantContext(TENANT_ID, "default", "Default Tenant"));
         paymentReconcileService = new PaymentReconcileService(
             payOrderMapper,
             paymentMerchantService,
@@ -69,7 +73,7 @@ class PaymentReconcileServiceTest {
                 "mock://trade-bill"
             )
         );
-        when(payOrderMapper.selectByBillDate(billDate)).thenReturn(List.of(order));
+        when(payOrderMapper.selectByBillDate(TENANT_ID, billDate)).thenReturn(List.of(order));
 
         PayReconcileRecord record = paymentReconcileService.buildTradeBillReconcileRecord(billDate, "wechat_pay");
 
@@ -108,7 +112,7 @@ class PaymentReconcileServiceTest {
                 "mock://trade-bill"
             )
         );
-        when(payOrderMapper.selectByBillDate(billDate)).thenReturn(List.of(mismatchOrder, localOnlyOrder));
+        when(payOrderMapper.selectByBillDate(TENANT_ID, billDate)).thenReturn(List.of(mismatchOrder, localOnlyOrder));
 
         PayReconcileRecord record = paymentReconcileService.buildTradeBillReconcileRecord(billDate, "wechat_pay");
 

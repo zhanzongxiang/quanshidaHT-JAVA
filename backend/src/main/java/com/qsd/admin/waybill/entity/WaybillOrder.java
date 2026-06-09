@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 public class WaybillOrder {
     @TableId(type = IdType.AUTO)
     private Long id;
+    private Long tenantId;
     private String mainTrackingNo;
     private String referenceNo;
     private String customerName;
@@ -32,6 +33,8 @@ public class WaybillOrder {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+    public Long getTenantId() { return tenantId; }
+    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
     public String getMainTrackingNo() { return mainTrackingNo; }
     public void setMainTrackingNo(String mainTrackingNo) { this.mainTrackingNo = mainTrackingNo; }
     public String getReferenceNo() { return referenceNo; }

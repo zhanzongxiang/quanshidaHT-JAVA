@@ -14,6 +14,8 @@ import com.qsd.admin.payment.entity.PayMerchantConfig;
 import com.qsd.admin.payment.service.PaymentMerchantService;
 import com.qsd.admin.payment.service.WechatPayGateway;
 import com.qsd.admin.security.JwtTokenService;
+import com.qsd.admin.tenant.TenantContext;
+import com.qsd.admin.tenant.TenantContextHolder;
 import com.qsd.admin.waybill.mapper.WaybillOrderMapper;
 import com.qsd.admin.waybill.service.WaybillService;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +37,7 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class MemberServiceTest {
+    private static final long TENANT_ID = 1L;
 
     @Mock
     private MemberUserMapper memberUserMapper;
@@ -67,6 +70,7 @@ class MemberServiceTest {
 
     @BeforeEach
     void setUp() {
+        TenantContextHolder.set(new TenantContext(TENANT_ID, "default", "Default Tenant"));
         memberService = new MemberService(
             memberUserMapper,
             memberWaybillRelationMapper,
@@ -89,9 +93,9 @@ class MemberServiceTest {
         when(wechatPayGateway.exchangeCode("demo-code", merchant)).thenReturn(
             new WechatCodeSessionResponse("openid-001", "unionid-001", "session-001")
         );
-        when(memberUserMapper.selectByWechatOpenid("openid-001")).thenReturn(null);
-        when(memberUserMapper.selectByPhone("13800138000")).thenReturn(null);
-        when(jwtTokenService.createMemberToken(101L, "13800138000")).thenReturn("member-token-001");
+        when(memberUserMapper.selectByWechatOpenid(TENANT_ID, "openid-001")).thenReturn(null);
+        when(memberUserMapper.selectByPhone(TENANT_ID, "13800138000")).thenReturn(null);
+        when(jwtTokenService.createMemberToken(101L, "13800138000", TENANT_ID, "default")).thenReturn("member-token-001");
 
         doAnswer(invocation -> {
             MemberUser member = invocation.getArgument(0);
@@ -106,6 +110,7 @@ class MemberServiceTest {
         ArgumentCaptor<MemberUser> memberCaptor = ArgumentCaptor.forClass(MemberUser.class);
         verify(memberUserMapper).insert(memberCaptor.capture());
         MemberUser insertedMember = memberCaptor.getValue();
+        assertEquals(TENANT_ID, insertedMember.getTenantId());
         assertEquals("13800138000", insertedMember.getPhone());
         assertEquals("openid-001", insertedMember.getWechatOpenid());
         assertEquals("unionid-001", insertedMember.getWechatUnionid());
@@ -133,9 +138,9 @@ class MemberServiceTest {
         when(wechatPayGateway.exchangeCode("demo-code", merchant)).thenReturn(
             new WechatCodeSessionResponse("openid-002", "unionid-002", "session-002")
         );
-        when(memberUserMapper.selectByWechatOpenid("openid-002")).thenReturn(null);
-        when(memberUserMapper.selectByPhone("13800138000")).thenReturn(existingMember);
-        when(jwtTokenService.createMemberToken(11L, "13800138000")).thenReturn("member-token-002");
+        when(memberUserMapper.selectByWechatOpenid(TENANT_ID, "openid-002")).thenReturn(null);
+        when(memberUserMapper.selectByPhone(TENANT_ID, "13800138000")).thenReturn(existingMember);
+        when(jwtTokenService.createMemberToken(11L, "13800138000", TENANT_ID, "default")).thenReturn("member-token-002");
 
         LoginResponse response = memberService.wechatLogin(
             new MemberWechatLoginRequest("demo-code", "13800138000", "wx-user", "Wechat User")
@@ -162,8 +167,14 @@ class MemberServiceTest {
         member.setFullName("Member A");
         member.setAvatarUrl("avatar.png");
 
-        when(memberUserMapper.selectActiveById(21L)).thenReturn(member);
-        when(memberUserMapper.selectByWechatOpenid("openid-003")).thenReturn(null);
+        PayMerchantConfig merchant = new PayMerchantConfig();
+        merchant.setId(2L);
+        when(memberUserMapper.selectActiveById(TENANT_ID, 21L)).thenReturn(member);
+        when(paymentMerchantService.requireCurrentMerchant()).thenReturn(merchant);
+        when(wechatPayGateway.exchangeCode("test-code", merchant)).thenReturn(
+            new WechatCodeSessionResponse("openid-003", "unionid-003", "session-003")
+        );
+        when(memberUserMapper.selectByWechatOpenid(TENANT_ID, "openid-003")).thenReturn(null);
 
         MemberProfileResponse response = memberService.bindWechatIdentity(
             21L,
@@ -196,8 +207,8 @@ new MemberWechatBindRequest("test-code")
         when(wechatPayGateway.exchangeCode("demo-code", merchant)).thenReturn(
             new WechatCodeSessionResponse("openid-disabled", "unionid-disabled", "session-disabled")
         );
-        when(memberUserMapper.selectByWechatOpenid("openid-disabled")).thenReturn(null);
-        when(memberUserMapper.selectByPhone("13800138001")).thenReturn(existingMember);
+        when(memberUserMapper.selectByWechatOpenid(TENANT_ID, "openid-disabled")).thenReturn(null);
+        when(memberUserMapper.selectByPhone(TENANT_ID, "13800138001")).thenReturn(existingMember);
 
         BusinessException ex = assertThrows(
             BusinessException.class,
@@ -220,11 +231,11 @@ new MemberWechatBindRequest("test-code")
         existingMember.setId(99L);
         existingMember.setPhone("13900139000");
 
-        when(memberUserMapper.selectActiveById(21L)).thenReturn(currentMember);
+        when(memberUserMapper.selectActiveById(TENANT_ID, 21L)).thenReturn(currentMember);
         when(paymentMerchantService.requireCurrentMerchant()).thenReturn(new com.qsd.admin.payment.entity.PayMerchantConfig());
         when(wechatPayGateway.exchangeCode(eq("code-occupied"), any())).thenReturn(
             new com.qsd.admin.payment.dto.WechatCodeSessionResponse("openid-occupied", "", ""));
-        when(memberUserMapper.selectByWechatOpenid("openid-occupied")).thenReturn(existingMember);
+        when(memberUserMapper.selectByWechatOpenid(TENANT_ID, "openid-occupied")).thenReturn(existingMember);
 
         BusinessException ex = assertThrows(
             BusinessException.class,

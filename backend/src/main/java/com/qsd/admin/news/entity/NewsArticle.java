@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 public class NewsArticle {
     @TableId(type = IdType.AUTO)
     private Long id;
+    private Long tenantId;
     private String title;
     private String summary;
     private String coverImageUrl;
@@ -27,6 +28,14 @@ public class NewsArticle {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public Long getTenantId() {
+        return tenantId;
+    }
+
+    public void setTenantId(Long tenantId) {
+        this.tenantId = tenantId;
     }
 
     public String getTitle() {

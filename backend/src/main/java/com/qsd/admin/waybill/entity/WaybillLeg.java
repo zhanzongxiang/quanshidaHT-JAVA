@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 public class WaybillLeg {
     @TableId(type = IdType.AUTO)
     private Long id;
+    private Long tenantId;
     private Long waybillId;
     private Integer legNo;
     private String legType;
@@ -27,6 +28,8 @@ public class WaybillLeg {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+    public Long getTenantId() { return tenantId; }
+    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
     public Long getWaybillId() { return waybillId; }
     public void setWaybillId(Long waybillId) { this.waybillId = waybillId; }
     public Integer getLegNo() { return legNo; }

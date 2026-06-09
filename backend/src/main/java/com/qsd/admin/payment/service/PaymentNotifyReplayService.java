@@ -7,6 +7,7 @@ import com.qsd.admin.payment.entity.PayNotifyLog;
 import com.qsd.admin.payment.entity.RefundNotifyLog;
 import com.qsd.admin.payment.mapper.PayNotifyLogMapper;
 import com.qsd.admin.payment.mapper.RefundNotifyLogMapper;
+import com.qsd.admin.tenant.TenantContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,9 +35,10 @@ public class PaymentNotifyReplayService {
 
     @Transactional
     public NotifyReplayResponse replayPaymentNotify(Long logId) {
+        Long tenantId = TenantContextHolder.requireTenantId();
         return replayNotify(
             logId,
-            payNotifyLogMapper::selectById,
+            id -> payNotifyLogMapper.selectActiveById(tenantId, id),
             PayNotifyLog::getRawPayload,
             "支付回调日志不存在",
             "支付回调日志缺少原始报文，无法重放",
@@ -49,9 +51,10 @@ public class PaymentNotifyReplayService {
 
     @Transactional
     public NotifyReplayResponse replayRefundNotify(Long logId) {
+        Long tenantId = TenantContextHolder.requireTenantId();
         return replayNotify(
             logId,
-            refundNotifyLogMapper::selectById,
+            id -> refundNotifyLogMapper.selectActiveById(tenantId, id),
             RefundNotifyLog::getRawPayload,
             "退款回调日志不存在",
             "退款回调日志缺少原始报文，无法重放",

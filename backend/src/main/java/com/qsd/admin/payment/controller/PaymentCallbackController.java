@@ -7,6 +7,7 @@ import com.qsd.admin.payment.dto.WechatPayCallbackRequest;
 import com.qsd.admin.payment.service.PaymentService;
 import com.qsd.admin.payment.service.WechatCallbackException;
 import com.qsd.admin.payment.service.WechatPayCallbackParser;
+import com.qsd.admin.tenant.TenantContextHolder;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -36,6 +37,7 @@ public class PaymentCallbackController {
         try {
             WechatPayCallbackRequest request = wechatPayCallbackParser.parsePaymentCallback(body);
             WechatCallbackContext context = wechatPayCallbackParser.parsePaymentCallbackContext(body, timestamp, nonce, signature);
+            TenantContextHolder.set(context.tenantContext());
             paymentService.validatePayCallbackMerchant(request.orderNo(), context.merchantConfig().getMchId());
             paymentService.handleWechatCallback(request);
             return WechatCallbackAckResponse.success();
@@ -45,6 +47,8 @@ public class PaymentCallbackController {
         } catch (Exception ex) {
             paymentService.recordPaymentCallbackFailure(body, "callback_unknown", ex.getMessage());
             return WechatCallbackAckResponse.fail("retry");
+        } finally {
+            TenantContextHolder.clear();
         }
     }
 
@@ -61,6 +65,7 @@ public class PaymentCallbackController {
         try {
             RefundCallbackRequest request = wechatPayCallbackParser.parseRefundCallback(body);
             WechatCallbackContext context = wechatPayCallbackParser.parseRefundCallbackContext(body, timestamp, nonce, signature);
+            TenantContextHolder.set(context.tenantContext());
             paymentService.validateRefundCallbackMerchant(request.refundNo(), context.merchantConfig().getMchId());
             paymentService.handleRefundCallback(request);
             return WechatCallbackAckResponse.success();
@@ -70,6 +75,8 @@ public class PaymentCallbackController {
         } catch (Exception ex) {
             paymentService.recordRefundCallbackFailure(body, "callback_unknown", ex.getMessage());
             return WechatCallbackAckResponse.fail("retry");
+        } finally {
+            TenantContextHolder.clear();
         }
     }
 

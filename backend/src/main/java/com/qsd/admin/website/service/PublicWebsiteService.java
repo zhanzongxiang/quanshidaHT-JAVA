@@ -11,6 +11,7 @@ import com.qsd.admin.content.entity.SiteContentPage;
 import com.qsd.admin.content.mapper.SiteContentPageMapper;
 import com.qsd.admin.news.entity.NewsArticle;
 import com.qsd.admin.news.mapper.NewsArticleMapper;
+import com.qsd.admin.tenant.TenantContextHolder;
 import com.qsd.admin.waybill.service.WaybillPublicService;
 import org.springframework.stereotype.Service;
 
@@ -93,7 +94,7 @@ public class PublicWebsiteService {
     }
 
     public JsonNode getHomePage() {
-        ObjectNode root = publicPageCache.get(PAGE_CACHE_PREFIX + "home", () -> readPublishedPage("home")).deepCopy();
+        ObjectNode root = publicPageCache.get(buildTenantCacheKey(PAGE_CACHE_PREFIX + "home"), () -> readPublishedPage("home")).deepCopy();
         root.remove("seo");
         return root;
     }
@@ -242,23 +243,23 @@ public class PublicWebsiteService {
 
     public JsonNode getServiceLinePage(String key) {
         String pageCode = resolveServiceLinePageCode(key);
-        return publicPageCache.get(PAGE_CACHE_PREFIX + pageCode, () -> readPublishedPage(pageCode));
+        return publicPageCache.get(buildTenantCacheKey(PAGE_CACHE_PREFIX + pageCode), () -> readPublishedPage(pageCode));
     }
 
     public JsonNode getNewsListPage(String year, Integer page, Integer pageSize) {
         int safePage = page == null || page < 1 ? 1 : page;
         int safePageSize = pageSize == null || pageSize < 1 ? 10 : Math.min(pageSize, 50);
         String normalizedYear = normalizeYear(year);
-        String cacheKey = NEWS_LIST_CACHE_PREFIX + normalizedYear + ":" + safePage + ":" + safePageSize;
+        String cacheKey = buildTenantCacheKey(NEWS_LIST_CACHE_PREFIX + normalizedYear + ":" + safePage + ":" + safePageSize);
         return publicPageCache.get(cacheKey, () -> buildNewsListPage(normalizedYear, safePage, safePageSize));
     }
 
     public JsonNode getNewsDetailPage(Long id) {
-        return publicPageCache.get(NEWS_DETAIL_CACHE_PREFIX + id, () -> buildNewsDetailPage(id));
+        return publicPageCache.get(buildTenantCacheKey(NEWS_DETAIL_CACHE_PREFIX + id), () -> buildNewsDetailPage(id));
     }
 
     public void evictPublishedPageCache(String pageCode) {
-        publicPageCache.evict(PAGE_CACHE_PREFIX + pageCode);
+        publicPageCache.evict(buildTenantCacheKey(PAGE_CACHE_PREFIX + pageCode));
     }
 
     public void evictNewsCache() {
@@ -267,6 +268,7 @@ public class PublicWebsiteService {
     }
 
     private JsonNode buildNewsListPage(String year, int page, int pageSize) {
+        Long tenantId = TenantContextHolder.requireTenantId();
         LocalDateTime publishedFrom = null;
         LocalDateTime publishedTo = null;
         if (!year.isBlank()) {
@@ -276,9 +278,9 @@ public class PublicWebsiteService {
         }
 
         int offset = (page - 1) * pageSize;
-        long total = newsArticleMapper.countPublished(publishedFrom, publishedTo);
-        List<NewsArticle> pageItems = newsArticleMapper.selectPublishedPageSummaries(publishedFrom, publishedTo, offset, pageSize);
-        List<Integer> yearsFromDb = newsArticleMapper.selectPublishedYears();
+        long total = newsArticleMapper.countPublished(tenantId, publishedFrom, publishedTo);
+        List<NewsArticle> pageItems = newsArticleMapper.selectPublishedPageSummaries(tenantId, publishedFrom, publishedTo, offset, pageSize);
+        List<Integer> yearsFromDb = newsArticleMapper.selectPublishedYears(tenantId);
 
         ObjectNode root = objectMapper.createObjectNode();
         ObjectNode hero = objectMapper.createObjectNode();
@@ -322,7 +324,7 @@ public class PublicWebsiteService {
     }
 
     private JsonNode buildNewsDetailPage(Long id) {
-        NewsArticle article = newsArticleMapper.selectPublishedById(id);
+        NewsArticle article = newsArticleMapper.selectPublishedById(TenantContextHolder.requireTenantId(), id);
         if (article == null) {
             throw new NotFoundException("已发布新闻不存在");
         }
@@ -367,7 +369,7 @@ public class PublicWebsiteService {
     }
 
     private ObjectNode readPublishedPage(String pageCode) {
-        SiteContentPage page = siteContentPageMapper.selectPublishedByPageCode(pageCode);
+        SiteContentPage page = siteContentPageMapper.selectPublishedByPageCode(TenantContextHolder.requireTenantId(), pageCode);
         if (page == null) {
             throw new NotFoundException("已发布页面不存在");
         }
@@ -388,6 +390,10 @@ public class PublicWebsiteService {
             case "taiwan", "feizhou", "international" -> "service-line:" + key;
             default -> throw new NotFoundException("线路页面不存在");
         };
+    }
+
+    private String buildTenantCacheKey(String suffix) {
+        return "tenant:" + TenantContextHolder.requireTenantId() + ":" + suffix;
     }
 
     private String resolveTrackingDestination(String trackingNo) {

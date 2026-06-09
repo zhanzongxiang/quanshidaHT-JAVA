@@ -5,6 +5,7 @@ import com.qsd.admin.payment.entity.PayMerchantConfig;
 import com.qsd.admin.payment.entity.PayOrder;
 import com.qsd.admin.payment.entity.PayReconcileRecord;
 import com.qsd.admin.payment.mapper.PayOrderMapper;
+import com.qsd.admin.tenant.TenantContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -32,12 +33,13 @@ public class PaymentReconcileService {
     }
 
     public PayReconcileRecord buildTradeBillReconcileRecord(LocalDate billDate, String channel) {
+        Long tenantId = TenantContextHolder.requireTenantId();
         PayMerchantConfig merchantConfig = paymentMerchantService.requireCurrentMerchant();
         WechatReconcileDownloadResult downloadResult = wechatPayGateway.downloadTradeBill(billDate, merchantConfig);
 
         Map<String, BillRow> remoteRows = parseTradeBill(downloadResult.content());
         Map<String, PayOrder> localRows = new HashMap<>();
-        for (PayOrder order : payOrderMapper.selectByBillDate(billDate)) {
+        for (PayOrder order : payOrderMapper.selectByBillDate(tenantId, billDate)) {
             if (channel.equals(order.getChannel())) {
                 localRows.put(order.getOrderNo(), order);
             }
@@ -62,6 +64,7 @@ public class PaymentReconcileService {
         }
 
         PayReconcileRecord record = new PayReconcileRecord();
+        record.setTenantId(tenantId);
         record.setReconcileDate(billDate);
         record.setChannel(channel);
         record.setReconcileStatus(diffs.isEmpty() ? "matched" : "diff_found");

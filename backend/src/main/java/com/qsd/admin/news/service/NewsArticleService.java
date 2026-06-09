@@ -5,6 +5,7 @@ import com.qsd.admin.news.dto.NewsArticleResponse;
 import com.qsd.admin.news.dto.NewsArticleSaveRequest;
 import com.qsd.admin.news.entity.NewsArticle;
 import com.qsd.admin.news.mapper.NewsArticleMapper;
+import com.qsd.admin.tenant.TenantContextHolder;
 import com.qsd.admin.website.service.PublicWebsiteService;
 import org.springframework.stereotype.Service;
 
@@ -27,7 +28,8 @@ public class NewsArticleService {
     }
 
     public List<NewsArticleResponse> list() {
-        return newsArticleMapper.selectActiveList().stream().map(this::toResponse).toList();
+        Long tenantId = TenantContextHolder.requireTenantId();
+        return newsArticleMapper.selectActiveList(tenantId).stream().map(this::toResponse).toList();
     }
 
     public NewsArticleResponse getById(Long id) {
@@ -35,8 +37,10 @@ public class NewsArticleService {
     }
 
     public NewsArticleResponse create(NewsArticleSaveRequest request) {
+        Long tenantId = TenantContextHolder.requireTenantId();
         LocalDateTime now = LocalDateTime.now();
         NewsArticle article = new NewsArticle();
+        article.setTenantId(tenantId);
         article.setTitle(request.title().trim());
         article.setSummary(request.summary().trim());
         article.setCoverImageUrl(trimToEmpty(request.coverImageUrl()));
@@ -85,9 +89,9 @@ public class NewsArticleService {
     }
 
     private NewsArticle requireArticle(Long id) {
-        NewsArticle article = newsArticleMapper.selectActiveById(id);
+        NewsArticle article = newsArticleMapper.selectActiveById(TenantContextHolder.requireTenantId(), id);
         if (article == null) {
-            throw new NotFoundException("新闻不存在");
+            throw new NotFoundException("news article not found");
         }
         return article;
     }

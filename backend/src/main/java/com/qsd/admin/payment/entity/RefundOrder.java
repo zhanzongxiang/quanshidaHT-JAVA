@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 public class RefundOrder {
     @TableId(type = IdType.AUTO)
     private Long id;
+    private Long tenantId;
     private String refundNo;
     private Long payOrderId;
     private BigDecimal amountRefund;
@@ -23,6 +24,8 @@ public class RefundOrder {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+    public Long getTenantId() { return tenantId; }
+    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
     public String getRefundNo() { return refundNo; }
     public void setRefundNo(String refundNo) { this.refundNo = refundNo; }
     public Long getPayOrderId() { return payOrderId; }

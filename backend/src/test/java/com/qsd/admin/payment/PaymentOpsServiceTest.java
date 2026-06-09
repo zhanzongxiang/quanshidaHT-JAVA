@@ -12,6 +12,8 @@ import com.qsd.admin.payment.mapper.RefundNotifyLogMapper;
 import com.qsd.admin.payment.service.PaymentMerchantService;
 import com.qsd.admin.payment.service.PaymentOpsService;
 import com.qsd.admin.payment.service.WechatPlatformCertificateService;
+import com.qsd.admin.tenant.TenantContext;
+import com.qsd.admin.tenant.TenantContextHolder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,6 +30,7 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentOpsServiceTest {
+    private static final long TENANT_ID = 1L;
 
     @Mock
     private PaymentMerchantService paymentMerchantService;
@@ -48,6 +51,7 @@ class PaymentOpsServiceTest {
 
     @BeforeEach
     void setUp() {
+        TenantContextHolder.set(new TenantContext(TENANT_ID, "default", "Default Tenant"));
         paymentOpsService = new PaymentOpsService(
             paymentMerchantService,
             wechatPlatformCertificateService,
@@ -67,10 +71,10 @@ class PaymentOpsServiceTest {
         merchant.setUpdatedAt(LocalDateTime.of(2026, 5, 13, 10, 0, 0));
 
         when(paymentMerchantService.requireCurrentMerchant()).thenReturn(merchant);
-        when(payNotifyLogMapper.selectFailureStats()).thenReturn(
+        when(payNotifyLogMapper.selectFailureStats(TENANT_ID)).thenReturn(
             List.of(new NotifyFailureStatResponse("signature_verify_failed", 2, "2026-05-13 09:00:00"))
         );
-        when(refundNotifyLogMapper.selectFailureStats()).thenReturn(
+        when(refundNotifyLogMapper.selectFailureStats(TENANT_ID)).thenReturn(
             List.of(new NotifyFailureStatResponse("resource_decrypt_failed", 1, "2026-05-13 09:30:00"))
         );
 
@@ -110,7 +114,7 @@ class PaymentOpsServiceTest {
         record.setDiffCount(2);
         record.setSummary("bill downloaded, diffs=LOCAL_MISSING:PO1|REMOTE_AMOUNT_MISMATCH:PO2|");
 
-        when(payReconcileRecordMapper.selectById(15L)).thenReturn(record);
+        when(payReconcileRecordMapper.selectActiveById(TENANT_ID, 15L)).thenReturn(record);
 
         ReconcileDiffDetailResponse response = paymentOpsService.getReconcileDiffDetail(15L);
 
@@ -122,7 +126,7 @@ class PaymentOpsServiceTest {
 
     @Test
     void shouldRejectMissingReconcileRecord() {
-        when(payReconcileRecordMapper.selectById(16L)).thenReturn(null);
+        when(payReconcileRecordMapper.selectActiveById(TENANT_ID, 16L)).thenReturn(null);
 
         NotFoundException ex = assertThrows(
             NotFoundException.class,

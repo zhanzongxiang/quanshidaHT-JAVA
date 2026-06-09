@@ -18,6 +18,7 @@ const NavigationSettingsView = () => import('../views/NavigationSettingsView.vue
 const FooterSettingsView = () => import('../views/FooterSettingsView.vue')
 const ContactSettingsView = () => import('../views/ContactSettingsView.vue')
 const DictionarySettingsView = () => import('../views/DictionarySettingsView.vue')
+const TenantsView = () => import('../views/TenantsView.vue')
 
 const viewMap: Record<string, () => Promise<unknown>> = {
   Dashboard: DashboardView,
@@ -32,6 +33,7 @@ const viewMap: Record<string, () => Promise<unknown>> = {
   FooterSettings: FooterSettingsView,
   ContactSettings: ContactSettingsView,
   DictionarySettings: DictionarySettingsView,
+  Tenants: TenantsView,
 }
 
 export const DEFAULT_HOME_PATH = '/dashboard'

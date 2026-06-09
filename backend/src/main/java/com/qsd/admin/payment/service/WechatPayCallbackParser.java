@@ -6,6 +6,7 @@ import com.qsd.admin.payment.dto.RefundCallbackRequest;
 import com.qsd.admin.payment.dto.WechatCallbackContext;
 import com.qsd.admin.payment.dto.WechatPayCallbackRequest;
 import com.qsd.admin.payment.entity.PayMerchantConfig;
+import com.qsd.admin.tenant.TenantContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -87,7 +88,7 @@ public class WechatPayCallbackParser {
             Map<String, Object> payload = objectMapper.readValue(body, MAP_TYPE);
             PayMerchantConfig merchantConfig = resolveMerchantForNotify(payload, body, timestamp, nonce, signature);
             Map<String, Object> resource = wechatPayCryptoService.decryptNotifyResource(body, merchantConfig.getApiV3Key());
-            return new WechatCallbackContext(merchantConfig, resource);
+            return new WechatCallbackContext(merchantConfig, resource, buildTenantContext(merchantConfig));
         } catch (Exception ex) {
             throw new IllegalArgumentException("解析微信支付回调上下文失败", ex);
         }
@@ -103,7 +104,7 @@ public class WechatPayCallbackParser {
             Map<String, Object> payload = objectMapper.readValue(body, MAP_TYPE);
             PayMerchantConfig merchantConfig = resolveMerchantForNotify(payload, body, timestamp, nonce, signature);
             Map<String, Object> resource = wechatPayCryptoService.decryptNotifyResource(body, merchantConfig.getApiV3Key());
-            return new WechatCallbackContext(merchantConfig, resource);
+            return new WechatCallbackContext(merchantConfig, resource, buildTenantContext(merchantConfig));
         } catch (Exception ex) {
             throw new IllegalArgumentException("解析微信退款回调上下文失败", ex);
         }
@@ -123,14 +124,14 @@ public class WechatPayCallbackParser {
     ) {
         String mchId = extractMchId(payload);
         if (!mchId.isEmpty()) {
-            PayMerchantConfig byMchId = paymentMerchantService.findMerchantByMchId(mchId);
+            PayMerchantConfig byMchId = paymentMerchantService.findMerchantByMchIdGlobal(mchId);
             if (isUsableForNotify(byMchId)) {
                 verifySignature(body, timestamp, nonce, signature, byMchId);
                 return byMchId;
             }
         }
 
-        for (PayMerchantConfig config : paymentMerchantService.listMerchantEntities()) {
+        for (PayMerchantConfig config : paymentMerchantService.listMerchantEntitiesGlobal()) {
             if (isUsableForNotify(config)) {
                 try {
                     verifySignature(body, timestamp, nonce, signature, config);
@@ -152,13 +153,13 @@ public class WechatPayCallbackParser {
     private PayMerchantConfig resolveMerchantForDecrypt(Map<String, Object> payload) {
         String mchId = extractMchId(payload);
         if (!mchId.isEmpty()) {
-            PayMerchantConfig byMchId = paymentMerchantService.findMerchantByMchId(mchId);
+            PayMerchantConfig byMchId = paymentMerchantService.findMerchantByMchIdGlobal(mchId);
             if (isUsableForNotify(byMchId)) {
                 return byMchId;
             }
         }
 
-        for (PayMerchantConfig config : paymentMerchantService.listMerchantEntities()) {
+        for (PayMerchantConfig config : paymentMerchantService.listMerchantEntitiesGlobal()) {
             if (isUsableForNotify(config)) {
                 return config;
             }
@@ -200,5 +201,9 @@ public class WechatPayCallbackParser {
         } catch (IllegalStateException ex) {
             throw new WechatCallbackException("signature_verify_error", ex.getMessage(), true, ex);
         }
+    }
+
+    private TenantContext buildTenantContext(PayMerchantConfig merchantConfig) {
+        return new TenantContext(merchantConfig.getTenantId(), null, null);
     }
 }

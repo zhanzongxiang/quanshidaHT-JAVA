@@ -26,6 +26,8 @@ import com.qsd.admin.payment.entity.PayMerchantConfig;
 import com.qsd.admin.payment.service.PaymentMerchantService;
 import com.qsd.admin.payment.service.WechatPayGateway;
 import com.qsd.admin.security.JwtTokenService;
+import com.qsd.admin.tenant.TenantContext;
+import com.qsd.admin.tenant.TenantContextHolder;
 import com.qsd.admin.waybill.dto.WaybillEventPayload;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import com.qsd.admin.waybill.dto.WaybillLegPayload;
@@ -90,7 +92,8 @@ public class MemberService {
     }
 
     public List<MemberAdminSummaryResponse> listAdminMembers(String keyword, String status) {
-        List<MemberUser> members = memberUserMapper.selectAdminList(trimToNull(keyword), trimToNull(status));
+        Long tenantId = TenantContextHolder.requireTenantId();
+        List<MemberUser> members = memberUserMapper.selectAdminList(tenantId, trimToNull(keyword), trimToNull(status));
         if (members.isEmpty()) {
             return List.of();
         }
@@ -101,7 +104,7 @@ public class MemberService {
             .toList();
         Map<Long, Integer> waybillCountMap = new java.util.HashMap<>();
         try {
-            List<Map<String, Object>> counts = waybillOrderMapper.countAccessibleByMemberIds(memberIds);
+            List<Map<String, Object>> counts = waybillOrderMapper.countAccessibleByMemberIds(tenantId, memberIds);
             for (Map<String, Object> row : counts) {
                 waybillCountMap.put(
                     ((Number) row.get("memberId")).longValue(),
@@ -136,7 +139,8 @@ public class MemberService {
 
     @Transactional
     public MemberAdminDetailResponse createAdminMember(MemberAdminSaveRequest request) {
-        MemberUser existing = memberUserMapper.selectByPhone(request.phone().trim());
+        Long tenantId = TenantContextHolder.requireTenantId();
+        MemberUser existing = memberUserMapper.selectByPhone(tenantId, request.phone().trim());
         if (existing != null) {
             throw new BusinessException("该手机号已存在");
         }
@@ -146,6 +150,7 @@ public class MemberService {
 
         LocalDateTime now = LocalDateTime.now();
         MemberUser member = new MemberUser();
+        member.setTenantId(tenantId);
         member.setPhone(request.phone().trim());
         member.setPasswordHash(passwordEncoder.encode(request.password().trim()));
         member.setNickname(trimToEmpty(request.nickname()));
@@ -164,8 +169,9 @@ public class MemberService {
 
     @Transactional
     public MemberAdminDetailResponse updateAdminMember(Long id, MemberAdminSaveRequest request) {
+        Long tenantId = TenantContextHolder.requireTenantId();
         MemberUser member = requireMember(id);
-        MemberUser existing = memberUserMapper.selectByPhone(request.phone().trim());
+        MemberUser existing = memberUserMapper.selectByPhone(tenantId, request.phone().trim());
         if (existing != null && !existing.getId().equals(id)) {
             throw new BusinessException("该手机号已存在");
         }
@@ -197,12 +203,14 @@ public class MemberService {
 
     @Transactional
     public LoginResponse register(MemberRegisterRequest request) {
-        if (memberUserMapper.selectByPhone(request.phone().trim()) != null) {
+        Long tenantId = TenantContextHolder.requireTenantId();
+        if (memberUserMapper.selectByPhone(tenantId, request.phone().trim()) != null) {
             throw new BusinessException("该手机号已注册");
         }
 
         LocalDateTime now = LocalDateTime.now();
         MemberUser member = new MemberUser();
+        member.setTenantId(tenantId);
         member.setPhone(request.phone().trim());
         member.setPasswordHash(passwordEncoder.encode(request.password().trim()));
         member.setNickname(trimToEmpty(request.nickname()));
@@ -216,19 +224,20 @@ public class MemberService {
         member.setLastLoginAt(now);
         memberUserMapper.insert(member);
 
-        String token = jwtTokenService.createMemberToken(member.getId(), member.getPhone());
+        String token = createMemberToken(member);
         return new LoginResponse(token, "Bearer");
     }
 
     @Transactional
     public LoginResponse login(MemberLoginRequest request, String clientIp) {
+        Long tenantId = TenantContextHolder.requireTenantId();
         String rateLimitKey = "member:" + (clientIp != null ? clientIp : "unknown") + ":" + request.phone();
         if (!rateLimiterService.isAllowed(rateLimitKey)) {
             long remaining = rateLimiterService.getRemainingLockoutSeconds(rateLimitKey);
             throw new BusinessException("登录尝试过于频繁，请 " + remaining + " 秒后再试");
         }
 
-        MemberUser member = memberUserMapper.selectByPhone(request.phone().trim());
+        MemberUser member = memberUserMapper.selectByPhone(tenantId, request.phone().trim());
         if (member == null) {
             rateLimiterService.recordFailure(rateLimitKey);
             throw new BusinessException("手机号或密码错误");
@@ -251,12 +260,13 @@ public class MemberService {
         member.setUpdatedAt(now);
         memberUserMapper.updateById(member);
 
-        String token = jwtTokenService.createMemberToken(member.getId(), member.getPhone());
+        String token = createMemberToken(member);
         return new LoginResponse(token, "Bearer");
     }
 
     @Transactional
     public LoginResponse wechatLogin(MemberWechatLoginRequest request) {
+        Long tenantId = TenantContextHolder.requireTenantId();
         PayMerchantConfig merchantConfig = paymentMerchantService.requireCurrentMerchant();
         WechatCodeSessionResponse session = wechatPayGateway.exchangeCode(request.code(), merchantConfig);
         String openid = trimToNull(session.openid());
@@ -264,15 +274,16 @@ public class MemberService {
             throw new BusinessException("未获取到微信 openid，请稍后重试");
         }
 
-        MemberUser member = memberUserMapper.selectByWechatOpenid(openid);
+        MemberUser member = memberUserMapper.selectByWechatOpenid(tenantId, openid);
         LocalDateTime now = LocalDateTime.now();
         if (member == null) {
             String phone = trimToNull(request.phone());
             if (phone != null) {
-                member = memberUserMapper.selectByPhone(phone);
+                member = memberUserMapper.selectByPhone(tenantId, phone);
             }
             if (member == null) {
                 member = new MemberUser();
+                member.setTenantId(tenantId);
                 member.setPhone(phone == null ? generateVirtualPhone(openid) : phone);
                 member.setPasswordHash(passwordEncoder.encode(UUID.randomUUID().toString()));
                 member.setNickname(trimToEmpty(request.nickname()));
@@ -298,7 +309,7 @@ public class MemberService {
             memberUserMapper.updateById(member);
         }
 
-        String token = jwtTokenService.createMemberToken(member.getId(), member.getPhone());
+        String token = createMemberToken(member);
         return new LoginResponse(token, "Bearer");
     }
 
@@ -322,6 +333,7 @@ public class MemberService {
 
     @Transactional
     public MemberProfileResponse bindWechatIdentity(Long memberId, MemberWechatBindRequest request) {
+        Long tenantId = TenantContextHolder.requireTenantId();
         MemberUser member = requireMember(memberId);
         ensureMemberUsable(member);
 
@@ -337,7 +349,7 @@ public class MemberService {
             throw new BusinessException("未获取到微信身份，请稍后重试");
         }
 
-        MemberUser existing = memberUserMapper.selectByWechatOpenid(openid);
+        MemberUser existing = memberUserMapper.selectByWechatOpenid(tenantId, openid);
         if (existing != null && !existing.getId().equals(memberId)) {
             throw new BusinessException("该微信身份已绑定其他会员");
         }
@@ -358,9 +370,10 @@ public class MemberService {
     }
 
     public MemberWaybillDetailResponse getMemberWaybillDetail(Long memberId, Long waybillId) {
+        Long tenantId = TenantContextHolder.requireTenantId();
         MemberUser member = requireMember(memberId);
         ensureMemberUsable(member);
-        WaybillOrder order = waybillOrderMapper.selectAccessibleDetailByMember(waybillId, memberId, member.getPhone());
+        WaybillOrder order = waybillOrderMapper.selectAccessibleDetailByMember(tenantId, waybillId, memberId, member.getPhone());
         if (order == null) {
             throw new NotFoundException("会员运单不存在");
         }
@@ -396,7 +409,10 @@ public class MemberService {
     }
 
     private MemberAdminDetailResponse toAdminDetail(MemberUser member) {
-        List<Long> boundWaybillIds = memberWaybillRelationMapper.selectWaybillIdsByMemberId(member.getId());
+        List<Long> boundWaybillIds = memberWaybillRelationMapper.selectWaybillIdsByMemberId(
+            TenantContextHolder.requireTenantId(),
+            member.getId()
+        );
         return new MemberAdminDetailResponse(
             member.getId(),
             member.getPhone(),
@@ -432,7 +448,7 @@ public class MemberService {
     }
 
     private List<MemberWaybillSummaryResponse> listAccessibleWaybills(MemberUser member) {
-        return waybillOrderMapper.selectAccessibleByMember(member.getId(), member.getPhone()).stream()
+        return waybillOrderMapper.selectAccessibleByMember(TenantContextHolder.requireTenantId(), member.getId(), member.getPhone()).stream()
             .map(this::toWaybillSummary)
             .toList();
     }
@@ -481,13 +497,14 @@ public class MemberService {
     }
 
     private void replaceManualWaybillRelations(Long memberId, List<Long> waybillIds) {
-        memberWaybillRelationMapper.deleteByMemberId(memberId);
+        Long tenantId = TenantContextHolder.requireTenantId();
+        memberWaybillRelationMapper.deleteByMemberId(tenantId, memberId);
         Set<Long> uniqueIds = normalizeWaybillIds(waybillIds);
         if (uniqueIds.isEmpty()) {
             return;
         }
 
-        List<WaybillOrder> waybills = waybillOrderMapper.selectActiveByIds(new ArrayList<>(uniqueIds));
+        List<WaybillOrder> waybills = waybillOrderMapper.selectActiveByIds(TenantContextHolder.requireTenantId(), new ArrayList<>(uniqueIds));
         if (waybills.size() != uniqueIds.size()) {
             throw new BusinessException("存在无效的运单，无法完成绑定");
         }
@@ -495,6 +512,7 @@ public class MemberService {
         LocalDateTime now = LocalDateTime.now();
         for (Long waybillId : uniqueIds) {
             MemberWaybillRelation relation = new MemberWaybillRelation();
+            relation.setTenantId(tenantId);
             relation.setMemberId(memberId);
             relation.setWaybillId(waybillId);
             relation.setCreatedAt(now);
@@ -512,11 +530,18 @@ public class MemberService {
     }
 
     private MemberUser requireMember(Long id) {
-        MemberUser member = memberUserMapper.selectActiveById(id);
+        MemberUser member = memberUserMapper.selectActiveById(TenantContextHolder.requireTenantId(), id);
         if (member == null) {
             throw new NotFoundException("会员不存在");
         }
         return member;
+    }
+
+    private String createMemberToken(MemberUser member) {
+        TenantContext tenantContext = TenantContextHolder.get();
+        Long tenantId = TenantContextHolder.requireTenantId();
+        String tenantCode = tenantContext == null ? null : tenantContext.tenantCode();
+        return jwtTokenService.createMemberToken(member.getId(), member.getPhone(), tenantId, tenantCode);
     }
 
     private void ensureMemberUsable(MemberUser member) {

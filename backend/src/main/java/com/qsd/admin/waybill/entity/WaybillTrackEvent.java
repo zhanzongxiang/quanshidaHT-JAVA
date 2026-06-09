@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 public class WaybillTrackEvent {
     @TableId(type = IdType.AUTO)
     private Long id;
+    private Long tenantId;
     private Long waybillId;
     private Long legId;
     private LocalDateTime eventTime;
@@ -22,6 +23,8 @@ public class WaybillTrackEvent {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+    public Long getTenantId() { return tenantId; }
+    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
     public Long getWaybillId() { return waybillId; }
     public void setWaybillId(Long waybillId) { this.waybillId = waybillId; }
     public Long getLegId() { return legId; }

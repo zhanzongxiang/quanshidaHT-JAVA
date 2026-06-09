@@ -10,12 +10,15 @@ import java.time.LocalDateTime;
 public class MemberWaybillRelation {
     @TableId(type = IdType.AUTO)
     private Long id;
+    private Long tenantId;
     private Long memberId;
     private Long waybillId;
     private LocalDateTime createdAt;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+    public Long getTenantId() { return tenantId; }
+    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
     public Long getMemberId() { return memberId; }
     public void setMemberId(Long memberId) { this.memberId = memberId; }
     public Long getWaybillId() { return waybillId; }

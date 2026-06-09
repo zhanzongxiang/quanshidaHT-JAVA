@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 public class PayOrder {
     @TableId(type = IdType.AUTO)
     private Long id;
+    private Long tenantId;
     private String orderNo;
     private Long memberId;
     private Long merchantConfigId;
@@ -41,6 +42,8 @@ public class PayOrder {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+    public Long getTenantId() { return tenantId; }
+    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
     public String getOrderNo() { return orderNo; }
     public void setOrderNo(String orderNo) { this.orderNo = orderNo; }
     public Long getMemberId() { return memberId; }

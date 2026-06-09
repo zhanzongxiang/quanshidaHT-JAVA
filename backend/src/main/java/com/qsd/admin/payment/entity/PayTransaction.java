@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 public class PayTransaction {
     @TableId(type = IdType.AUTO)
     private Long id;
+    private Long tenantId;
     private Long payOrderId;
     private String transactionType;
     private String transactionStatus;
@@ -22,6 +23,8 @@ public class PayTransaction {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+    public Long getTenantId() { return tenantId; }
+    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
     public Long getPayOrderId() { return payOrderId; }
     public void setPayOrderId(Long payOrderId) { this.payOrderId = payOrderId; }
     public String getTransactionType() { return transactionType; }

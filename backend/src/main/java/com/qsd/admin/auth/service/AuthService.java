@@ -7,7 +7,10 @@ import com.qsd.admin.auth.mapper.AdminMenuMapper;
 import com.qsd.admin.auth.mapper.AdminUserMapper;
 import com.qsd.admin.common.exception.BusinessException;
 import com.qsd.admin.common.service.RateLimiterService;
+import com.qsd.admin.security.AuthenticatedUser;
 import com.qsd.admin.security.JwtTokenService;
+import com.qsd.admin.tenant.entity.Tenant;
+import com.qsd.admin.tenant.service.TenantService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -23,48 +26,76 @@ public class AuthService {
     private final JwtTokenService jwtTokenService;
     private final PasswordEncoder passwordEncoder;
     private final RateLimiterService rateLimiterService;
+    private final TenantService tenantService;
 
-    public AuthService(AdminUserMapper adminUserMapper, AdminMenuMapper adminMenuMapper, JwtTokenService jwtTokenService, PasswordEncoder passwordEncoder, RateLimiterService rateLimiterService) {
+    public AuthService(
+        AdminUserMapper adminUserMapper,
+        AdminMenuMapper adminMenuMapper,
+        JwtTokenService jwtTokenService,
+        PasswordEncoder passwordEncoder,
+        RateLimiterService rateLimiterService,
+        TenantService tenantService
+    ) {
         this.adminUserMapper = adminUserMapper;
         this.adminMenuMapper = adminMenuMapper;
         this.jwtTokenService = jwtTokenService;
         this.passwordEncoder = passwordEncoder;
         this.rateLimiterService = rateLimiterService;
+        this.tenantService = tenantService;
     }
 
     public String login(String username, String password, String clientIp) {
-        String rateLimitKey = "admin:" + (clientIp != null ? clientIp : "unknown") + ":" + username;
+        Tenant tenant = tenantService.requireCurrentTenant();
+        String rateLimitKey = "admin:" + tenant.getTenantCode() + ":" + (clientIp != null ? clientIp : "unknown") + ":" + username;
         if (!rateLimiterService.isAllowed(rateLimitKey)) {
             long remaining = rateLimiterService.getRemainingLockoutSeconds(rateLimitKey);
-            throw new BusinessException("登录尝试过于频繁，请 " + remaining + " 秒后再试");
+            throw new BusinessException("login attempts are too frequent, retry after " + remaining + " seconds");
         }
 
-        AdminUser user = adminUserMapper.selectByUsername(username);
+        AdminUser user = adminUserMapper.selectByUsernameAndTenantId(username, tenant.getId());
         if (user == null) {
-            throw new BusinessException("用户不存在");
+            throw new BusinessException("user not found");
         }
         if (!"ENABLED".equals(user.getStatus())) {
-            throw new BusinessException("账号已被禁用");
+            throw new BusinessException("account is disabled");
         }
         if (!passwordEncoder.matches(password, user.getPasswordHash())) {
             rateLimiterService.recordFailure(rateLimitKey);
-            throw new BusinessException("用户名或密码错误");
+            throw new BusinessException("invalid username or password");
         }
 
         rateLimiterService.recordSuccess(rateLimitKey);
         List<String> permissions = adminUserMapper.selectPermissionCodes(user.getId());
-        return jwtTokenService.createAdminToken(user.getId(), user.getUsername(), permissions);
+        return jwtTokenService.createAdminToken(
+            user.getId(),
+            user.getUsername(),
+            tenant.getId(),
+            tenant.getTenantCode(),
+            permissions
+        );
     }
 
-    public MeResponse me(String username) {
-        AdminUser user = adminUserMapper.selectByUsername(username);
+    public MeResponse me(AuthenticatedUser authenticatedUser) {
+        Long tenantId = authenticatedUser.tenantId() == null
+            ? tenantService.requireCurrentTenant().getId()
+            : authenticatedUser.tenantId();
+        AdminUser user = adminUserMapper.selectActiveByIdAndTenantId(authenticatedUser.userId(), tenantId);
         if (user == null) {
-            throw new BusinessException("用户不存在");
+            throw new BusinessException("user not found");
         }
 
+        Tenant tenant = tenantService.requireTenantById(tenantId);
         List<String> permissions = adminUserMapper.selectPermissionCodes(user.getId());
         List<AdminMenu> menus = adminMenuMapper.selectMenusByUserId(user.getId());
-        return new MeResponse(user.getId(), user.getUsername(), permissions, buildMenuTree(menus));
+        return new MeResponse(
+            user.getId(),
+            user.getUsername(),
+            tenant.getId(),
+            tenant.getTenantCode(),
+            tenant.getTenantName(),
+            permissions,
+            buildMenuTree(menus)
+        );
     }
 
     private List<MeResponse.MenuNode> buildMenuTree(List<AdminMenu> menus) {

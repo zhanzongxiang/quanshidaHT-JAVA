@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.qsd.admin.waybill.entity.WaybillTrackEvent;
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
@@ -12,27 +13,30 @@ import java.util.List;
 public interface WaybillTrackEventMapper extends BaseMapper<WaybillTrackEvent> {
 
     @Select("""
-        select id, waybill_id, leg_id, event_time, event_status, event_description,
+        select id, tenant_id, waybill_id, leg_id, event_time, event_status, event_description,
                event_location, visible_to_customer, sort_no, created_at
         from waybill_track_event
-        where waybill_id = #{waybillId}
+        where tenant_id = #{tenantId}
+          and waybill_id = #{waybillId}
         order by event_time asc, sort_no asc, id asc
         """)
-    List<WaybillTrackEvent> selectByWaybillId(Long waybillId);
+    List<WaybillTrackEvent> selectByWaybillId(@Param("tenantId") Long tenantId, @Param("waybillId") Long waybillId);
 
     @Select("""
-        select id, waybill_id, leg_id, event_time, event_status, event_description,
+        select id, tenant_id, waybill_id, leg_id, event_time, event_status, event_description,
                event_location, visible_to_customer, sort_no, created_at
         from waybill_track_event
-        where waybill_id = #{waybillId}
+        where tenant_id = #{tenantId}
+          and waybill_id = #{waybillId}
           and visible_to_customer = 1
         order by event_time asc, sort_no asc, id asc
         """)
-    List<WaybillTrackEvent> selectVisibleByWaybillId(Long waybillId);
+    List<WaybillTrackEvent> selectVisibleByWaybillId(@Param("tenantId") Long tenantId, @Param("waybillId") Long waybillId);
 
     @Delete("""
         delete from waybill_track_event
-        where waybill_id = #{waybillId}
+        where tenant_id = #{tenantId}
+          and waybill_id = #{waybillId}
         """)
-    void deleteByWaybillId(Long waybillId);
+    void deleteByWaybillId(@Param("tenantId") Long tenantId, @Param("waybillId") Long waybillId);
 }

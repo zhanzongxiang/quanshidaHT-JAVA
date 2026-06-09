@@ -9,6 +9,7 @@ import com.qsd.admin.payment.dto.PayMerchantConfigSummaryResponse;
 import com.qsd.admin.payment.dto.PayMerchantConfigUpdateRequest;
 import com.qsd.admin.payment.entity.PayMerchantConfig;
 import com.qsd.admin.payment.mapper.PayMerchantConfigMapper;
+import com.qsd.admin.tenant.TenantContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,15 +37,17 @@ public class PaymentMerchantService {
     }
 
     public List<PayMerchantConfigSummaryResponse> listMerchantConfigs() {
-        ensureDefaultMerchantExists();
-        return payMerchantConfigMapper.selectAllActiveRows().stream()
+        Long tenantId = TenantContextHolder.requireTenantId();
+        ensureDefaultMerchantExists(tenantId);
+        return payMerchantConfigMapper.selectAllActiveRows(tenantId).stream()
             .map(this::toSummary)
             .toList();
     }
 
     public PayMerchantConfig requireCurrentMerchant() {
-        ensureDefaultMerchantExists();
-        PayMerchantConfig config = payMerchantConfigMapper.selectCurrentActive();
+        Long tenantId = TenantContextHolder.requireTenantId();
+        ensureDefaultMerchantExists(tenantId);
+        PayMerchantConfig config = payMerchantConfigMapper.selectCurrentActive(tenantId);
         if (config != null) {
             return decryptMerchantConfig(config);
         }
@@ -52,8 +55,9 @@ public class PaymentMerchantService {
     }
 
     public PayMerchantConfig requireMerchantById(Long id) {
-        ensureDefaultMerchantExists();
-        PayMerchantConfig config = payMerchantConfigMapper.selectActiveById(id);
+        Long tenantId = TenantContextHolder.requireTenantId();
+        ensureDefaultMerchantExists(tenantId);
+        PayMerchantConfig config = payMerchantConfigMapper.selectActiveById(tenantId, id);
         if (config == null) {
             throw new NotFoundException(PaymentMerchantExceptionMessages.MERCHANT_NOT_FOUND);
         }
@@ -72,13 +76,27 @@ public class PaymentMerchantService {
         if (normalized == null) {
             return null;
         }
-        ensureDefaultMerchantExists();
-        return decryptMerchantConfig(payMerchantConfigMapper.selectByMchId(normalized));
+        Long tenantId = TenantContextHolder.requireTenantId();
+        ensureDefaultMerchantExists(tenantId);
+        return decryptMerchantConfig(payMerchantConfigMapper.selectByMchId(tenantId, normalized));
     }
 
     public List<PayMerchantConfig> listMerchantEntities() {
-        ensureDefaultMerchantExists();
-        return payMerchantConfigMapper.selectAllActiveRows();
+        Long tenantId = TenantContextHolder.requireTenantId();
+        ensureDefaultMerchantExists(tenantId);
+        return payMerchantConfigMapper.selectAllActiveRows(tenantId);
+    }
+
+    public PayMerchantConfig findMerchantByMchIdGlobal(String mchId) {
+        String normalized = trimToNull(mchId);
+        if (normalized == null) {
+            return null;
+        }
+        return decryptMerchantConfig(payMerchantConfigMapper.selectByMchIdGlobal(normalized));
+    }
+
+    public List<PayMerchantConfig> listMerchantEntitiesGlobal() {
+        return payMerchantConfigMapper.selectAllActiveRowsGlobal();
     }
 
     public PayMerchantConfig buildFallbackMerchantFromProperties() {
@@ -101,9 +119,11 @@ public class PaymentMerchantService {
 
     @Transactional
     public PayMerchantConfigSummaryResponse createMerchantConfig(PayMerchantConfigCreateRequest request) {
-        ensureDefaultMerchantExists();
+        Long tenantId = TenantContextHolder.requireTenantId();
+        ensureDefaultMerchantExists(tenantId);
         LocalDateTime now = LocalDateTime.now();
         PayMerchantConfig config = new PayMerchantConfig();
+        config.setTenantId(tenantId);
         config.setMerchantName(request.merchantName().trim());
         config.setMerchantCode(request.merchantCode().trim());
         config.setMchId(request.mchId().trim());
@@ -146,11 +166,12 @@ public class PaymentMerchantService {
 
     @Transactional
     public PayMerchantConfigSummaryResponse activateMerchantConfig(Long id) {
+        Long tenantId = TenantContextHolder.requireTenantId();
         PayMerchantConfig config = requireMerchantById(id);
         if (config.getEnabled() == null || config.getEnabled() != 1) {
             throw new BusinessException(PaymentMerchantExceptionMessages.MERCHANT_DISABLED);
         }
-        payMerchantConfigMapper.clearActiveFlag();
+        payMerchantConfigMapper.clearActiveFlag(tenantId);
         config.setActive(1);
         config.setUpdatedAt(LocalDateTime.now());
         payMerchantConfigMapper.updateById(config);
@@ -165,13 +186,14 @@ public class PaymentMerchantService {
         payMerchantConfigMapper.updateById(config);
     }
 
-    private void ensureDefaultMerchantExists() {
-        if (!payMerchantConfigMapper.selectAllActiveRows().isEmpty()) {
+    private void ensureDefaultMerchantExists(Long tenantId) {
+        if (!payMerchantConfigMapper.selectAllActiveRows(tenantId).isEmpty()) {
             return;
         }
 
         LocalDateTime now = LocalDateTime.now();
         PayMerchantConfig config = buildFallbackMerchantFromProperties();
+        config.setTenantId(tenantId);
         config.setMerchantCode("default_merchant");
         config.setRemark("Bootstrapped from application.yml");
         config.setCreatedAt(now);

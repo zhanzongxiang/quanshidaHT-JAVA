@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 public class RefundNotifyLog {
     @TableId(type = IdType.AUTO)
     private Long id;
+    private Long tenantId;
     private Long refundOrderId;
     private String notifyType;
     private String resourceId;
@@ -21,6 +22,8 @@ public class RefundNotifyLog {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+    public Long getTenantId() { return tenantId; }
+    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
     public Long getRefundOrderId() { return refundOrderId; }
     public void setRefundOrderId(Long refundOrderId) { this.refundOrderId = refundOrderId; }
     public String getNotifyType() { return notifyType; }

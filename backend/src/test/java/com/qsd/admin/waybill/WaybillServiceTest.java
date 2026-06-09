@@ -1,6 +1,8 @@
 package com.qsd.admin.waybill;
 
 import com.qsd.admin.common.exception.BusinessException;
+import com.qsd.admin.tenant.TenantContext;
+import com.qsd.admin.tenant.TenantContextHolder;
 import com.qsd.admin.waybill.dto.WaybillEventPayload;
 import com.qsd.admin.waybill.dto.WaybillLegPayload;
 import com.qsd.admin.waybill.dto.WaybillSaveRequest;
@@ -25,6 +27,7 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class WaybillServiceTest {
+    private static final long TENANT_ID = 1L;
 
     @Mock
     private WaybillOrderMapper waybillOrderMapper;
@@ -39,6 +42,7 @@ class WaybillServiceTest {
 
     @BeforeEach
     void setUp() {
+        TenantContextHolder.set(new TenantContext(TENANT_ID, "default", "Default Tenant"));
         waybillService = new WaybillService(waybillOrderMapper, waybillLegMapper, waybillTrackEventMapper);
     }
 
@@ -47,7 +51,7 @@ class WaybillServiceTest {
         WaybillOrder existing = new WaybillOrder();
         existing.setId(8L);
 
-        when(waybillOrderMapper.selectActiveByMainTrackingNo("WB202605120001")).thenReturn(existing);
+        when(waybillOrderMapper.selectByMainTrackingNoIncludingDeleted(TENANT_ID, "WB202605120001")).thenReturn(existing);
 
         BusinessException ex = assertThrows(
             BusinessException.class,
@@ -60,7 +64,7 @@ class WaybillServiceTest {
 
     @Test
     void shouldRejectLegWhenArrivalTimeIsEarlierThanDepartureTime() {
-        when(waybillOrderMapper.selectActiveByMainTrackingNo("WB202605120002")).thenReturn(null);
+        when(waybillOrderMapper.selectByMainTrackingNoIncludingDeleted(TENANT_ID, "WB202605120002")).thenReturn(null);
 
         WaybillSaveRequest request = new WaybillSaveRequest(
             "WB202605120002",
@@ -107,7 +111,7 @@ class WaybillServiceTest {
 
     @Test
     void shouldRejectEventWhenLegReferenceIsOutOfRange() {
-        when(waybillOrderMapper.selectActiveByMainTrackingNo("WB202605120003")).thenReturn(null);
+        when(waybillOrderMapper.selectByMainTrackingNoIncludingDeleted(TENANT_ID, "WB202605120003")).thenReturn(null);
 
         WaybillSaveRequest request = new WaybillSaveRequest(
             "WB202605120003",

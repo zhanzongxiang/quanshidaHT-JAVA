@@ -9,6 +9,7 @@ import com.qsd.admin.common.exception.BusinessException;
 import com.qsd.admin.content.dto.HomeContentResponse;
 import com.qsd.admin.content.entity.SiteContentPage;
 import com.qsd.admin.content.mapper.SiteContentPageMapper;
+import com.qsd.admin.tenant.TenantContextHolder;
 import com.qsd.admin.website.service.PublicWebsiteService;
 import org.springframework.stereotype.Service;
 
@@ -67,7 +68,8 @@ public class HomeContentService {
     }
 
     private SiteContentPage ensureHomeContent() {
-        SiteContentPage page = siteContentPageMapper.selectByPageCode(HOME_PAGE_CODE);
+        Long tenantId = TenantContextHolder.requireTenantId();
+        SiteContentPage page = siteContentPageMapper.selectByPageCode(tenantId, HOME_PAGE_CODE);
         if (page != null) {
             page.setFormJson(writeFormJson(readFormJson(page.getFormJson())));
             return page;
@@ -75,6 +77,7 @@ public class HomeContentService {
 
         LocalDateTime now = LocalDateTime.now();
         SiteContentPage initial = new SiteContentPage();
+        initial.setTenantId(tenantId);
         initial.setPageCode(HOME_PAGE_CODE);
         initial.setStatus(STATUS_DRAFT);
         initial.setFormJson(writeFormJson(createDefaultForm()));
