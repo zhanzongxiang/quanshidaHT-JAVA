@@ -10,11 +10,32 @@ export interface MemberLoginPayload {
   password: string
 }
 
+export interface MemberPasswordChangePayload {
+  currentPassword: string
+  newPassword: string
+}
+
 export interface MemberWechatLoginPayload {
   code: string
   phone?: string
   nickname?: string
   fullName?: string
+  replaceBinding?: boolean
+}
+
+export interface MemberWechatCompletePayload {
+  bindTicket: string
+  phone: string
+  nickname?: string
+  fullName?: string
+  replaceBinding?: boolean
+}
+
+export interface MemberWechatLoginResult {
+  accessToken: string | null
+  tokenType: string | null
+  phoneCompletionRequired: boolean
+  bindTicket: string | null
 }
 
 export interface MemberProfile {
@@ -27,6 +48,10 @@ export interface MemberProfile {
   fullName: string
   avatarUrl: string
   status: string
+  registerSource: string
+  lastLoginAt: string | null
+  lastLoginIp: string
+  passwordUpdatedAt: string | null
   createdAt: string
 }
 
@@ -37,8 +62,8 @@ export interface MemberProfileUpdatePayload {
 }
 
 export interface MemberWechatBindPayload {
-  openid: string
-  unionid: string
+  code: string
+  replaceBinding?: boolean
 }
 
 export interface WaybillLeg {

@@ -750,8 +750,8 @@ public class PaymentService {
         transaction.setPayOrderId(payOrderId);
         transaction.setTransactionType(transactionType);
         transaction.setTransactionStatus(transactionStatus);
-        transaction.setRequestPayload(requestPayload);
-        transaction.setResponsePayload(responsePayload);
+        transaction.setRequestPayload(PaymentPayloadSanitizer.sanitizeForTransactionLog(requestPayload));
+        transaction.setResponsePayload(PaymentPayloadSanitizer.sanitizeForTransactionLog(responsePayload));
         transaction.setExternalTransactionNo(trimToEmpty(externalTransactionNo));
         transaction.setExternalOutTradeNo(trimToEmpty(externalOutTradeNo));
         transaction.setSuccessTime(successTime);

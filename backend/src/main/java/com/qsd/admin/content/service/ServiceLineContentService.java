@@ -10,6 +10,7 @@ import com.qsd.admin.content.dto.ServiceLineContentResponse;
 import com.qsd.admin.content.dto.ServiceLineSummaryResponse;
 import com.qsd.admin.content.entity.SiteContentPage;
 import com.qsd.admin.content.mapper.SiteContentPageMapper;
+import com.qsd.admin.tenant.TenantContext;
 import com.qsd.admin.tenant.TenantContextHolder;
 import com.qsd.admin.website.service.PublicWebsiteService;
 import org.springframework.stereotype.Service;
@@ -31,15 +32,15 @@ public class ServiceLineContentService {
     static {
         SERVICE_LINE_DEFINITIONS.put(
             "taiwan",
-            new ServiceLineDefinition("taiwan", "台湾专线", "/taiwan", "Taiwan Line", "台湾专线固定模板页面", null)
+            new ServiceLineDefinition("taiwan", "Taiwan Line", "/taiwan", "Taiwan Line", "Template page for tenant-specific Taiwan route operations.", null)
         );
         SERVICE_LINE_DEFINITIONS.put(
             "feizhou",
-            new ServiceLineDefinition("feizhou", "非洲专线", "/feizhou", "Africa Line", "非洲专线固定模板页面", "africa")
+            new ServiceLineDefinition("feizhou", "Africa Line", "/feizhou", "Africa Line", "Template page for Africa route coverage, customs, and fulfillment messaging.", "africa")
         );
         SERVICE_LINE_DEFINITIONS.put(
             "international",
-            new ServiceLineDefinition("international", "国际快递", "/international", "International Express", "国际快递固定模板页面", "express")
+            new ServiceLineDefinition("international", "International Express", "/international", "International Express", "Template page for international express and cross-border delivery services.", "express")
         );
     }
 
@@ -143,10 +144,11 @@ public class ServiceLineContentService {
         SiteContentPage initial = new SiteContentPage();
         initial.setTenantId(tenantId);
         initial.setPageCode(toPageCode(definition.lineCode()));
-        initial.setStatus(STATUS_DRAFT);
+        initial.setStatus(STATUS_PUBLISHED);
         initial.setFormJson(writeFormJson(createDefaultForm(definition)));
         initial.setCreatedAt(now);
         initial.setUpdatedAt(now);
+        initial.setPublishedAt(now);
         siteContentPageMapper.insert(initial);
         return initial;
     }
@@ -160,7 +162,7 @@ public class ServiceLineContentService {
 
         ServiceLineDefinition definition = SERVICE_LINE_DEFINITIONS.get(resolvedCode);
         if (definition == null) {
-            throw new BusinessException("不支持的专线编码");
+            throw new BusinessException("unsupported service line code");
         }
         return definition;
     }
@@ -171,7 +173,7 @@ public class ServiceLineContentService {
 
     private void validateForm(JsonNode form) {
         if (form == null || form.isNull() || !form.isObject()) {
-            throw new BusinessException("专线内容表单格式不正确");
+            throw new BusinessException("service line form is invalid");
         }
     }
 
@@ -179,7 +181,7 @@ public class ServiceLineContentService {
         try {
             return objectMapper.writeValueAsString(form);
         } catch (JsonProcessingException ex) {
-            throw new BusinessException("专线内容序列化失败");
+            throw new BusinessException("failed to serialize service line content");
         }
     }
 
@@ -206,7 +208,7 @@ public class ServiceLineContentService {
         if (source.has("key")) {
             normalized.put("key", definition.lineCode());
             normalized.put("eyebrow", source.path("eyebrow").asText(definition.eyebrow()));
-            normalized.put("title", source.path("title").asText(definition.lineName() + "服务"));
+            normalized.put("title", source.path("title").asText(definition.lineName() + " Service"));
             normalized.put("subtitle", source.path("subtitle").asText(""));
             normalized.put("description", source.path("description").asText(definition.description()));
             normalized.put("heroImage", source.path("heroImage").asText(""));
@@ -232,7 +234,7 @@ public class ServiceLineContentService {
 
         normalized.put("key", definition.lineCode());
         normalized.put("eyebrow", definition.eyebrow());
-        normalized.put("title", source.path("hero").path("title").asText(source.path("basic").path("pageName").asText(definition.lineName() + "服务")));
+        normalized.put("title", source.path("hero").path("title").asText(source.path("basic").path("pageName").asText(definition.lineName() + " Service")));
         normalized.put("subtitle", source.path("hero").path("subtitle").asText(""));
         normalized.put("description", source.path("basic").path("summary").asText(definition.description()));
         normalized.put("heroImage", source.path("hero").path("backgroundImageUrl").asText(""));
@@ -336,31 +338,88 @@ public class ServiceLineContentService {
     }
 
     private ObjectNode createDefaultForm(ServiceLineDefinition definition) {
+        String tenantName = currentTenantName();
         ObjectNode root = objectMapper.createObjectNode();
         root.put("key", definition.lineCode());
         root.put("eyebrow", definition.eyebrow());
-        root.put("title", definition.lineName() + "服务");
-        root.put("subtitle", "");
+        root.put("title", definition.lineName() + " Service");
+        root.put("subtitle", "A reusable route page for " + tenantName + ". Replace this text with route-specific selling points.");
         root.put("description", definition.description());
-        root.put("heroImage", "");
-        root.set("heroTags", objectMapper.createArrayNode());
-        root.set("metrics", objectMapper.createArrayNode());
-        root.put("highlightsTitle", "");
-        root.put("highlightsSubtitle", "");
-        root.set("highlights", objectMapper.createArrayNode());
-        root.put("processTitle", "");
-        root.put("processSubtitle", "");
-        root.set("processSteps", objectMapper.createArrayNode());
-        root.put("scopeTitle", "");
-        root.put("scopeSubtitle", "");
+        root.put("heroImage", "https://images.unsplash.com/photo-1529074963764-98f45c47344b?auto=format&fit=crop&w=1600&q=80");
+        root.set("heroTags", createStringArray("Route Template", "Tenant Bootstrap", "Needs Customization"));
+        root.set("metrics", createMetrics(
+            "Lead Time", "TBD",
+            "Coverage", "TBD",
+            "Cutoff", "TBD"
+        ));
+        root.put("highlightsTitle", "Why This Route");
+        root.put("highlightsSubtitle", "Use these cards to explain speed, stability, customs handling, or special cargo support.");
+        root.set("highlights", createHighlights());
+        root.put("processTitle", "Suggested Workflow");
+        root.put("processSubtitle", "Default workflow blocks that the tenant can rewrite for this route.");
+        root.set("processSteps", createStringArray(
+            "Confirm cargo profile and destination requirements",
+            "Plan line-haul, customs, and delivery arrangement",
+            "Create waybill and execute shipment handoff",
+            "Track milestone events until signed delivery"
+        ));
+        root.put("scopeTitle", "Coverage Scope");
+        root.put("scopeSubtitle", "Describe destination cities, service boundaries, or delivery commitments here.");
         root.put("scopeImage", "");
-        root.set("scopeItems", objectMapper.createArrayNode());
-        root.put("supportTitle", "");
-        root.put("supportDescription", "");
-        root.set("supportItems", objectMapper.createArrayNode());
-        root.put("ctaTitle", "");
-        root.put("ctaSubtitle", "");
+        root.set("scopeItems", createStringArray("Destination coverage to be configured", "Customs and last-mile rules to be configured"));
+        root.put("supportTitle", "Support Notes");
+        root.put("supportDescription", "Document route restrictions, document requirements, and escalation instructions.");
+        root.set("supportItems", createStringArray("Required documents to be confirmed", "Exception handling path to be configured"));
+        root.put("ctaTitle", "Need A Tailored Quotation?");
+        root.put("ctaSubtitle", "Replace this call to action with route-specific contact or booking guidance.");
         return root;
+    }
+
+    private ArrayNode createMetrics(String label1, String value1, String label2, String value2, String label3, String value3) {
+        ArrayNode metrics = objectMapper.createArrayNode();
+        metrics.add(createMetric(label1, value1));
+        metrics.add(createMetric(label2, value2));
+        metrics.add(createMetric(label3, value3));
+        return metrics;
+    }
+
+    private ObjectNode createMetric(String label, String value) {
+        ObjectNode metric = objectMapper.createObjectNode();
+        metric.put("label", label);
+        metric.put("value", value);
+        return metric;
+    }
+
+    private ArrayNode createHighlights() {
+        ArrayNode highlights = objectMapper.createArrayNode();
+        highlights.add(createHighlight("Stable Scheduling", "Use this slot for recurring departure frequency or route stability.", "mdi-calendar-clock"));
+        highlights.add(createHighlight("Operational Transparency", "Use this slot for tracking updates, exception visibility, or milestone sync.", "mdi-eye-outline"));
+        highlights.add(createHighlight("Customs Coordination", "Use this slot for clearance, documentation, or compliance support.", "mdi-file-document-check-outline"));
+        return highlights;
+    }
+
+    private ObjectNode createHighlight(String title, String description, String icon) {
+        ObjectNode highlight = objectMapper.createObjectNode();
+        highlight.put("title", title);
+        highlight.put("description", description);
+        highlight.put("icon", icon);
+        return highlight;
+    }
+
+    private ArrayNode createStringArray(String... values) {
+        ArrayNode array = objectMapper.createArrayNode();
+        for (String value : values) {
+            array.add(value);
+        }
+        return array;
+    }
+
+    private String currentTenantName() {
+        TenantContext context = TenantContextHolder.get();
+        if (context != null && context.tenantName() != null && !context.tenantName().isBlank()) {
+            return context.tenantName().trim();
+        }
+        return "Tenant";
     }
 
     private record ServiceLineDefinition(

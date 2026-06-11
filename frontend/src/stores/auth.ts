@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { fetchMe, login, logout } from '../api/auth'
+import { fetchMe, login, logout, switchTenant } from '../api/auth'
 import type { MeInfo } from '../types/auth'
 
 interface AuthState {
@@ -18,6 +18,10 @@ export const useAuthStore = defineStore('auth', {
     isAuthenticated: (state) => state.me !== null,
   },
   actions: {
+    clearSession() {
+      this.me = null
+      this.initialized = true
+    },
     async loginByPassword(username: string, password: string) {
       this.loading = true
       try {
@@ -25,8 +29,7 @@ export const useAuthStore = defineStore('auth', {
         this.me = await fetchMe()
         this.initialized = true
       } catch (error) {
-        this.me = null
-        this.initialized = true
+        this.clearSession()
         throw error
       } finally {
         this.loading = false
@@ -37,7 +40,7 @@ export const useAuthStore = defineStore('auth', {
       try {
         this.me = await fetchMe()
       } catch (error) {
-        this.me = null
+        this.clearSession()
       } finally {
         this.initialized = true
         this.loading = false
@@ -49,8 +52,19 @@ export const useAuthStore = defineStore('auth', {
       } catch {
         // ignore logout API errors
       }
-      this.me = null
-      this.initialized = true
+      this.clearSession()
+    },
+    async switchTenant(tenantId: number) {
+      this.loading = true
+      try {
+        await switchTenant({ tenantId })
+        this.me = await fetchMe()
+        this.initialized = true
+      } catch (error) {
+        throw error
+      } finally {
+        this.loading = false
+      }
     },
     hasPermission(permission: string) {
       return this.me?.permissions.includes(permission) ?? false

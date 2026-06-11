@@ -2,13 +2,16 @@ import { request } from '@/utils/http'
 import type { LoginResponse } from '@/types/common'
 import type {
   MemberLoginPayload,
+  MemberPasswordChangePayload,
   MemberProfile,
   MemberProfileUpdatePayload,
   MemberRegisterPayload,
   MemberWaybillDetail,
   MemberWaybillSummary,
   MemberWechatBindPayload,
+  MemberWechatCompletePayload,
   MemberWechatLoginPayload,
+  MemberWechatLoginResult,
 } from '@/types/member'
 
 export function registerMember(payload: MemberRegisterPayload) {
@@ -30,8 +33,17 @@ export function loginMember(payload: MemberLoginPayload) {
 }
 
 export function loginMemberWithWechat(payload: MemberWechatLoginPayload) {
-  return request<LoginResponse>({
+  return request<MemberWechatLoginResult>({
     url: '/api/member/auth/wechat-login',
+    method: 'POST',
+    data: payload,
+    auth: false,
+  })
+}
+
+export function completeMemberWechatLogin(payload: MemberWechatCompletePayload) {
+  return request<MemberWechatLoginResult>({
+    url: '/api/member/auth/wechat-complete',
     method: 'POST',
     data: payload,
     auth: false,
@@ -52,11 +64,26 @@ export function updateMemberProfile(payload: MemberProfileUpdatePayload) {
   })
 }
 
+export function changeMemberPassword(payload: MemberPasswordChangePayload) {
+  return request<void>({
+    url: '/api/member/profile/password',
+    method: 'PUT',
+    data: payload,
+  })
+}
+
 export function bindMemberWechat(payload: MemberWechatBindPayload) {
   return request<MemberProfile>({
     url: '/api/member/profile/wechat',
     method: 'PUT',
     data: payload,
+  })
+}
+
+export function unbindMemberWechat() {
+  return request<MemberProfile>({
+    url: '/api/member/profile/wechat',
+    method: 'DELETE',
   })
 }
 

@@ -5,6 +5,8 @@ import com.qsd.admin.member.entity.MemberUser;
 import com.qsd.admin.member.mapper.MemberUserMapper;
 import com.qsd.admin.payment.dto.MemberPaymentPrepareRequest;
 import com.qsd.admin.payment.dto.MemberPaymentPrepareResponse;
+import com.qsd.admin.payment.dto.PaymentAdminCreateRequest;
+import com.qsd.admin.payment.dto.PaymentAdminDetailResponse;
 import com.qsd.admin.payment.dto.PaymentStatusUpdateRequest;
 import com.qsd.admin.payment.dto.RefundCallbackRequest;
 import com.qsd.admin.payment.dto.RefundOrderResponse;
@@ -30,6 +32,7 @@ import com.qsd.admin.payment.service.WechatCallbackException;
 import com.qsd.admin.payment.service.WechatPayGateway;
 import com.qsd.admin.tenant.TenantContext;
 import com.qsd.admin.tenant.TenantContextHolder;
+import com.qsd.admin.tenant.entity.Tenant;
 import com.qsd.admin.tenant.mapper.TenantMapper;
 import com.qsd.admin.waybill.entity.WaybillOrder;
 import com.qsd.admin.waybill.mapper.WaybillOrderMapper;
@@ -41,6 +44,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -194,6 +198,101 @@ class PaymentServiceTest {
     }
 
     @Test
+    void shouldCreateAdminPayOrderWithMerchantSnapshotAndTransactionLog() {
+        MemberUser member = new MemberUser();
+        member.setId(8L);
+        member.setPhone("13900139000");
+
+        WaybillOrder waybill = new WaybillOrder();
+        waybill.setId(18L);
+        waybill.setMainTrackingNo("WB202606100001");
+
+        PayMerchantConfig merchant = new PayMerchantConfig();
+        merchant.setId(12L);
+        merchant.setMerchantName("Default Merchant");
+        merchant.setMchId("mch-admin-001");
+        merchant.setAppId("wx-admin-001");
+        merchant.setEnabled(1);
+
+        PayOrder persistedOrder = new PayOrder();
+        persistedOrder.setId(201L);
+        persistedOrder.setTenantId(TENANT_ID);
+        persistedOrder.setOrderNo("PO202606100001");
+        persistedOrder.setMemberId(8L);
+        persistedOrder.setWaybillId(18L);
+        persistedOrder.setMerchantConfigId(12L);
+        persistedOrder.setMerchantName("Default Merchant");
+        persistedOrder.setMerchantMchId("mch-admin-001");
+        persistedOrder.setMerchantAppId("wx-admin-001");
+        persistedOrder.setBusinessType("waybill");
+        persistedOrder.setSceneType("admin_manual");
+        persistedOrder.setChannel("wechat_pay");
+        persistedOrder.setCurrency("CNY");
+        persistedOrder.setAmountTotal(new BigDecimal("199.90"));
+        persistedOrder.setAmountPaid(BigDecimal.ZERO);
+        persistedOrder.setStatus("pending");
+        persistedOrder.setDescription("Manual order");
+        persistedOrder.setRemark("ops");
+
+        when(memberUserMapper.selectActiveById(TENANT_ID, 8L)).thenReturn(member);
+        when(waybillOrderMapper.selectActiveById(TENANT_ID, 18L)).thenReturn(waybill);
+        when(paymentMerchantService.requireMerchantById(12L)).thenReturn(merchant);
+        doAnswer(invocation -> {
+            PayOrder order = invocation.getArgument(0);
+            order.setId(201L);
+            order.setOrderNo("PO202606100001");
+            return 1;
+        }).when(payOrderMapper).insert(any(PayOrder.class));
+        when(payOrderMapper.selectActiveById(TENANT_ID, 201L)).thenReturn(persistedOrder);
+        when(memberUserMapper.selectActiveById(TENANT_ID, persistedOrder.getMemberId())).thenReturn(member);
+        when(waybillOrderMapper.selectActiveById(TENANT_ID, persistedOrder.getWaybillId())).thenReturn(waybill);
+        when(payTransactionMapper.selectByPayOrderId(TENANT_ID, 201L)).thenReturn(List.of());
+        when(refundOrderMapper.selectByPayOrderId(TENANT_ID, 201L)).thenReturn(List.of());
+        when(payNotifyLogMapper.selectByPayOrderId(TENANT_ID, 201L)).thenReturn(List.of());
+
+        PaymentAdminDetailResponse response = paymentService.createAdminPayOrder(
+            new PaymentAdminCreateRequest(
+                8L,
+                12L,
+                18L,
+                "waybill",
+                "admin_manual",
+                "wechat_pay",
+                "CNY",
+                new BigDecimal("199.90"),
+                "Manual order",
+                "ops"
+            )
+        );
+
+        ArgumentCaptor<PayOrder> insertedOrderCaptor = ArgumentCaptor.forClass(PayOrder.class);
+        verify(payOrderMapper).insert(insertedOrderCaptor.capture());
+        PayOrder insertedOrder = insertedOrderCaptor.getValue();
+        assertEquals(TENANT_ID, insertedOrder.getTenantId());
+        assertEquals(8L, insertedOrder.getMemberId());
+        assertEquals(18L, insertedOrder.getWaybillId());
+        assertEquals(12L, insertedOrder.getMerchantConfigId());
+        assertEquals("Default Merchant", insertedOrder.getMerchantName());
+        assertEquals("mch-admin-001", insertedOrder.getMerchantMchId());
+        assertEquals("wx-admin-001", insertedOrder.getMerchantAppId());
+        assertEquals("pending", insertedOrder.getStatus());
+        assertEquals(BigDecimal.ZERO, insertedOrder.getAmountPaid());
+
+        ArgumentCaptor<PayTransaction> transactionCaptor = ArgumentCaptor.forClass(PayTransaction.class);
+        verify(payTransactionMapper).insert(transactionCaptor.capture());
+        PayTransaction transaction = transactionCaptor.getValue();
+        assertEquals(TENANT_ID, transaction.getTenantId());
+        assertEquals(201L, transaction.getPayOrderId());
+        assertEquals("manual_create", transaction.getTransactionType());
+        assertEquals("created", transaction.getTransactionStatus());
+        assertEquals("PO202606100001", transaction.getExternalOutTradeNo());
+
+        assertEquals(201L, response.id());
+        assertEquals("Default Merchant", response.merchantName());
+        assertEquals("WB202606100001", response.waybillTrackingNo());
+    }
+
+    @Test
     void shouldTreatPaidWechatCallbackAsIdempotent() {
         PayOrder order = new PayOrder();
         order.setId(33L);
@@ -217,6 +316,54 @@ class PaymentServiceTest {
 
         verify(payOrderMapper, never()).updateById(any(PayOrder.class));
         verify(payTransactionMapper, never()).insert(any(PayTransaction.class));
+    }
+
+    @Test
+    void shouldMarkWechatOrderClosedWhenCallbackStatusIsClosed() {
+        PayOrder order = new PayOrder();
+        order.setId(41L);
+        order.setOrderNo("PO202606100041");
+        order.setStatus("paying");
+        order.setAmountTotal(new BigDecimal("39.90"));
+
+        when(payOrderMapper.selectByOrderNo(TENANT_ID, "PO202606100041")).thenReturn(order);
+
+        paymentService.handleWechatCallback(
+            new WechatPayCallbackRequest("PO202606100041", "wx-txn-close", "CLOSED", "{\"event\":\"close\"}")
+        );
+
+        ArgumentCaptor<PayOrder> orderCaptor = ArgumentCaptor.forClass(PayOrder.class);
+        verify(payOrderMapper).updateById(orderCaptor.capture());
+        assertEquals("closed", orderCaptor.getValue().getStatus());
+        assertNotNull(orderCaptor.getValue().getClosedAt());
+
+        ArgumentCaptor<PayTransaction> transactionCaptor = ArgumentCaptor.forClass(PayTransaction.class);
+        verify(payTransactionMapper).insert(transactionCaptor.capture());
+        assertEquals("wechat_callback", transactionCaptor.getValue().getTransactionType());
+        assertEquals("closed", transactionCaptor.getValue().getTransactionStatus());
+    }
+
+    @Test
+    void shouldMarkWechatOrderExceptionWhenCallbackStatusIsUnexpected() {
+        PayOrder order = new PayOrder();
+        order.setId(42L);
+        order.setOrderNo("PO202606100042");
+        order.setStatus("paying");
+        order.setAmountTotal(new BigDecimal("49.90"));
+
+        when(payOrderMapper.selectByOrderNo(TENANT_ID, "PO202606100042")).thenReturn(order);
+
+        paymentService.handleWechatCallback(
+            new WechatPayCallbackRequest("PO202606100042", "wx-txn-fail", "FAILED", "{\"event\":\"fail\"}")
+        );
+
+        ArgumentCaptor<PayOrder> orderCaptor = ArgumentCaptor.forClass(PayOrder.class);
+        verify(payOrderMapper).updateById(orderCaptor.capture());
+        assertEquals("exception", orderCaptor.getValue().getStatus());
+
+        ArgumentCaptor<PayTransaction> transactionCaptor = ArgumentCaptor.forClass(PayTransaction.class);
+        verify(payTransactionMapper).insert(transactionCaptor.capture());
+        assertEquals("exception", transactionCaptor.getValue().getTransactionStatus());
     }
 
     @Test
@@ -292,6 +439,31 @@ class PaymentServiceTest {
         verify(payOrderMapper).updateById(orderCaptor.capture());
         assertEquals("paid", orderCaptor.getValue().getStatus());
         assertTrue(orderCaptor.getValue().getUpdatedAt() != null);
+    }
+
+    @Test
+    void shouldKeepOrderRefundingWhenFailedRefundCallbackStillHasProcessingRefunds() {
+        RefundOrder refund = new RefundOrder();
+        refund.setId(79L);
+        refund.setRefundNo("RF202606100079");
+        refund.setPayOrderId(89L);
+        refund.setStatus("processing");
+
+        PayOrder order = new PayOrder();
+        order.setId(89L);
+        order.setStatus("refunding");
+
+        when(refundOrderMapper.selectByRefundNo(TENANT_ID, "RF202606100079")).thenReturn(refund);
+        when(payOrderMapper.selectActiveById(TENANT_ID, 89L)).thenReturn(order);
+        when(refundOrderMapper.countProcessingByPayOrderId(TENANT_ID, 89L)).thenReturn(2);
+
+        paymentService.handleRefundCallback(
+            new RefundCallbackRequest("RF202606100079", "FAILED", "wx-rf-079", "{\"event\":\"refund\"}")
+        );
+
+        ArgumentCaptor<PayOrder> orderCaptor = ArgumentCaptor.forClass(PayOrder.class);
+        verify(payOrderMapper).updateById(orderCaptor.capture());
+        assertEquals("refunding", orderCaptor.getValue().getStatus());
     }
 
     @Test
@@ -530,5 +702,58 @@ class PaymentServiceTest {
 
         assertEquals("merchant_mismatch", ex.category());
         assertEquals("callback merchant does not match refund order merchant", ex.getMessage());
+    }
+
+    @Test
+    void shouldRejectPayCallbackWhenMerchantMchIdIsMissing() {
+        PayOrder order = new PayOrder();
+        order.setId(45L);
+        order.setOrderNo("PO202606100045");
+        order.setMerchantMchId("mch-expected");
+
+        when(payOrderMapper.selectByOrderNo(TENANT_ID, "PO202606100045")).thenReturn(order);
+
+        WechatCallbackException ex = assertThrows(
+            WechatCallbackException.class,
+            () -> paymentService.validatePayCallbackMerchant("PO202606100045", " ")
+        );
+
+        assertEquals("merchant_missing", ex.category());
+        assertEquals("callback merchant mch id is missing", ex.getMessage());
+    }
+
+    @Test
+    void shouldRecordPaymentCallbackFailureWithDefaultTenantWhenContextIsMissing() {
+        TenantContextHolder.clear();
+        Tenant defaultTenant = new Tenant();
+        defaultTenant.setId(9L);
+        when(tenantMapper.selectDefaultTenant()).thenReturn(defaultTenant);
+
+        paymentService.recordPaymentCallbackFailure(null, null, null);
+
+        ArgumentCaptor<PayNotifyLog> logCaptor = ArgumentCaptor.forClass(PayNotifyLog.class);
+        verify(payNotifyLogMapper).insert(logCaptor.capture());
+        PayNotifyLog log = logCaptor.getValue();
+        assertEquals(9L, log.getTenantId());
+        assertEquals("callback_failed", log.getNotifyStatus());
+        assertEquals("", log.getRawPayload());
+        assertEquals("callback failed", log.getProcessResult());
+    }
+
+    @Test
+    void shouldRecordRefundCallbackFailureWithDefaultTenantWhenContextIsMissing() {
+        TenantContextHolder.clear();
+        Tenant defaultTenant = new Tenant();
+        defaultTenant.setId(10L);
+        when(tenantMapper.selectDefaultTenant()).thenReturn(defaultTenant);
+
+        paymentService.recordRefundCallbackFailure("", "", "");
+
+        ArgumentCaptor<RefundNotifyLog> logCaptor = ArgumentCaptor.forClass(RefundNotifyLog.class);
+        verify(refundNotifyLogMapper).insert(logCaptor.capture());
+        RefundNotifyLog log = logCaptor.getValue();
+        assertEquals(10L, log.getTenantId());
+        assertEquals("callback_failed", log.getNotifyStatus());
+        assertEquals("callback failed", log.getProcessResult());
     }
 }

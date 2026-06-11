@@ -13,7 +13,7 @@ public interface MemberUserMapper extends BaseMapper<MemberUser> {
 
     @Select("""
         select id, tenant_id, phone, wechat_openid, wechat_unionid, wechat_bind_time, password_hash, nickname, full_name, avatar_url, status, remark,
-               last_login_at, deleted, created_at, updated_at
+               register_source, register_ip, last_login_at, last_login_ip, password_updated_at, deleted, created_at, updated_at
         from member_user
         where tenant_id = #{tenantId}
           and phone = #{phone}
@@ -24,7 +24,7 @@ public interface MemberUserMapper extends BaseMapper<MemberUser> {
 
     @Select("""
         select id, tenant_id, phone, wechat_openid, wechat_unionid, wechat_bind_time, password_hash, nickname, full_name, avatar_url, status, remark,
-               last_login_at, deleted, created_at, updated_at
+               register_source, register_ip, last_login_at, last_login_ip, password_updated_at, deleted, created_at, updated_at
         from member_user
         where tenant_id = #{tenantId}
           and id = #{id}
@@ -35,7 +35,7 @@ public interface MemberUserMapper extends BaseMapper<MemberUser> {
 
     @Select("""
         select id, tenant_id, phone, wechat_openid, wechat_unionid, wechat_bind_time, password_hash, nickname, full_name, avatar_url, status, remark,
-               last_login_at, deleted, created_at, updated_at
+               register_source, register_ip, last_login_at, last_login_ip, password_updated_at, deleted, created_at, updated_at
         from member_user
         where tenant_id = #{tenantId}
           and wechat_openid = #{openid}
@@ -47,7 +47,7 @@ public interface MemberUserMapper extends BaseMapper<MemberUser> {
     @Select("""
         <script>
         select id, tenant_id, phone, wechat_openid, wechat_unionid, wechat_bind_time, password_hash, nickname, full_name, avatar_url, status, remark,
-               last_login_at, deleted, created_at, updated_at
+               register_source, register_ip, last_login_at, last_login_ip, password_updated_at, deleted, created_at, updated_at
         from member_user
         where tenant_id = #{tenantId}
           and deleted = 0

@@ -19,6 +19,7 @@ import java.util.Map;
 public class JwtTokenService {
     public static final String TOKEN_TYPE_ADMIN = "admin";
     public static final String TOKEN_TYPE_MEMBER = "member";
+    public static final String TOKEN_TYPE_MEMBER_WECHAT_BIND = "member_wechat_bind";
 
     private final JwtProperties jwtProperties;
     private final SecretKey secretKey;
@@ -28,10 +29,24 @@ public class JwtTokenService {
         this.secretKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtProperties.secret()));
     }
 
-    public String createAdminToken(Long userId, String username, Long tenantId, String tenantCode, List<String> permissions) {
+    public String createAdminToken(
+        Long userId,
+        String username,
+        Long sourceTenantId,
+        String sourceTenantCode,
+        Long tenantId,
+        String tenantCode,
+        List<String> permissions
+    ) {
         Map<String, Object> claims = new LinkedHashMap<>();
         claims.put("uid", userId);
         claims.put("tokenType", TOKEN_TYPE_ADMIN);
+        if (sourceTenantId != null) {
+            claims.put("sourceTenantId", sourceTenantId);
+        }
+        if (sourceTenantCode != null && !sourceTenantCode.isBlank()) {
+            claims.put("sourceTenantCode", sourceTenantCode);
+        }
         if (tenantId != null) {
             claims.put("tenantId", tenantId);
         }
@@ -55,6 +70,22 @@ public class JwtTokenService {
         return createToken(phone, claims);
     }
 
+    public String createMemberWechatBindTicket(Long tenantId, String tenantCode, String openid, String unionid) {
+        Map<String, Object> claims = new LinkedHashMap<>();
+        claims.put("tokenType", TOKEN_TYPE_MEMBER_WECHAT_BIND);
+        if (tenantId != null) {
+            claims.put("tenantId", tenantId);
+        }
+        if (tenantCode != null && !tenantCode.isBlank()) {
+            claims.put("tenantCode", tenantCode);
+        }
+        claims.put("openid", openid);
+        if (unionid != null && !unionid.isBlank()) {
+            claims.put("unionid", unionid);
+        }
+        return createToken(openid, claims);
+    }
+
     private String createToken(String subject, Map<String, Object> claims) {
         Instant now = Instant.now();
         return Jwts.builder()
@@ -69,5 +100,26 @@ public class JwtTokenService {
 
     public Claims parse(String token) {
         return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload();
+    }
+
+    public MemberWechatBindTicket parseMemberWechatBindTicket(String token) {
+        Claims claims = parse(token);
+        if (!TOKEN_TYPE_MEMBER_WECHAT_BIND.equals(claims.get("tokenType", String.class))) {
+            throw new IllegalArgumentException("Invalid WeChat bind ticket");
+        }
+        return new MemberWechatBindTicket(
+            claims.get("tenantId", Long.class),
+            claims.get("tenantCode", String.class),
+            claims.get("openid", String.class),
+            claims.get("unionid", String.class)
+        );
+    }
+
+    public record MemberWechatBindTicket(
+        Long tenantId,
+        String tenantCode,
+        String openid,
+        String unionid
+    ) {
     }
 }

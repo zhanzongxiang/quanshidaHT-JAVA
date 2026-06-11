@@ -8,6 +8,10 @@ public record MeResponse(
     Long tenantId,
     String tenantCode,
     String tenantName,
+    Long loginTenantId,
+    String loginTenantCode,
+    String loginTenantName,
+    boolean tenantSwitched,
     List<String> permissions,
     List<MenuNode> menus
 ) {

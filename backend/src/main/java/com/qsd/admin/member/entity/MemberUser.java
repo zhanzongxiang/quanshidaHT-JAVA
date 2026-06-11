@@ -21,7 +21,11 @@ public class MemberUser {
     private String avatarUrl;
     private String status;
     private String remark;
+    private String registerSource;
+    private String registerIp;
     private LocalDateTime lastLoginAt;
+    private String lastLoginIp;
+    private LocalDateTime passwordUpdatedAt;
     private Integer deleted;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -50,8 +54,16 @@ public class MemberUser {
     public void setStatus(String status) { this.status = status; }
     public String getRemark() { return remark; }
     public void setRemark(String remark) { this.remark = remark; }
+    public String getRegisterSource() { return registerSource; }
+    public void setRegisterSource(String registerSource) { this.registerSource = registerSource; }
+    public String getRegisterIp() { return registerIp; }
+    public void setRegisterIp(String registerIp) { this.registerIp = registerIp; }
     public LocalDateTime getLastLoginAt() { return lastLoginAt; }
     public void setLastLoginAt(LocalDateTime lastLoginAt) { this.lastLoginAt = lastLoginAt; }
+    public String getLastLoginIp() { return lastLoginIp; }
+    public void setLastLoginIp(String lastLoginIp) { this.lastLoginIp = lastLoginIp; }
+    public LocalDateTime getPasswordUpdatedAt() { return passwordUpdatedAt; }
+    public void setPasswordUpdatedAt(LocalDateTime passwordUpdatedAt) { this.passwordUpdatedAt = passwordUpdatedAt; }
     public Integer getDeleted() { return deleted; }
     public void setDeleted(Integer deleted) { this.deleted = deleted; }
     public LocalDateTime getCreatedAt() { return createdAt; }

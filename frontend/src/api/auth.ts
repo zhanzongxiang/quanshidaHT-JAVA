@@ -8,12 +8,20 @@ export interface LoginPayload {
   password: string
 }
 
+export interface SwitchTenantPayload {
+  tenantId: number
+}
+
 export async function login(payload: LoginPayload): Promise<void> {
   await http.post<ApiResponse<void>>('/auth/login', payload)
 }
 
 export async function logout(): Promise<void> {
   await http.post<ApiResponse<void>>('/auth/logout')
+}
+
+export async function switchTenant(payload: SwitchTenantPayload): Promise<void> {
+  await http.post<ApiResponse<void>>('/auth/switch-tenant', payload)
 }
 
 export async function fetchMe(): Promise<MeInfo> {

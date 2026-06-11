@@ -25,6 +25,8 @@ import java.util.Map;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -157,6 +159,48 @@ class PaymentCallbackControllerTest {
                       "status": "SUCCESS",
                       "externalRefundNo": "wx-rf-001",
                       "payload": "{\\\"event\\\":\\\"refund\\\"}"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("FAIL"))
+            .andExpect(jsonPath("$.message").value("retry"));
+    }
+
+    @Test
+    void shouldReturnFailWhenWechatSignatureHeadersAreBlank() throws Exception {
+        mockMvc.perform(post("/api/payment/callback/wechat")
+                .header("Wechatpay-Timestamp", "")
+                .header("Wechatpay-Nonce", " ")
+                .header("Wechatpay-Signature", "")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"event\":\"pay\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("FAIL"));
+
+        verify(wechatPayCallbackParser, never()).parsePaymentCallback(any());
+        verify(paymentService, never()).handleWechatCallback(any());
+    }
+
+    @Test
+    void shouldReturnRetryForUnexpectedWechatCallbackError() throws Exception {
+        when(wechatPayCallbackParser.parsePaymentCallback(any())).thenReturn(
+            new WechatPayCallbackRequest("PO202605080001", "wx-txn-001", "SUCCESS", "{\"event\":\"pay\"}")
+        );
+        when(wechatPayCallbackParser.parsePaymentCallbackContext(any(), any(), any(), any()))
+            .thenReturn(buildCallbackContext());
+        doThrow(new RuntimeException("boom")).when(paymentService).handleWechatCallback(any());
+
+        mockMvc.perform(post("/api/payment/callback/wechat")
+                .header("Wechatpay-Timestamp", "1710000000")
+                .header("Wechatpay-Nonce", "nonce-001")
+                .header("Wechatpay-Signature", "signature-001")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "orderNo": "PO202605080001",
+                      "transactionNo": "wx-txn-001",
+                      "status": "SUCCESS",
+                      "payload": "{\\\"event\\\":\\\"pay\\\"}"
                     }
                     """))
             .andExpect(status().isOk())

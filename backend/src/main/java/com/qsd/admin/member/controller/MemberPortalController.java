@@ -2,6 +2,8 @@ package com.qsd.admin.member.controller;
 
 import com.qsd.admin.common.ApiResponse;
 import com.qsd.admin.common.exception.BusinessException;
+import com.qsd.admin.common.exception.ErrorCode;
+import com.qsd.admin.member.dto.MemberPasswordChangeRequest;
 import com.qsd.admin.member.dto.MemberProfileResponse;
 import com.qsd.admin.member.dto.MemberProfileUpdateRequest;
 import com.qsd.admin.member.dto.MemberWaybillDetailResponse;
@@ -15,6 +17,7 @@ import com.qsd.admin.payment.service.PaymentService;
 import com.qsd.admin.security.AuthenticatedUser;
 import jakarta.validation.Valid;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -48,12 +51,26 @@ public class MemberPortalController {
         return ApiResponse.ok(memberService.updateMemberProfile(currentMember(authentication), request));
     }
 
+    @PutMapping("/profile/password")
+    public ApiResponse<Void> changePassword(
+        Authentication authentication,
+        @Valid @RequestBody MemberPasswordChangeRequest request
+    ) {
+        memberService.changeMemberPassword(currentMember(authentication), request);
+        return ApiResponse.ok();
+    }
+
     @PutMapping("/profile/wechat")
     public ApiResponse<MemberProfileResponse> bindWechat(
         Authentication authentication,
         @Valid @RequestBody MemberWechatBindRequest request
     ) {
         return ApiResponse.ok(memberService.bindWechatIdentity(currentMember(authentication), request));
+    }
+
+    @DeleteMapping("/profile/wechat")
+    public ApiResponse<MemberProfileResponse> unbindWechat(Authentication authentication) {
+        return ApiResponse.ok(memberService.unbindWechatIdentity(currentMember(authentication)));
     }
 
     @GetMapping("/waybills")
@@ -84,7 +101,7 @@ public class MemberPortalController {
 
     private Long currentMember(Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof AuthenticatedUser user)) {
-            throw new BusinessException("会员身份已失效，请重新登录");
+            throw new BusinessException(ErrorCode.SESSION_INVALID, "Member session is invalid, please sign in again");
         }
         return user.userId();
     }

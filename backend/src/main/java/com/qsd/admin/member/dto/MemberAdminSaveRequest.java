@@ -7,26 +7,26 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 
 public record MemberAdminSaveRequest(
-    @NotBlank(message = "手机号不能为空")
-    @Pattern(regexp = "^1\\d{10}$", message = "手机号格式不正确")
+    @NotBlank(message = "Phone is required")
+    @Pattern(regexp = "^1\\d{10}$", message = "Phone must be an 11-digit mobile number")
     String phone,
 
-    @Size(max = 64, message = "密码长度不能超过 64 个字符")
+    @Size(min = 6, max = 64, message = "Password must be 6 to 64 characters")
     String password,
 
-    @Size(max = 64, message = "昵称长度不能超过 64 个字符")
+    @Size(max = 64, message = "Nickname must be at most 64 characters")
     String nickname,
 
-    @Size(max = 64, message = "姓名长度不能超过 64 个字符")
+    @Size(max = 64, message = "Full name must be at most 64 characters")
     String fullName,
 
-    @Size(max = 500, message = "头像地址长度不能超过 500 个字符")
+    @Size(max = 500, message = "Avatar URL must be at most 500 characters")
     String avatarUrl,
 
-    @NotBlank(message = "会员状态不能为空")
+    @NotBlank(message = "Status is required")
     String status,
 
-    @Size(max = 500, message = "备注长度不能超过 500 个字符")
+    @Size(max = 500, message = "Remark must be at most 500 characters")
     String remark,
 
     List<Long> waybillIds

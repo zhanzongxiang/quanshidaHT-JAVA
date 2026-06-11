@@ -55,6 +55,51 @@ Date: 2026-06-09
   - default home content
   - default service line pages
   - default payment merchant config
+- Added cross-tenant switching for platform super admin:
+  - new `/api/auth/switch-tenant` endpoint
+  - admin JWT now carries both login tenant and acting tenant
+  - `/api/auth/me` now returns login tenant and switched-state fields
+  - frontend header now supports active tenant switching
+- Cleaned high-frequency encoding issues in tenant governance UI:
+  - rewrote `TenantsView.vue` with stable text
+  - replaced shared frontend fallback messages with stable ASCII text
+  - replaced garbled login validation text
+- Added tenant-level operational dashboard:
+  - expanded dashboard summary with tenant, member, payment, refund, merchant, and domain metrics
+  - rewrote frontend dashboard to present tenant operations overview
+- Improved tenant bootstrap content strategy:
+  - new tenants now receive published default home content instead of empty draft content
+  - service-line pages are now bootstrapped as published reusable templates
+  - default copy was moved toward generic multi-company placeholder content instead of single-tenant seed assumptions
+- Closed the member WeChat login loop:
+  - `POST /api/member/auth/wechat-login` now distinguishes direct login from phone-completion-required flows
+  - added `POST /api/member/auth/wechat-complete` for first-login phone completion
+  - added `DELETE /api/member/profile/wechat` for member-side unbind
+  - refined replace-binding and binding-conflict rules for existing members
+  - rewrote miniapp login/profile flows to use real bind, unbind, and rebind actions instead of manual OpenID entry
+  - cleaned the touched miniapp utility/page texts to avoid new garbled strings in this flow
+- Added member account-governance capabilities:
+  - new migration `V25__member_account_governance.sql`
+  - `member_user` now stores `register_source`, `register_ip`, `last_login_ip`, and `password_updated_at`
+  - added tenant-scoped `member_audit_log` for member/account operations
+  - member self-service password change endpoint: `PUT /api/member/profile/password`
+  - member profile/admin detail responses now expose registration source and latest account activity fields
+  - miniapp register/profile flows now support clean account registration, password change, and account activity display
+- Unified API error-code and auth-session handling:
+  - added stable backend error codes for validation, auth, permission, conflict, rate-limit, and internal failures
+  - Spring Security now returns JSON `ApiResponse` payloads for unauthenticated and access-denied requests
+  - admin frontend now clears session and redirects on structured auth-expiry codes
+  - miniapp request wrapper now clears token and returns to sign-in on structured auth failures
+  - cleaned auth-related garbled text in shared exception responses and admin login page
+- Hardened payment merchant configuration and delivery docs:
+  - merchant config create/update now validates notify URL format, API v3 key length, and certificate-bundle completeness
+  - merchant config create now encrypts `appSecret` and `apiV3Key` the same way as update
+  - payment transaction logs now redact common sensitive fields before persistence
+  - rewrote WeChat payment readiness and integration docs to remove garbled text
+- Added payment ops alert rules and runbook support:
+  - payment ops overview now returns structured alert summaries with severity, rule key, and suggested action
+  - alert rules currently cover merchant readiness, certificate auto-refresh, callback failures, and latest reconcile attention state
+  - added a payment operations alert runbook for delivery and on-call alignment
 
 ## Verification
 
@@ -76,6 +121,32 @@ Date: 2026-06-09
   - `mvn -DskipTests package`
 - Frontend build passed after bootstrap info display updates:
   - `npm run build`
+- Pending verification after cross-tenant switching update:
+  - `mvn -DskipTests package`
+  - `npm run build`
+- Member WeChat closure targeted verification passed:
+  - `mvn test -Dtest=MemberServiceTest,MemberAuthControllerTest`
+  - `miniapp`: `node node_modules/vue-tsc/bin/vue-tsc.js --noEmit`
+- Member WeChat miniapp packaging passed after sandbox escalation:
+  - `miniapp`: `npm run build:mp-weixin`
+- Member account-governance verification passed:
+  - `mvn test -Dtest=MemberServiceTest,MemberAuthControllerTest`
+  - `mvn -DskipTests package`
+  - `miniapp`: `node node_modules/vue-tsc/bin/vue-tsc.js --noEmit`
+  - `miniapp`: `npm run build:mp-weixin`
+- API error-code and auth-session verification passed:
+  - `mvn test -Dtest=GlobalExceptionHandlerTest`
+  - `mvn test -Dtest=GlobalExceptionHandlerTest,MemberServiceTest,MemberAuthControllerTest`
+  - `mvn -DskipTests package`
+  - `frontend`: `npm run build`
+  - `miniapp`: `npm run build:mp-weixin`
+- Payment merchant hardening verification passed:
+  - `mvn test -Dtest=PaymentMerchantServiceTest,PaymentPayloadSanitizerTest,PaymentServiceTest`
+  - `mvn -DskipTests package`
+- Payment ops alert verification passed:
+  - `mvn test -Dtest=PaymentOpsServiceTest,PaymentAdminControllerTest`
+  - `mvn -DskipTests package`
+  - `frontend`: `npm run build`
 
 ## Current Status
 
@@ -85,11 +156,15 @@ Date: 2026-06-09
 - Payment module full tenantization: completed
 - Content/news tenantization: completed
 - Frontend tenant management UI: completed
+- Cross-tenant super-admin switching: completed
+- Tenant-level operational dashboards: completed
+- Public-site seed/default content strategy review: completed
+- Member WeChat login closure: completed
+- Member account governance tail items: completed
+- Unified API/error-code and auth-session handling: completed
+- Payment merchant config hardening and payment delivery docs: completed
+- Payment ops alert rules and runbook: completed
 
 ## Next Recommended Step
 
-- Review public-site seed/default content strategy for new tenants
-- Add deeper tenant governance flows:
-  - cross-tenant super-admin switching
-  - tenant-level operational dashboards
-- Expand payment test coverage beyond targeted service/controller paths
+- Continue with the remaining production-readiness gaps such as alerting rules, broader end-to-end test coverage, and real-environment payment/miniapp verification

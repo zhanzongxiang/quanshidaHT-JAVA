@@ -6,6 +6,7 @@ import com.qsd.admin.auth.entity.AdminUser;
 import com.qsd.admin.auth.mapper.AdminMenuMapper;
 import com.qsd.admin.auth.mapper.AdminUserMapper;
 import com.qsd.admin.common.exception.BusinessException;
+import com.qsd.admin.common.exception.ErrorCode;
 import com.qsd.admin.common.service.RateLimiterService;
 import com.qsd.admin.security.AuthenticatedUser;
 import com.qsd.admin.security.JwtTokenService;
@@ -49,19 +50,19 @@ public class AuthService {
         String rateLimitKey = "admin:" + tenant.getTenantCode() + ":" + (clientIp != null ? clientIp : "unknown") + ":" + username;
         if (!rateLimiterService.isAllowed(rateLimitKey)) {
             long remaining = rateLimiterService.getRemainingLockoutSeconds(rateLimitKey);
-            throw new BusinessException("login attempts are too frequent, retry after " + remaining + " seconds");
+            throw new BusinessException(ErrorCode.RATE_LIMITED, "Login attempts are too frequent, retry after " + remaining + " seconds");
         }
 
         AdminUser user = adminUserMapper.selectByUsernameAndTenantId(username, tenant.getId());
         if (user == null) {
-            throw new BusinessException("user not found");
+            throw new BusinessException(ErrorCode.AUTHENTICATION_FAILED, "Invalid username or password");
         }
         if (!"ENABLED".equals(user.getStatus())) {
-            throw new BusinessException("account is disabled");
+            throw new BusinessException(ErrorCode.STATE_INVALID, "Account is disabled");
         }
         if (!passwordEncoder.matches(password, user.getPasswordHash())) {
             rateLimiterService.recordFailure(rateLimitKey);
-            throw new BusinessException("invalid username or password");
+            throw new BusinessException(ErrorCode.AUTHENTICATION_FAILED, "Invalid username or password");
         }
 
         rateLimiterService.recordSuccess(rateLimitKey);
@@ -69,6 +70,8 @@ public class AuthService {
         return jwtTokenService.createAdminToken(
             user.getId(),
             user.getUsername(),
+            tenant.getId(),
+            tenant.getTenantCode(),
             tenant.getId(),
             tenant.getTenantCode(),
             permissions
@@ -79,12 +82,14 @@ public class AuthService {
         Long tenantId = authenticatedUser.tenantId() == null
             ? tenantService.requireCurrentTenant().getId()
             : authenticatedUser.tenantId();
-        AdminUser user = adminUserMapper.selectActiveByIdAndTenantId(authenticatedUser.userId(), tenantId);
+        Long sourceTenantId = authenticatedUser.sourceTenantId() == null ? tenantId : authenticatedUser.sourceTenantId();
+        AdminUser user = adminUserMapper.selectActiveByIdAndTenantId(authenticatedUser.userId(), sourceTenantId);
         if (user == null) {
-            throw new BusinessException("user not found");
+            throw new BusinessException(ErrorCode.SESSION_INVALID, "Session is invalid, please sign in again");
         }
 
         Tenant tenant = tenantService.requireTenantById(tenantId);
+        Tenant loginTenant = sourceTenantId.equals(tenantId) ? tenant : tenantService.requireTenantById(sourceTenantId);
         List<String> permissions = adminUserMapper.selectPermissionCodes(user.getId());
         List<AdminMenu> menus = adminMenuMapper.selectMenusByUserId(user.getId());
         return new MeResponse(
@@ -93,8 +98,43 @@ public class AuthService {
             tenant.getId(),
             tenant.getTenantCode(),
             tenant.getTenantName(),
+            loginTenant.getId(),
+            loginTenant.getTenantCode(),
+            loginTenant.getTenantName(),
+            !loginTenant.getId().equals(tenant.getId()),
             permissions,
             buildMenuTree(menus)
+        );
+    }
+
+    public String switchTenant(AuthenticatedUser authenticatedUser, Long targetTenantId) {
+        Long sourceTenantId = authenticatedUser.sourceTenantId() == null
+            ? authenticatedUser.tenantId()
+            : authenticatedUser.sourceTenantId();
+        if (sourceTenantId == null) {
+            throw new BusinessException(ErrorCode.STATE_INVALID, "Source tenant is missing");
+        }
+
+        Tenant sourceTenant = tenantService.requireTenantById(sourceTenantId);
+        Tenant targetTenant = tenantService.requireTenantById(targetTenantId);
+        AdminUser user = adminUserMapper.selectActiveByIdAndTenantId(authenticatedUser.userId(), sourceTenant.getId());
+        if (user == null) {
+            throw new BusinessException(ErrorCode.SESSION_INVALID, "Session is invalid, please sign in again");
+        }
+
+        List<String> permissions = adminUserMapper.selectPermissionCodes(user.getId());
+        if (!permissions.contains("tenant:edit")) {
+            throw new BusinessException(ErrorCode.AUTHORIZATION_DENIED, "Permission denied");
+        }
+
+        return jwtTokenService.createAdminToken(
+            user.getId(),
+            user.getUsername(),
+            sourceTenant.getId(),
+            sourceTenant.getTenantCode(),
+            targetTenant.getId(),
+            targetTenant.getTenantCode(),
+            permissions
         );
     }
 

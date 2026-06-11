@@ -1,10 +1,11 @@
 import { API_BASE_URL } from '@/config/env'
-import type { ApiResponse } from '@/types/common'
+import { isAuthErrorCode, type ApiResponse } from '@/types/common'
 import { setLastApiEvent } from '@/utils/debug'
+import { goToLogin, resolveRedirectUrl } from '@/utils/navigation'
 import { normalizeMessage, showError } from '@/utils/toast'
 
 const TOKEN_STORAGE_KEY = 'member_token'
-const NETWORK_ERROR_MESSAGE = '网络请求失败，请检查服务是否可用'
+const NETWORK_ERROR_MESSAGE = 'Network request failed, please check service availability'
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE'
 type RequestData = string | AnyObject | ArrayBuffer | undefined
@@ -48,6 +49,30 @@ export function clearSessionStorage() {
   clearStoredToken()
 }
 
+function buildLoginRedirect() {
+  const pages = getCurrentPages()
+  const current = pages[pages.length - 1]
+  const route = current?.route
+
+  if (!route || route === 'pages/auth/login') {
+    return '/pages/index/index'
+  }
+
+  const options = ((current as { options?: Record<string, string | number | boolean | undefined> }).options || {})
+  const queryString = Object.keys(options)
+    .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(String(options[key] ?? ''))}`)
+    .join('&')
+  const target = queryString ? `/${route}?${queryString}` : `/${route}`
+
+  return resolveRedirectUrl(target)
+}
+
+function handleAuthFailure(message: string) {
+  clearSessionStorage()
+  goToLogin(buildLoginRedirect())
+  showError(message)
+}
+
 export async function request<T>({ url, method = 'GET', data, auth = true }: RequestOptions<T>): Promise<T> {
   const headers: Record<string, string> = {}
   const token = getStoredToken()
@@ -75,7 +100,7 @@ export async function request<T>({ url, method = 'GET', data, auth = true }: Req
           return
         }
 
-        const message = normalizeMessage(body?.message, `请求失败（状态码 ${response.statusCode}）`)
+        const message = normalizeMessage(body?.message, `Request failed (status ${response.statusCode})`)
         logApiEvent('error', {
           url,
           method,
@@ -83,8 +108,10 @@ export async function request<T>({ url, method = 'GET', data, auth = true }: Req
           statusCode: response.statusCode,
         })
 
-        if (response.statusCode === 401) {
-          clearSessionStorage()
+        if (response.statusCode === 401 || isAuthErrorCode(body?.code)) {
+          handleAuthFailure(message)
+          reject(new Error(message))
+          return
         }
 
         showError(message)

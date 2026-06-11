@@ -5,12 +5,12 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record MemberLoginRequest(
-    @NotBlank(message = "手机号不能为空")
-    @Pattern(regexp = "^1\\d{10}$", message = "手机号格式不正确")
+    @NotBlank(message = "Phone is required")
+    @Pattern(regexp = "^1\\d{10}$", message = "Phone must be an 11-digit mobile number")
     String phone,
 
-    @NotBlank(message = "密码不能为空")
-    @Size(max = 64, message = "密码长度不能超过 64 个字符")
+    @NotBlank(message = "Password is required")
+    @Size(min = 6, max = 64, message = "Password must be 6 to 64 characters")
     String password
 ) {
 }

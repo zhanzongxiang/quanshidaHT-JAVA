@@ -1,9 +1,8 @@
 package com.qsd.admin.payment;
 
-import com.qsd.admin.common.exception.NotFoundException;
+import com.qsd.admin.config.WechatPayProperties;
 import com.qsd.admin.payment.dto.NotifyFailureStatResponse;
 import com.qsd.admin.payment.dto.PaymentOpsOverviewResponse;
-import com.qsd.admin.payment.dto.ReconcileDiffDetailResponse;
 import com.qsd.admin.payment.entity.PayMerchantConfig;
 import com.qsd.admin.payment.entity.PayReconcileRecord;
 import com.qsd.admin.payment.mapper.PayNotifyLogMapper;
@@ -25,13 +24,11 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentOpsServiceTest {
-    private static final long TENANT_ID = 1L;
-
     @Mock
     private PaymentMerchantService paymentMerchantService;
 
@@ -51,10 +48,50 @@ class PaymentOpsServiceTest {
 
     @BeforeEach
     void setUp() {
-        TenantContextHolder.set(new TenantContext(TENANT_ID, "default", "Default Tenant"));
+        TenantContextHolder.set(new TenantContext(1L, "default", "Default Tenant"));
         paymentOpsService = new PaymentOpsService(
             paymentMerchantService,
             wechatPlatformCertificateService,
+            new WechatPayProperties(
+                false,
+                false,
+                "certs",
+                6,
+                "Acme Merchant",
+                "wx-app-001",
+                "secret",
+                "mch-001",
+                "https://pay.example.com/api/payment/callback/wechat",
+                "12345678901234567890123456789012",
+                "E:/secure/apiclient_key.pem",
+                "serial-001",
+                "E:/secure/platform.pem"
+            ),
+            payNotifyLogMapper,
+            refundNotifyLogMapper,
+            payReconcileRecordMapper
+        );
+    }
+
+    private PaymentOpsService createService(boolean mockEnabled, boolean autoRefreshEnabled) {
+        return new PaymentOpsService(
+            paymentMerchantService,
+            wechatPlatformCertificateService,
+            new WechatPayProperties(
+                mockEnabled,
+                autoRefreshEnabled,
+                "certs",
+                6,
+                "Acme Merchant",
+                "wx-app-001",
+                "secret",
+                "mch-001",
+                "https://pay.example.com/api/payment/callback/wechat",
+                "12345678901234567890123456789012",
+                "E:/secure/apiclient_key.pem",
+                "serial-001",
+                "E:/secure/platform.pem"
+            ),
             payNotifyLogMapper,
             refundNotifyLogMapper,
             payReconcileRecordMapper
@@ -62,77 +99,74 @@ class PaymentOpsServiceTest {
     }
 
     @Test
-    void shouldReturnOpsOverview() {
+    void shouldBuildCriticalAndWarningOpsAlerts() {
         PayMerchantConfig merchant = new PayMerchantConfig();
-        merchant.setId(8L);
+        merchant.setId(1L);
         merchant.setMerchantName("Acme Merchant");
         merchant.setMchId("mch-001");
-        merchant.setPlatformCertificatePath("certs/acme.pem");
-        merchant.setUpdatedAt(LocalDateTime.of(2026, 5, 13, 10, 0, 0));
+        merchant.setAppId("wx-app-001");
+        merchant.setNotifyUrl("https://pay.example.com/api/payment/callback/wechat");
+        merchant.setApiV3Key("short");
+        merchant.setPrivateKeyPath("E:/secure/apiclient_key.pem");
+        merchant.setMerchantSerialNo("");
+        merchant.setPlatformCertificatePath("");
+        merchant.setUpdatedAt(LocalDateTime.of(2026, 6, 11, 8, 0));
+
+        PayReconcileRecord reconcileRecord = new PayReconcileRecord();
+        reconcileRecord.setId(8L);
+        reconcileRecord.setReconcileDate(LocalDate.of(2026, 6, 10));
+        reconcileRecord.setReconcileStatus("warning");
+        reconcileRecord.setDiffCount(2);
 
         when(paymentMerchantService.requireCurrentMerchant()).thenReturn(merchant);
-        when(payNotifyLogMapper.selectFailureStats(TENANT_ID)).thenReturn(
-            List.of(new NotifyFailureStatResponse("signature_verify_failed", 2, "2026-05-13 09:00:00"))
+        when(paymentMerchantService.buildConfigurationIssuesForOps(merchant)).thenReturn(
+            List.of("invalid_api_v3_key_length", "incomplete_certificate_bundle")
         );
-        when(refundNotifyLogMapper.selectFailureStats(TENANT_ID)).thenReturn(
-            List.of(new NotifyFailureStatResponse("resource_decrypt_failed", 1, "2026-05-13 09:30:00"))
-        );
+        when(payNotifyLogMapper.selectFailureStats(1L)).thenReturn(List.of(
+            new NotifyFailureStatResponse("signature_verify_failed", 6, "2026-06-11 07:55:00")
+        ));
+        when(refundNotifyLogMapper.selectFailureStats(1L)).thenReturn(List.of(
+            new NotifyFailureStatResponse("resource_decrypt_failed", 1, "2026-06-11 07:56:00")
+        ));
+        when(payReconcileRecordMapper.selectListByChannel(1L, null)).thenReturn(List.of(reconcileRecord));
 
         PaymentOpsOverviewResponse response = paymentOpsService.getOverview();
 
-        assertEquals("Acme Merchant", response.currentMerchantCertificate().merchantName());
-        assertEquals("certs/acme.pem", response.currentMerchantCertificate().certificatePath());
-        assertEquals("signature_verify_failed", response.paymentNotifyFailures().get(0).category());
-        assertEquals(1, response.refundNotifyFailures().get(0).count());
+        assertEquals(5, response.alerts().size());
+        assertTrue(response.alerts().stream().anyMatch(item -> item.rule().equals("merchant_config_incomplete") && item.severity().equals("critical")));
+        assertTrue(response.alerts().stream().anyMatch(item -> item.rule().equals("certificate_auto_refresh_disabled") && item.severity().equals("warning")));
+        assertTrue(response.alerts().stream().anyMatch(item -> item.rule().equals("payment_callback_failures_present") && item.severity().equals("critical")));
+        assertTrue(response.alerts().stream().anyMatch(item -> item.rule().equals("refund_callback_failures_present") && item.severity().equals("warning")));
+        assertTrue(response.alerts().stream().anyMatch(item -> item.rule().equals("reconcile_attention_required") && item.severity().equals("warning")));
     }
 
     @Test
-    void shouldReturnRefreshedCertificateStatus() {
+    void shouldReturnHealthyInfoAlertWhenNoIssueExists() {
+        paymentOpsService = createService(false, true);
+
         PayMerchantConfig merchant = new PayMerchantConfig();
-        merchant.setId(9L);
+        merchant.setId(1L);
         merchant.setMerchantName("Acme Merchant");
-        merchant.setMchId("mch-002");
-        merchant.setUpdatedAt(LocalDateTime.of(2026, 5, 13, 11, 30, 0));
+        merchant.setMchId("mch-001");
+        merchant.setPlatformCertificatePath("certs/acme.pem");
+        merchant.setUpdatedAt(LocalDateTime.of(2026, 6, 11, 8, 0));
 
-        when(wechatPlatformCertificateService.refreshCurrentMerchantCertificate()).thenReturn("certs/acme-new.pem");
+        PayReconcileRecord reconcileRecord = new PayReconcileRecord();
+        reconcileRecord.setId(9L);
+        reconcileRecord.setReconcileDate(LocalDate.of(2026, 6, 10));
+        reconcileRecord.setReconcileStatus("success");
+        reconcileRecord.setDiffCount(0);
+
         when(paymentMerchantService.requireCurrentMerchant()).thenReturn(merchant);
+        when(paymentMerchantService.buildConfigurationIssuesForOps(merchant)).thenReturn(List.of());
+        when(payNotifyLogMapper.selectFailureStats(1L)).thenReturn(List.of());
+        when(refundNotifyLogMapper.selectFailureStats(1L)).thenReturn(List.of());
+        when(payReconcileRecordMapper.selectListByChannel(1L, null)).thenReturn(List.of(reconcileRecord));
 
-        var response = paymentOpsService.refreshCurrentMerchantCertificate();
+        PaymentOpsOverviewResponse response = paymentOpsService.getOverview();
 
-        assertEquals(9L, response.merchantConfigId());
-        assertEquals("certs/acme-new.pem", response.certificatePath());
-        assertEquals("2026-05-13 11:30:00", response.lastUpdatedAt());
-    }
-
-    @Test
-    void shouldParseReconcileDiffItems() {
-        PayReconcileRecord record = new PayReconcileRecord();
-        record.setId(15L);
-        record.setReconcileDate(LocalDate.of(2026, 5, 12));
-        record.setChannel("wechat_pay");
-        record.setReconcileStatus("warning");
-        record.setDiffCount(2);
-        record.setSummary("bill downloaded, diffs=LOCAL_MISSING:PO1|REMOTE_AMOUNT_MISMATCH:PO2|");
-
-        when(payReconcileRecordMapper.selectActiveById(TENANT_ID, 15L)).thenReturn(record);
-
-        ReconcileDiffDetailResponse response = paymentOpsService.getReconcileDiffDetail(15L);
-
-        assertEquals(15L, response.id());
-        assertEquals(2, response.diffItems().size());
-        assertEquals("LOCAL_MISSING:PO1", response.diffItems().get(0));
-        assertEquals("REMOTE_AMOUNT_MISMATCH:PO2", response.diffItems().get(1));
-    }
-
-    @Test
-    void shouldRejectMissingReconcileRecord() {
-        when(payReconcileRecordMapper.selectActiveById(TENANT_ID, 16L)).thenReturn(null);
-
-        NotFoundException ex = assertThrows(
-            NotFoundException.class,
-            () -> paymentOpsService.getReconcileDiffDetail(16L)
-        );
-
-        assertEquals("对账记录不存在", ex.getMessage());
+        assertEquals(1, response.alerts().size());
+        assertEquals("ops_healthy", response.alerts().get(0).rule());
+        assertEquals("info", response.alerts().get(0).severity());
     }
 }

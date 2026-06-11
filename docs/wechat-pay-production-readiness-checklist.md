@@ -1,89 +1,89 @@
-# 真实微信支付上线前检查表
+# WeChat Pay Production Readiness Checklist
 
-更新时间：2026-05-09
+Updated: 2026-06-11
 
-## 目标
+## Goal
 
-在切换到真实微信支付前，确认配置、证书、回调、安全、测试、运维全部达到上线要求。
+Use this checklist before switching any tenant from mock payment to real WeChat Pay.
 
-## 一、配置检查
+## 1. Configuration
 
-- 已设置 `WECHAT_PAY_MOCK_ENABLED=false`
-- 已配置正式商户 `appId`
-- 已配置正式商户 `appSecret`
-- 已配置正式商户 `mchId`
-- 已配置正式 `notifyUrl`
-- 已配置 `apiV3Key`
-- 已配置 `privateKeyPath`
-- 已配置 `merchantSerialNo`
-- 已配置 `platformCertificatePath`
-- 已确认配置来源不是硬编码入仓库
+- `WECHAT_PAY_MOCK_ENABLED=false`
+- Real `appId` is configured
+- Real `appSecret` is configured
+- Real `mchId` is configured
+- Real `notifyUrl` is configured
+- Real `apiV3Key` is configured
+- Real `privateKeyPath` is configured
+- Real `merchantSerialNo` is configured
+- Real `platformCertificatePath` is configured
+- Secrets are injected through environment variables or secure config, not hard-coded in repo files
 
-## 二、证书与密钥检查
+## 2. Certificates And Keys
 
-- 商户私钥文件路径存在且进程可读
-- 平台证书文件路径存在且进程可读
-- 平台证书刷新功能可执行
-- 平台证书自动刷新开关符合生产要求
-- 证书存储目录权限已收口
+- Merchant private key file exists and the backend process can read it
+- Platform certificate file exists and the backend process can read it
+- Platform certificate refresh can run successfully
+- Certificate storage directory permissions are restricted
+- Merchant serial number matches the active merchant certificate
 
-## 三、回调可达性检查
+## 3. Callback Reachability
 
-- `notifyUrl` 可被微信侧公网访问
-- 支付回调地址可访问
-- 退款回调地址可访问
-- 回调网关未被本地防火墙、Nginx、代理误拦截
-- 回调请求头透传正确
+- `notifyUrl` is publicly reachable by WeChat
+- Payment callback endpoint is reachable
+- Refund callback endpoint is reachable
+- Reverse proxy / gateway keeps required headers
+- Firewall and upstream rules do not block WeChat callback traffic
 
-## 四、业务正确性检查
+## 4. Business Flow
 
-- 小程序支付下单成功
-- 支付成功回调可入账
-- 重复支付回调不会重复入账
-- 退款申请成功
-- 退款回调可更新状态
-- 对账下载与差异查看正常
-- 商户切换不会影响历史订单与退款链路
+- Miniapp payment prepare succeeds
+- Payment success callback can mark the order as paid
+- Duplicate payment callbacks remain idempotent
+- Refund request succeeds
+- Refund callback can update refund state
+- Reconcile download and diff inspection work
+- Merchant switching does not break historical orders or refunds
 
-## 五、安全检查
+## 5. Security
 
-- 日志中不打印 `appSecret`
-- 日志中不打印 `apiV3Key`
-- 日志中不打印私钥内容
-- 敏感配置通过环境变量或安全配置管理
-- 会员 token 与管理员 token 仍保持隔离
-- 支付错误响应不暴露敏感商户信息
+- Logs do not expose `appSecret`
+- Logs do not expose `apiV3Key`
+- Logs do not expose private-key content
+- Merchant secrets are encrypted at rest
+- Admin and member tokens remain isolated
+- Error responses do not leak merchant secrets
 
-## 六、测试检查
+## 6. Verification
 
-- 后端 `mvn -DskipTests package` 通过
-- 后端 `mvn test` 通过
-- 前端 `npm run build` 通过
-- 至少完成一次真实支付联调
-- 至少完成一次真实退款联调
-- 至少完成一次真实对账联调
-- 已验证关键异常路径
+- Backend build passes: `mvn -DskipTests package`
+- Payment-related backend tests pass
+- Frontend build passes: `npm run build`
+- Miniapp build passes: `npm run build:mp-weixin`
+- At least one real payment is verified end-to-end
+- At least one real refund is verified end-to-end
+- At least one real reconcile cycle is verified
 
-## 七、运维检查
+## 7. Operations
 
-- 已定义支付异常告警规则
-- 已定义回调失败告警规则
-- 已定义证书刷新失败告警规则
-- 已定义对账差异处理责任人
-- 已定义生产回滚方案
+- Callback failure alerting rule is defined
+- Certificate refresh failure alerting rule is defined
+- Reconcile diff handling owner is assigned
+- Production rollback path is documented
+- On-call contact knows the payment cutover window
 
-## 八、上线当日检查
+## 8. Launch Day
 
-- 最终确认当前激活商户正确
-- 最终确认正式回调地址正确
-- 最终确认公网证书与域名状态正常
-- 最终确认测试订单已清理或隔离
-- 最终确认客服/运营知道支付变更窗口
+- Active merchant is double-checked
+- Production callback URL is double-checked
+- Public certificate/domain state is healthy
+- Test orders are cleaned up or clearly isolated
+- Support/ops team is informed of the release window
 
-## 九、上线后观察
+## 9. Post-Launch Observation
 
-- 观察首笔支付是否成功
-- 观察首笔回调是否成功入账
-- 观察首笔退款是否成功
-  - 观察支付异常统计是否异常增长
-- 观察对账记录是否持续生成
+- Watch the first successful payment
+- Watch the first successful callback ingestion
+- Watch the first refund
+- Watch callback failure metrics
+- Watch reconcile records for continued generation

@@ -7,7 +7,9 @@ public record AuthenticatedUser(
     String username,
     String tokenType,
     Long tenantId,
-    String tenantCode
+    String tenantCode,
+    Long sourceTenantId,
+    String sourceTenantCode
 ) implements Principal {
 
     @Override

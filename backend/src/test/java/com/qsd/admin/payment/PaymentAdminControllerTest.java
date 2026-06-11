@@ -5,6 +5,7 @@ import com.qsd.admin.payment.dto.MerchantCertificateStatusResponse;
 import com.qsd.admin.payment.dto.NotifyFailureStatResponse;
 import com.qsd.admin.payment.dto.NotifyReplayResponse;
 import com.qsd.admin.payment.dto.PaymentAdminSummaryResponse;
+import com.qsd.admin.payment.dto.PaymentOpsAlertResponse;
 import com.qsd.admin.payment.dto.PaymentOpsOverviewResponse;
 import com.qsd.admin.payment.dto.ReconcileDiffDetailResponse;
 import com.qsd.admin.payment.dto.RefundOrderResponse;
@@ -13,6 +14,7 @@ import com.qsd.admin.payment.service.PaymentNotifyReplayService;
 import com.qsd.admin.payment.service.PaymentOpsService;
 import com.qsd.admin.payment.service.PaymentService;
 import com.qsd.admin.security.JwtTokenService;
+import com.qsd.admin.tenant.service.TenantService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -50,6 +52,9 @@ class PaymentAdminControllerTest {
 
     @MockBean
     private PaymentNotifyReplayService paymentNotifyReplayService;
+
+    @MockBean
+    private TenantService tenantService;
 
     @Test
     void shouldReturnPaymentList() throws Exception {
@@ -98,7 +103,14 @@ class PaymentAdminControllerTest {
                 "2026-05-09 10:00:00"
             ),
             List.of(new NotifyFailureStatResponse("signature_verify_failed", 2, "2026-05-09 09:00:00")),
-            List.of(new NotifyFailureStatResponse("resource_decrypt_failed", 1, "2026-05-09 09:30:00"))
+            List.of(new NotifyFailureStatResponse("resource_decrypt_failed", 1, "2026-05-09 09:30:00")),
+            List.of(new PaymentOpsAlertResponse(
+                "warning",
+                "payment_callback_failures_present",
+                "Payment callback failures detected",
+                "Payment callback failures in recent logs: 2",
+                "Inspect callback logs"
+            ))
         ));
 
         mockMvc.perform(get("/api/admin/payments/ops/overview"))
@@ -106,7 +118,8 @@ class PaymentAdminControllerTest {
             .andExpect(jsonPath("$.code").value(0))
             .andExpect(jsonPath("$.data.currentMerchantCertificate.merchantName").value("Acme Merchant"))
             .andExpect(jsonPath("$.data.paymentNotifyFailures[0].category").value("signature_verify_failed"))
-            .andExpect(jsonPath("$.data.refundNotifyFailures[0].count").value(1));
+            .andExpect(jsonPath("$.data.refundNotifyFailures[0].count").value(1))
+            .andExpect(jsonPath("$.data.alerts[0].rule").value("payment_callback_failures_present"));
     }
 
     @Test

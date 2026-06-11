@@ -1,6 +1,7 @@
 package com.qsd.admin.payment.service;
 
 import com.qsd.admin.common.exception.BusinessException;
+import com.qsd.admin.common.exception.ErrorCode;
 import com.qsd.admin.common.exception.NotFoundException;
 import com.qsd.admin.common.service.CryptoService;
 import com.qsd.admin.config.WechatPayProperties;
@@ -13,6 +14,8 @@ import com.qsd.admin.tenant.TenantContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -121,6 +124,13 @@ public class PaymentMerchantService {
     public PayMerchantConfigSummaryResponse createMerchantConfig(PayMerchantConfigCreateRequest request) {
         Long tenantId = TenantContextHolder.requireTenantId();
         ensureDefaultMerchantExists(tenantId);
+        validateMerchantRequest(
+            request.notifyUrl(),
+            request.apiV3Key(),
+            request.privateKeyPath(),
+            request.merchantSerialNo(),
+            request.platformCertificatePath()
+        );
         LocalDateTime now = LocalDateTime.now();
         PayMerchantConfig config = new PayMerchantConfig();
         config.setTenantId(tenantId);
@@ -128,9 +138,9 @@ public class PaymentMerchantService {
         config.setMerchantCode(request.merchantCode().trim());
         config.setMchId(request.mchId().trim());
         config.setAppId(request.appId().trim());
-        config.setAppSecret(trimToEmpty(request.appSecret()));
+        config.setAppSecret(encryptSensitive(request.appSecret()));
         config.setNotifyUrl(request.notifyUrl().trim());
-        config.setApiV3Key(trimToEmpty(request.apiV3Key()));
+        config.setApiV3Key(encryptSensitive(request.apiV3Key()));
         config.setPrivateKeyPath(trimToEmpty(request.privateKeyPath()));
         config.setMerchantSerialNo(trimToEmpty(request.merchantSerialNo()));
         config.setPlatformCertificatePath(trimToEmpty(request.platformCertificatePath()));
@@ -146,6 +156,13 @@ public class PaymentMerchantService {
 
     @Transactional
     public PayMerchantConfigSummaryResponse updateMerchantConfig(Long id, PayMerchantConfigUpdateRequest request) {
+        validateMerchantRequest(
+            request.notifyUrl(),
+            request.apiV3Key(),
+            request.privateKeyPath(),
+            request.merchantSerialNo(),
+            request.platformCertificatePath()
+        );
         PayMerchantConfig config = requireMerchantById(id);
         config.setMerchantName(request.merchantName().trim());
         config.setMerchantCode(request.merchantCode().trim());
@@ -246,8 +263,48 @@ public class PaymentMerchantService {
         }
         if (config.getNotifyUrl() == null || config.getNotifyUrl().isBlank()) {
             issues.add("missing_notify_url");
+        } else if (!isValidNotifyUrl(config.getNotifyUrl())) {
+            issues.add("invalid_notify_url");
+        }
+        if (!hasValidApiV3Key(config.getApiV3Key())) {
+            issues.add("invalid_api_v3_key_length");
+        }
+        if (hasAny(trimToNull(config.getPrivateKeyPath()), trimToNull(config.getMerchantSerialNo()), trimToNull(config.getPlatformCertificatePath()))
+            && !hasAll(trimToNull(config.getPrivateKeyPath()), trimToNull(config.getMerchantSerialNo()), trimToNull(config.getPlatformCertificatePath()))) {
+            issues.add("incomplete_certificate_bundle");
         }
         return issues;
+    }
+
+    public List<String> buildConfigurationIssuesForOps(PayMerchantConfig config) {
+        return buildConfigurationIssues(config);
+    }
+
+    private void validateMerchantRequest(
+        String notifyUrl,
+        String apiV3Key,
+        String privateKeyPath,
+        String merchantSerialNo,
+        String platformCertificatePath
+    ) {
+        if (!isValidNotifyUrl(notifyUrl)) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED, "notifyUrl must be a valid http or https URL");
+        }
+
+        if (!hasValidApiV3Key(apiV3Key)) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED, "apiV3Key must be exactly 32 characters when provided");
+        }
+
+        String normalizedPrivateKeyPath = trimToNull(privateKeyPath);
+        String normalizedMerchantSerialNo = trimToNull(merchantSerialNo);
+        String normalizedPlatformCertificatePath = trimToNull(platformCertificatePath);
+        if (hasAny(normalizedPrivateKeyPath, normalizedMerchantSerialNo, normalizedPlatformCertificatePath)
+            && !hasAll(normalizedPrivateKeyPath, normalizedMerchantSerialNo, normalizedPlatformCertificatePath)) {
+            throw new BusinessException(
+                ErrorCode.VALIDATION_FAILED,
+                "privateKeyPath, merchantSerialNo, and platformCertificatePath must be provided together"
+            );
+        }
     }
 
     private String formatDateTime(LocalDateTime value) {
@@ -277,6 +334,59 @@ public class PaymentMerchantService {
             return trimmed;
         }
         return cryptoService.encrypt(trimmed);
+    }
+
+    private boolean isValidNotifyUrl(String value) {
+        String normalized = trimToNull(value);
+        if (normalized == null) {
+            return false;
+        }
+        try {
+            URI uri = new URI(normalized);
+            String scheme = trimToNull(uri.getScheme());
+            String host = trimToNull(uri.getHost());
+            if (scheme == null || host == null) {
+                return false;
+            }
+            if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
+                return false;
+            }
+            if ("http".equalsIgnoreCase(scheme) && !isLocalHost(host)) {
+                return false;
+            }
+            return true;
+        } catch (URISyntaxException ex) {
+            return false;
+        }
+    }
+
+    private boolean hasValidApiV3Key(String value) {
+        String normalized = trimToNull(value);
+        return normalized == null || normalized.length() == 32;
+    }
+
+    private boolean isLocalHost(String host) {
+        return "localhost".equalsIgnoreCase(host)
+            || "127.0.0.1".equals(host)
+            || "::1".equals(host);
+    }
+
+    private boolean hasAny(String... values) {
+        for (String value : values) {
+            if (value != null) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasAll(String... values) {
+        for (String value : values) {
+            if (value == null) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public String decryptSensitive(String value) {

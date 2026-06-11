@@ -1,64 +1,64 @@
-# 小程序与支付联调清单
-更新时间：2026-05-13
+# Mini Program Payment Integration Checklist
 
-## 目标
+Updated: 2026-06-11
 
-验证会员登录、微信身份绑定、小程序支付、支付回调、退款、对账链路在测试环境可闭环运行。
+## Goal
 
-## 一、环境准备
+Verify that member sign-in, WeChat binding, miniapp payment, callback handling, refund, and reconcile can run end-to-end in a test or staging environment.
 
-- 后端服务可启动并连接测试数据库
-- 管理端可正常访问支付管理页
-- 当前商户已在后台配置完成，且状态为 `Ready`
-- 已确认回调地址可被微信侧访问
-- 已准备测试会员账号
-- 已准备可支付的运单数据
-- 已明确当前运行模式：
-  - `mock` 联调
-  - 真实微信联调
+## 1. Environment Ready
 
-## 二、会员与微信登录联调
+- Backend service starts normally
+- Admin console can open the payment management pages
+- Current merchant config is complete and marked `ready`
+- Callback URLs are reachable from WeChat
+- Test member account is available
+- Payable test waybill data is available
+- Current run mode is known: `mock` or `real WeChat`
 
-### 预置检查
+## 2. Member And WeChat Sign-In
 
-- 确认 `POST /api/member/auth/wechat-login` 可用
-- 确认 `PUT /api/member/profile/wechat` 可用
-- 确认会员表可保存 `openid`、`unionid`、绑定时间
+Pre-check:
 
-### 联调步骤
+- `POST /api/member/auth/wechat-login` is available
+- `POST /api/member/auth/wechat-complete` is available
+- `PUT /api/member/profile/wechat` is available
+- Member profile can store `openid`, `unionid`, and bind timestamps
 
-1. 小程序获取微信 `code`
-2. 调用 `POST /api/member/auth/wechat-login`
-3. 验证返回会员 token
-4. 使用会员 token 调用 `GET /api/member/profile`
-5. 验证返回的微信绑定字段
-6. 如走绑定流程，调用 `PUT /api/member/profile/wechat`
-7. 再次查询资料，确认绑定结果已落库
+Steps:
 
-### 验证点
+1. Get a WeChat login `code` from the miniapp.
+2. Call `POST /api/member/auth/wechat-login`.
+3. If phone completion is required, call `POST /api/member/auth/wechat-complete`.
+4. Use the returned member token to call `GET /api/member/profile`.
+5. Confirm the WeChat binding fields are returned correctly.
+6. If testing manual bind or rebind, call `PUT /api/member/profile/wechat`.
+7. Query the profile again and confirm the final state is persisted.
 
-- 首次微信登录是否能自动建会员
-- 已有手机号会员是否能正确绑定
-- 已绑定 `openid` 的会员是否能重复登录
-- 禁用会员是否会被拒绝登录
-- 错误请求是否返回统一错误结构
+Checks:
 
-## 三、小程序支付联调
+- First WeChat login can create or link a member correctly
+- Existing member can bind correctly
+- Existing binding can log in again
+- Disabled or pending member is rejected correctly
+- Error responses follow the unified `ApiResponse` format
 
-### 预置检查
+## 3. Miniapp Payment
 
-- 目标会员已绑定微信 `openid`
-- 目标运单对该会员可见
-- 当前激活商户配置完整
-- `PUT /api/member/payments/prepare` 可用
-- `GET /api/member/payments` 可用
+Pre-check:
 
-### 联调步骤
+- Target member has a valid `openid`
+- Target waybill is visible to that member
+- Active merchant configuration is complete
+- `PUT /api/member/payments/prepare` is available
+- `GET /api/member/payments` is available
 
-1. 调用 `GET /api/member/waybills`
-2. 选择一条可支付运单
-3. 调用 `PUT /api/member/payments/prepare`
-4. 记录返回的：
+Steps:
+
+1. Call `GET /api/member/waybills`.
+2. Pick a payable waybill.
+3. Call `PUT /api/member/payments/prepare`.
+4. Record the returned values:
    - `payOrderId`
    - `orderNo`
    - `appId`
@@ -67,81 +67,58 @@
    - `packageValue`
    - `signType`
    - `paySign`
-5. 小程序调用 `wx.requestPayment`
-6. 支付完成后调用 `GET /api/member/payments`
-7. 后台支付页核对订单状态
+5. Call `wx.requestPayment` in the miniapp.
+6. After payment, call `GET /api/member/payments`.
+7. Confirm the admin payment page shows the expected order status.
 
-### 验证点
+Checks:
 
-- 支付单是否成功创建
-- 支付单是否正确绑定会员、运单、商户快照
-- 返回的小程序支付参数是否完整
-- 支付成功后订单是否进入 `paid`
-- 支付取消或失败后订单状态是否合理
+- Order is created with the correct tenant/member/merchant snapshot
+- Payment parameters match the active merchant app
+- Payment success can transition the order to `paid`
+- Repeated callbacks remain idempotent
 
-## 四、支付回调联调
+## 4. Refund
 
-### 联调步骤
+Steps:
 
-1. 触发一次真实支付
-2. 等待微信支付回调
-3. 检查支付单状态是否变为 `paid`
-4. 检查支付流水是否新增
-5. 检查支付回调日志是否新增
-6. 在后台支付页查看回调失败统计是否正常
+1. Pick a paid order in admin.
+2. Create a refund.
+3. Wait for the refund callback or simulate it in mock mode.
+4. Confirm refund order status and payment order status are updated.
 
-### 验证点
+Checks:
 
-- 回调验签是否成功
-- 商户校验是否成功
-- 重复回调是否不会重复入账
-- 回调异常是否能记录失败日志
+- Refund amount validation works
+- Retry is only allowed for failed refunds
+- Refund callback keeps the order state consistent
 
-## 五、退款联调
+## 5. Reconcile
 
-### 联调步骤
+Steps:
 
-1. 在后台支付页选择已支付订单
-2. 发起退款
-3. 记录退款单状态
-4. 等待退款回调
-5. 检查退款单与支付单状态变化
-6. 检查退款回调日志
+1. Trigger reconcile generation for the current merchant/channel.
+2. Open reconcile records in admin.
+3. Inspect diff details.
 
-### 验证点
+Checks:
 
-- 退款申请是否能成功下发
-- 退款回调是否能正确更新状态
-- 失败退款是否可重试
-- 退款日志是否可追溯
+- Reconcile record can be generated
+- Diff summary is readable
+- No tenant crossover occurs
 
-## 六、对账联调
+## 6. Failure Paths
 
-### 联调步骤
+- Invalid or expired session returns structured auth errors
+- Merchant mismatch callback is rejected
+- Missing WeChat binding blocks miniapp payment
+- Rate-limited login returns a stable error code
+- Invalid merchant config returns a readable validation message
 
-1. 在后台支付页创建或触发指定日期对账
-2. 检查账单是否成功下载
-3. 检查本地对账记录是否生成
-4. 查看差异详情
+## 7. Final Sign-Off
 
-### 验证点
-
-- 对账下载是否成功
-- 无差异时状态是否正确
-- 有差异时是否能查看差异项
-- 商户配置不完整时是否能走手工兜底流程
-
-## 七、回归清单
-
-- 会员普通手机号登录不受影响
-- 后台管理员登录与会员登录相互隔离
-- 切换商户后，新老支付单商户快照不串
-- mock 模式和真实模式切换逻辑正常
-- 支付相关错误不会泄露敏感配置
-
-## 八、联调产出
-
-- 记录联调日期、环境、商户、回调地址
-- 记录成功案例的订单号、退款单号、对账日期
-- 记录失败案例及原因
-- 沉淀需要补测或补改的缺陷单
+- Backend payment tests pass
+- Backend package passes
+- Admin frontend build passes
+- Miniapp build passes
+- At least one full payment and one refund are verified in the target environment

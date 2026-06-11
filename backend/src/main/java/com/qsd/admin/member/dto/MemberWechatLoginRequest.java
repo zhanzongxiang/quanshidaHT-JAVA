@@ -5,17 +5,19 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record MemberWechatLoginRequest(
-    @NotBlank(message = "微信登录 code 不能为空")
-    @Size(max = 128, message = "微信登录 code 长度不能超过 128 个字符")
+    @NotBlank(message = "WeChat login code is required")
+    @Size(max = 128, message = "WeChat login code must be at most 128 characters")
     String code,
 
-    @Pattern(regexp = "^$|^1\\d{10}$", message = "手机号格式不正确")
+    @Pattern(regexp = "^$|^1\\d{10}$", message = "Phone must be an 11-digit mobile number")
     String phone,
 
-    @Size(max = 64, message = "昵称长度不能超过 64 个字符")
+    @Size(max = 64, message = "Nickname must be at most 64 characters")
     String nickname,
 
-    @Size(max = 64, message = "姓名长度不能超过 64 个字符")
-    String fullName
+    @Size(max = 64, message = "Full name must be at most 64 characters")
+    String fullName,
+
+    Boolean replaceBinding
 ) {
 }

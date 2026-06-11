@@ -3,14 +3,17 @@ import { normalizeMessage } from '@/utils/toast'
 export async function getWechatLoginCode() {
   const result = await uni.login()
   if (!result.code) {
-    throw new Error('获取微信登录凭证失败')
+    throw new Error('Failed to get WeChat login code')
   }
 
   return result.code
 }
 
 export function normalizePaymentResultMessage(error: unknown) {
-  const message = normalizeMessage(error instanceof Error ? error.message : error, '发起支付失败')
+  const message = normalizeMessage(
+    error instanceof Error ? error.message : error,
+    'Failed to start payment',
+  )
   const normalized = message.toLowerCase()
 
   if (normalized.includes('cancel')) {

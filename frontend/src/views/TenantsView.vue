@@ -2,14 +2,14 @@
   <div class="space-y-6 pb-6">
     <div class="flex flex-col gap-4 rounded-3xl border border-line bg-panel px-5 py-5 shadow-panel lg:flex-row lg:items-start lg:justify-between">
       <div class="space-y-2">
-        <h2 class="m-0 text-xl font-extrabold text-ink">租户管理</h2>
+        <h2 class="m-0 text-xl font-extrabold text-ink">Tenant Management</h2>
         <p class="m-0 max-w-3xl text-sm leading-6 text-mist">
-          维护租户基础信息、访问域名和启停状态，作为多公司平台治理的基础入口。
+          Manage tenant settings, bound domains, and activation status for the shared multi-company platform.
         </p>
       </div>
       <div class="flex gap-3">
-        <el-button :loading="loading" @click="loadData">刷新</el-button>
-        <el-button v-if="canEdit" type="primary" @click="openCreateDialog">新建租户</el-button>
+        <el-button :loading="loading" @click="loadData">Refresh</el-button>
+        <el-button v-if="canEdit" type="primary" @click="openCreateDialog">New Tenant</el-button>
       </div>
     </div>
 
@@ -17,8 +17,8 @@
       <el-card class="rounded-3xl border-0 shadow-panel">
         <template #header>
           <div>
-            <h3 class="m-0 text-base font-bold text-ink">当前租户上下文</h3>
-            <p class="m-0 mt-1 text-sm text-mist">当前登录和请求链路解析出的租户信息。</p>
+            <h3 class="m-0 text-base font-bold text-ink">Current Tenant Context</h3>
+            <p class="m-0 mt-1 text-sm text-mist">Tenant resolved from the current request and authenticated session.</p>
           </div>
         </template>
 
@@ -30,25 +30,25 @@
 
           <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
             <div class="rounded-2xl border border-slate-200 px-4 py-3">
-              <div class="text-xs text-mist">租户名称</div>
+              <div class="text-xs text-mist">Tenant Name</div>
               <div class="mt-1 font-semibold text-ink">{{ currentTenant.tenantName }}</div>
             </div>
             <div class="rounded-2xl border border-slate-200 px-4 py-3">
-              <div class="text-xs text-mist">状态</div>
+              <div class="text-xs text-mist">Status</div>
               <div class="mt-1">
                 <el-tag :type="statusTagType(currentTenant.status)">{{ formatStatus(currentTenant.status) }}</el-tag>
               </div>
             </div>
             <div class="rounded-2xl border border-slate-200 px-4 py-3">
-              <div class="text-xs text-mist">时区</div>
+              <div class="text-xs text-mist">Timezone</div>
               <div class="mt-1 font-medium text-ink">{{ currentTenant.timezone }}</div>
             </div>
             <div class="rounded-2xl border border-slate-200 px-4 py-3">
-              <div class="text-xs text-mist">语言</div>
+              <div class="text-xs text-mist">Locale</div>
               <div class="mt-1 font-medium text-ink">{{ currentTenant.locale }}</div>
             </div>
             <div class="rounded-2xl border border-slate-200 px-4 py-3">
-              <div class="text-xs text-mist">启用域名数</div>
+              <div class="text-xs text-mist">Enabled Domains</div>
               <div class="mt-1 font-medium text-ink">{{ enabledDomainCount(currentTenant) }}</div>
             </div>
           </div>
@@ -56,15 +56,17 @@
           <div v-if="currentTenant.bootstrapAdmin" class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
             <div class="text-xs uppercase tracking-[0.2em] text-amber-700">Bootstrap Admin</div>
             <div class="mt-2 text-sm text-slate-700">
-              用户名：<span class="font-semibold text-slate-900">{{ currentTenant.bootstrapAdmin.username }}</span>
+              Username:
+              <span class="font-semibold text-slate-900">{{ currentTenant.bootstrapAdmin.username }}</span>
             </div>
             <div class="mt-1 text-sm text-slate-700">
-              初始密码：<span class="font-semibold text-slate-900">{{ currentTenant.bootstrapAdmin.initialPassword }}</span>
+              Initial Password:
+              <span class="font-semibold text-slate-900">{{ currentTenant.bootstrapAdmin.initialPassword }}</span>
             </div>
           </div>
 
           <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-mist">
-            {{ currentTenant.remark || '当前租户暂无备注。' }}
+            {{ currentTenant.remark || 'No tenant remark.' }}
           </div>
         </div>
       </el-card>
@@ -73,24 +75,24 @@
         <template #header>
           <div class="flex items-center justify-between gap-3">
             <div>
-              <h3 class="m-0 text-base font-bold text-ink">租户列表</h3>
-              <p class="m-0 mt-1 text-sm text-mist">超级管理员可维护租户基础信息与访问域名。</p>
+              <h3 class="m-0 text-base font-bold text-ink">Tenant List</h3>
+              <p class="m-0 mt-1 text-sm text-mist">Platform admins can maintain tenant configuration and access domains here.</p>
             </div>
-            <el-tag type="info">{{ tenants.length }} 个租户</el-tag>
+            <el-tag type="info">{{ tenants.length }} tenants</el-tag>
           </div>
         </template>
 
         <el-table :data="tenants" v-loading="loading" border class="overflow-hidden rounded-2xl">
-          <el-table-column prop="tenantCode" label="租户编码" min-width="140" />
-          <el-table-column prop="tenantName" label="租户名称" min-width="180" />
-          <el-table-column label="状态" width="120">
+          <el-table-column prop="tenantCode" label="Tenant Code" min-width="140" />
+          <el-table-column prop="tenantName" label="Tenant Name" min-width="180" />
+          <el-table-column label="Status" width="120">
             <template #default="{ row }">
               <el-tag :type="statusTagType(row.status)">{{ formatStatus(row.status) }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="timezone" label="时区" min-width="150" />
-          <el-table-column prop="locale" label="语言" min-width="120" />
-          <el-table-column label="域名" min-width="260">
+          <el-table-column prop="timezone" label="Timezone" min-width="150" />
+          <el-table-column prop="locale" label="Locale" min-width="120" />
+          <el-table-column label="Domains" min-width="260">
             <template #default="{ row }">
               <div class="flex flex-wrap gap-2">
                 <el-tag
@@ -101,24 +103,24 @@
                 >
                   {{ domain.domain }}
                 </el-tag>
-                <span v-if="row.domains.length === 0" class="text-sm text-mist">未配置</span>
+                <span v-if="row.domains.length === 0" class="text-sm text-mist">Not configured</span>
                 <span v-else-if="row.domains.length > 3" class="text-sm text-mist">+{{ row.domains.length - 3 }}</span>
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="初始化管理员" min-width="200">
+          <el-table-column label="Bootstrap Admin" min-width="200">
             <template #default="{ row }">
               <div v-if="row.bootstrapAdmin" class="text-sm text-slate-700">
                 <div>{{ row.bootstrapAdmin.username }}</div>
                 <div class="text-mist">{{ row.bootstrapAdmin.initialPassword }}</div>
               </div>
-              <span v-else class="text-sm text-mist">未初始化</span>
+              <span v-else class="text-sm text-mist">Not initialized</span>
             </template>
           </el-table-column>
-          <el-table-column prop="updatedAt" label="更新时间" min-width="180" />
-          <el-table-column label="操作" width="120" fixed="right">
+          <el-table-column prop="updatedAt" label="Updated At" min-width="180" />
+          <el-table-column label="Actions" width="120" fixed="right">
             <template #default="{ row }">
-              <el-button size="small" @click="openEditDialog(row)">{{ canEdit ? '编辑' : '查看' }}</el-button>
+              <el-button size="small" @click="openEditDialog(row)">{{ canEdit ? 'Edit' : 'View' }}</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -127,7 +129,7 @@
 
     <el-dialog
       v-model="dialogVisible"
-      :title="editingTenantId ? '编辑租户' : '新建租户'"
+      :title="editingTenantId ? 'Edit Tenant' : 'New Tenant'"
       width="920px"
       destroy-on-close
       @closed="onDialogClosed"
@@ -136,31 +138,33 @@
         <el-card shadow="never" class="rounded-2xl border border-slate-200">
           <template #header>
             <div>
-              <h3 class="m-0 text-base font-bold text-ink">基础信息</h3>
-              <p class="m-0 mt-1 text-sm text-mist">租户编码用于上下文识别，停用状态受平台保护规则限制。</p>
+              <h3 class="m-0 text-base font-bold text-ink">Base Settings</h3>
+              <p class="m-0 mt-1 text-sm text-mist">
+                Tenant code is used by platform routing and context resolution. Disabling a tenant is protected by platform rules.
+              </p>
             </div>
           </template>
 
           <div class="grid gap-4 md:grid-cols-2">
-            <el-form-item label="租户编码" prop="tenantCode">
-              <el-input v-model="form.tenantCode" maxlength="64" placeholder="例如：default / acme" />
+            <el-form-item label="Tenant Code" prop="tenantCode">
+              <el-input v-model="form.tenantCode" maxlength="64" placeholder="default / acme" />
             </el-form-item>
-            <el-form-item label="租户名称" prop="tenantName">
-              <el-input v-model="form.tenantName" maxlength="128" placeholder="例如：Acme Logistics" />
+            <el-form-item label="Tenant Name" prop="tenantName">
+              <el-input v-model="form.tenantName" maxlength="128" placeholder="Acme Logistics" />
             </el-form-item>
-            <el-form-item label="状态" prop="status">
+            <el-form-item label="Status" prop="status">
               <el-select v-model="form.status">
-                <el-option label="启用" value="ACTIVE" />
-                <el-option label="停用" value="DISABLED" />
+                <el-option label="Active" value="ACTIVE" />
+                <el-option label="Disabled" value="DISABLED" />
               </el-select>
             </el-form-item>
-            <el-form-item label="时区" prop="timezone">
-              <el-input v-model="form.timezone" maxlength="64" placeholder="例如：Asia/Shanghai" />
+            <el-form-item label="Timezone" prop="timezone">
+              <el-input v-model="form.timezone" maxlength="64" placeholder="Asia/Shanghai" />
             </el-form-item>
-            <el-form-item label="语言" prop="locale">
-              <el-input v-model="form.locale" maxlength="32" placeholder="例如：zh-CN" />
+            <el-form-item label="Locale" prop="locale">
+              <el-input v-model="form.locale" maxlength="32" placeholder="zh-CN" />
             </el-form-item>
-            <el-form-item label="备注" prop="remark" class="md:col-span-2">
+            <el-form-item label="Remark" prop="remark" class="md:col-span-2">
               <el-input v-model="form.remark" type="textarea" :rows="3" maxlength="500" show-word-limit />
             </el-form-item>
           </div>
@@ -170,10 +174,12 @@
           <template #header>
             <div class="flex items-center justify-between gap-3">
               <div>
-                <h3 class="m-0 text-base font-bold text-ink">域名管理</h3>
-                <p class="m-0 mt-1 text-sm text-mist">支持为租户绑定多个域名，启用域名会参与公共站点租户解析。</p>
+                <h3 class="m-0 text-base font-bold text-ink">Domain Management</h3>
+                <p class="m-0 mt-1 text-sm text-mist">
+                  Bind multiple domains to a tenant. Enabled domains participate in public-site tenant resolution.
+                </p>
               </div>
-              <el-button v-if="canEdit" type="primary" plain @click="addDomainRow">新增域名</el-button>
+              <el-button v-if="canEdit" type="primary" plain @click="addDomainRow">Add Domain</el-button>
             </div>
           </template>
 
@@ -184,33 +190,33 @@
               class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
             >
               <div class="grid gap-4 md:grid-cols-[minmax(0,1.6fr)_180px_120px_auto]">
-                <el-form-item :label="`域名 ${index + 1}`" :prop="`domains.${index}.domain`" class="mb-0">
-                  <el-input v-model="domain.domain" maxlength="255" placeholder="例如：acme.example.com" />
+                <el-form-item :label="`Domain ${index + 1}`" :prop="`domains.${index}.domain`" class="mb-0">
+                  <el-input v-model="domain.domain" maxlength="255" placeholder="acme.example.com" />
                 </el-form-item>
-                <el-form-item :label="`类型 ${index + 1}`" :prop="`domains.${index}.domainType`" class="mb-0">
+                <el-form-item :label="`Type ${index + 1}`" :prop="`domains.${index}.domainType`" class="mb-0">
                   <el-select v-model="domain.domainType">
                     <el-option label="website" value="website" />
                     <el-option label="admin" value="admin" />
                     <el-option label="api" value="api" />
                   </el-select>
                 </el-form-item>
-                <el-form-item :label="`启用 ${index + 1}`" class="mb-0">
+                <el-form-item :label="`Enabled ${index + 1}`" class="mb-0">
                   <el-switch v-model="domain.enabled" />
                 </el-form-item>
                 <div class="flex items-end justify-end">
-                  <el-button v-if="canEdit" type="danger" plain @click="removeDomainRow(index)">删除</el-button>
+                  <el-button v-if="canEdit" type="danger" plain @click="removeDomainRow(index)">Remove</el-button>
                 </div>
               </div>
             </div>
           </div>
-          <el-empty v-else description="当前未配置域名" />
+          <el-empty v-else description="No domains configured" />
         </el-card>
       </el-form>
 
       <template #footer>
         <div class="flex justify-end gap-3">
-          <el-button @click="dialogVisible = false">{{ canEdit ? '取消' : '关闭' }}</el-button>
-          <el-button v-if="canEdit" type="primary" :loading="saving" @click="onSave">保存</el-button>
+          <el-button @click="dialogVisible = false">{{ canEdit ? 'Cancel' : 'Close' }}</el-button>
+          <el-button v-if="canEdit" type="primary" :loading="saving" @click="onSave">Save</el-button>
         </div>
       </template>
     </el-dialog>
@@ -241,13 +247,13 @@ const form = reactive<TenantSavePayload>(createEmptyTenantPayload())
 
 const rules: FormRules = {
   tenantCode: [
-    { required: true, message: '请输入租户编码', trigger: 'blur' },
-    { min: 2, max: 64, message: '租户编码长度需在 2 到 64 之间', trigger: 'blur' },
+    { required: true, message: 'Enter tenant code', trigger: 'blur' },
+    { min: 2, max: 64, message: 'Tenant code length must be between 2 and 64', trigger: 'blur' },
   ],
-  tenantName: [{ required: true, message: '请输入租户名称', trigger: 'blur' }],
-  status: [{ required: true, message: '请选择租户状态', trigger: 'change' }],
-  timezone: [{ required: true, message: '请输入时区', trigger: 'blur' }],
-  locale: [{ required: true, message: '请输入语言', trigger: 'blur' }],
+  tenantName: [{ required: true, message: 'Enter tenant name', trigger: 'blur' }],
+  status: [{ required: true, message: 'Select tenant status', trigger: 'change' }],
+  timezone: [{ required: true, message: 'Enter timezone', trigger: 'blur' }],
+  locale: [{ required: true, message: 'Enter locale', trigger: 'blur' }],
 }
 
 function createEmptyDomainPayload(): TenantDomainPayload {
@@ -272,10 +278,10 @@ function removeDomainRow(index: number) {
 
 function formatStatus(status: string) {
   if (status === 'ACTIVE') {
-    return '启用'
+    return 'Active'
   }
   if (status === 'DISABLED') {
-    return '停用'
+    return 'Disabled'
   }
   return status
 }
@@ -299,7 +305,7 @@ async function loadData() {
     const [current, list] = await Promise.all([fetchCurrentTenant(), fetchTenants()])
     currentTenant.value = current
     tenants.value = list
-  }, '加载租户数据失败')
+  }, 'Failed to load tenant data')
 }
 
 function openCreateDialog() {
@@ -361,18 +367,18 @@ async function onSave() {
 
     if (editingTenantId.value) {
       await updateTenant(editingTenantId.value, payload)
-      showSuccessMessage('租户已更新')
+      showSuccessMessage('Tenant updated')
     } else {
       await createTenant(payload)
-      showSuccessMessage('租户已创建')
+      showSuccessMessage('Tenant created')
     }
 
     dialogVisible.value = false
     await loadData()
-  }, '保存租户失败')
+  }, 'Failed to save tenant')
 }
 
 onMounted(() => {
-  void runSafely(loadData, '加载租户数据失败')
+  void runSafely(loadData, 'Failed to load tenant data')
 })
 </script>

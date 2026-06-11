@@ -4,7 +4,9 @@ import com.qsd.admin.auth.dto.LoginResponse;
 import com.qsd.admin.common.ApiResponse;
 import com.qsd.admin.member.dto.MemberLoginRequest;
 import com.qsd.admin.member.dto.MemberRegisterRequest;
+import com.qsd.admin.member.dto.MemberWechatCompleteRequest;
 import com.qsd.admin.member.dto.MemberWechatLoginRequest;
+import com.qsd.admin.member.dto.MemberWechatLoginResponse;
 import com.qsd.admin.member.service.MemberService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -23,8 +25,8 @@ public class MemberAuthController {
     }
 
     @PostMapping("/register")
-    public ApiResponse<LoginResponse> register(@Valid @RequestBody MemberRegisterRequest request) {
-        return ApiResponse.ok(memberService.register(request));
+    public ApiResponse<LoginResponse> register(@Valid @RequestBody MemberRegisterRequest request, HttpServletRequest httpRequest) {
+        return ApiResponse.ok(memberService.register(request, getClientIp(httpRequest)));
     }
 
     @PostMapping("/login")
@@ -42,7 +44,18 @@ public class MemberAuthController {
     }
 
     @PostMapping("/wechat-login")
-    public ApiResponse<LoginResponse> wechatLogin(@Valid @RequestBody MemberWechatLoginRequest request) {
-        return ApiResponse.ok(memberService.wechatLogin(request));
+    public ApiResponse<MemberWechatLoginResponse> wechatLogin(
+        @Valid @RequestBody MemberWechatLoginRequest request,
+        HttpServletRequest httpRequest
+    ) {
+        return ApiResponse.ok(memberService.wechatLogin(request, getClientIp(httpRequest)));
+    }
+
+    @PostMapping("/wechat-complete")
+    public ApiResponse<MemberWechatLoginResponse> completeWechatLogin(
+        @Valid @RequestBody MemberWechatCompleteRequest request,
+        HttpServletRequest httpRequest
+    ) {
+        return ApiResponse.ok(memberService.completeWechatLogin(request, getClientIp(httpRequest)));
     }
 }

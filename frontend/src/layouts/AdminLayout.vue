@@ -18,14 +18,43 @@
     <main class="grid h-screen min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
       <header class="flex flex-col gap-4 border-b border-line bg-panel/90 px-5 py-5 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div class="space-y-1">
-          <h1 class="m-0 text-2xl font-extrabold text-ink">后台管理</h1>
-          <p class="m-0 text-sm text-mist">官网内容、线索与运单的一期运营后台。</p>
+          <h1 class="m-0 text-2xl font-extrabold text-ink">Admin Console</h1>
+          <p class="m-0 text-sm text-mist">Unified operations console for content, waybills, members, and payments.</p>
         </div>
-        <div class="flex items-center gap-3 self-start sm:self-auto">
-          <span class="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
-            {{ auth.me?.username }}
-          </span>
-          <el-button type="primary" @click="onLogout">退出登录</el-button>
+        <div class="flex flex-col items-stretch gap-3 self-start sm:items-end sm:self-auto">
+          <div v-if="canSwitchTenant" class="flex flex-col gap-2 sm:min-w-[320px]">
+            <div class="text-xs font-semibold uppercase tracking-[0.16em] text-mist">Current Tenant</div>
+            <el-select
+              :model-value="auth.me?.tenantId"
+              :loading="tenantLoading || switchingTenant"
+              filterable
+              placeholder="Select tenant"
+              @change="onTenantChange"
+            >
+              <el-option
+                v-for="tenant in tenantOptions"
+                :key="tenant.id"
+                :label="buildTenantOptionLabel(tenant)"
+                :value="tenant.id"
+                :disabled="tenant.status !== 'ACTIVE'"
+              />
+            </el-select>
+            <div class="text-xs text-mist">
+              <template v-if="auth.me?.tenantSwitched">
+                Acting on tenant `{{ auth.me?.tenantCode }}` with platform admin access. Login tenant: `{{ auth.me?.loginTenantCode }}`.
+              </template>
+              <template v-else>
+                Current tenant: `{{ auth.me?.tenantCode }}`.
+              </template>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-end gap-3">
+            <span class="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
+              {{ auth.me?.username }}
+            </span>
+            <el-button type="primary" @click="onLogout">Sign out</el-button>
+          </div>
         </div>
       </header>
 
@@ -37,19 +66,28 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AdminMenuTreeItem from '../components/AdminMenuTreeItem.vue'
-import { resetMenuRoutes } from '../router'
+import { fetchTenants } from '../api/tenant'
+import { DEFAULT_HOME_PATH, resetMenuRoutes } from '../router'
 import { useAuthStore } from '../stores/auth'
 import type { AdminMenu } from '../types/auth'
+import type { TenantSummary } from '../types/tenant'
+import { runSafely } from '../utils/async'
+import { showSuccessMessage } from '../utils/message'
 
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
 
+const tenantLoading = ref(false)
+const switchingTenant = ref(false)
+const tenantOptions = ref<TenantSummary[]>([])
+
 const menus = computed(() => auth.me?.menus ?? [])
 const activeMenu = computed(() => route.path)
+const canSwitchTenant = computed(() => auth.hasPermission('tenant:edit'))
 const openMenuKeys = computed(() => findParentPaths(menus.value, route.path))
 
 function findParentPaths(menuTree: AdminMenu[], currentPath: string, parents: string[] = []): string[] {
@@ -70,11 +108,50 @@ function findParentPaths(menuTree: AdminMenu[], currentPath: string, parents: st
   return []
 }
 
+function buildTenantOptionLabel(tenant: TenantSummary) {
+  return `${tenant.tenantName} (${tenant.tenantCode})`
+}
+
+async function loadTenantOptions() {
+  if (!canSwitchTenant.value) {
+    tenantOptions.value = []
+    return
+  }
+
+  tenantLoading.value = true
+  try {
+    tenantOptions.value = await fetchTenants()
+  } finally {
+    tenantLoading.value = false
+  }
+}
+
+async function onTenantChange(tenantId: number) {
+  if (!auth.me || auth.me.tenantId === tenantId) {
+    return
+  }
+
+  switchingTenant.value = true
+  try {
+    resetMenuRoutes()
+    await auth.switchTenant(tenantId)
+    await loadTenantOptions()
+    showSuccessMessage(`Switched to tenant ${auth.me?.tenantName ?? ''}`.trim())
+    await router.replace(DEFAULT_HOME_PATH)
+  } finally {
+    switchingTenant.value = false
+  }
+}
+
 function onLogout() {
   auth.logout()
   resetMenuRoutes()
   router.push('/login')
 }
+
+onMounted(() => {
+  void runSafely(loadTenantOptions, 'Failed to load tenant list')
+})
 </script>
 
 <style scoped>

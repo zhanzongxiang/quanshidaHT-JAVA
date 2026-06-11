@@ -1,4 +1,4 @@
-const DEFAULT_ERROR_MESSAGE = '操作失败，请稍后重试'
+const DEFAULT_ERROR_MESSAGE = 'Operation failed, please try again later'
 
 export function normalizeMessage(message: unknown, fallback = DEFAULT_ERROR_MESSAGE) {
   if (typeof message === 'string') {

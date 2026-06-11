@@ -1,6 +1,6 @@
 import { ElMessage, ElMessageBox } from 'element-plus'
 
-export function normalizeErrorMessage(error: unknown, fallback = '操作失败，请稍后重试') {
+export function normalizeErrorMessage(error: unknown, fallback = 'Operation failed, please retry later') {
   if (typeof error === 'string') {
     return error.trim() || fallback
   }
@@ -24,12 +24,12 @@ export function showWarningMessage(message: string) {
   ElMessage.warning(message)
 }
 
-export async function confirmAction(message: string, title: string, confirmButtonText = '确认') {
+export async function confirmAction(message: string, title: string, confirmButtonText = 'Confirm') {
   try {
     await ElMessageBox.confirm(message, title, {
       type: 'warning',
       confirmButtonText,
-      cancelButtonText: '取消',
+      cancelButtonText: 'Cancel',
     })
     return true
   } catch {

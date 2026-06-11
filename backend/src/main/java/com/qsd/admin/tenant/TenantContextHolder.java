@@ -1,6 +1,7 @@
 package com.qsd.admin.tenant;
 
 import com.qsd.admin.common.exception.BusinessException;
+import com.qsd.admin.common.exception.ErrorCode;
 
 public final class TenantContextHolder {
     private static final ThreadLocal<TenantContext> CONTEXT = new ThreadLocal<>();
@@ -19,7 +20,7 @@ public final class TenantContextHolder {
     public static Long requireTenantId() {
         TenantContext context = CONTEXT.get();
         if (context == null || context.tenantId() == null) {
-            throw new BusinessException("tenant context is missing");
+            throw new BusinessException(ErrorCode.TENANT_CONTEXT_REQUIRED, "Tenant context is missing");
         }
         return context.tenantId();
     }

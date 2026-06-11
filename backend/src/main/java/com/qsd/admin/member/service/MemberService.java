@@ -2,40 +2,50 @@ package com.qsd.admin.member.service;
 
 import com.qsd.admin.auth.dto.LoginResponse;
 import com.qsd.admin.common.exception.BusinessException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.qsd.admin.common.exception.ErrorCode;
 import com.qsd.admin.common.exception.NotFoundException;
 import com.qsd.admin.common.service.RateLimiterService;
 import com.qsd.admin.member.dto.MemberAdminDetailResponse;
 import com.qsd.admin.member.dto.MemberAdminSaveRequest;
 import com.qsd.admin.member.dto.MemberAdminSummaryResponse;
+import com.qsd.admin.member.dto.MemberAuditLogResponse;
 import com.qsd.admin.member.dto.MemberLoginRequest;
+import com.qsd.admin.member.dto.MemberPasswordChangeRequest;
 import com.qsd.admin.member.dto.MemberProfileResponse;
 import com.qsd.admin.member.dto.MemberProfileUpdateRequest;
 import com.qsd.admin.member.dto.MemberRegisterRequest;
 import com.qsd.admin.member.dto.MemberWaybillDetailResponse;
 import com.qsd.admin.member.dto.MemberWaybillSummaryResponse;
 import com.qsd.admin.member.dto.MemberWechatBindRequest;
+import com.qsd.admin.member.dto.MemberWechatCompleteRequest;
 import com.qsd.admin.member.dto.MemberWechatLoginRequest;
+import com.qsd.admin.member.dto.MemberWechatLoginResponse;
+import com.qsd.admin.member.entity.MemberAuditLog;
 import com.qsd.admin.member.entity.MemberUser;
 import com.qsd.admin.member.entity.MemberWaybillRelation;
+import com.qsd.admin.member.mapper.MemberAuditLogMapper;
 import com.qsd.admin.member.mapper.MemberUserMapper;
 import com.qsd.admin.member.mapper.MemberWaybillRelationMapper;
 import com.qsd.admin.payment.dto.WechatCodeSessionResponse;
 import com.qsd.admin.payment.entity.PayMerchantConfig;
 import com.qsd.admin.payment.service.PaymentMerchantService;
 import com.qsd.admin.payment.service.WechatPayGateway;
+import com.qsd.admin.security.AuthenticatedUser;
 import com.qsd.admin.security.JwtTokenService;
 import com.qsd.admin.tenant.TenantContext;
 import com.qsd.admin.tenant.TenantContextHolder;
 import com.qsd.admin.waybill.dto.WaybillEventPayload;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import com.qsd.admin.waybill.dto.WaybillLegPayload;
 import com.qsd.admin.waybill.entity.WaybillLeg;
 import com.qsd.admin.waybill.entity.WaybillOrder;
 import com.qsd.admin.waybill.entity.WaybillTrackEvent;
 import com.qsd.admin.waybill.mapper.WaybillOrderMapper;
 import com.qsd.admin.waybill.service.WaybillService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,9 +66,13 @@ public class MemberService {
     private static final String STATUS_ACTIVE = "active";
     private static final String STATUS_DISABLED = "disabled";
     private static final String STATUS_PENDING = "pending";
+    private static final String REGISTER_SOURCE_MINIAPP_PHONE = "miniapp_phone";
+    private static final String REGISTER_SOURCE_MINIAPP_WECHAT = "miniapp_wechat";
+    private static final String REGISTER_SOURCE_ADMIN_CREATED = "admin_created";
     private static final Set<String> ALLOWED_STATUSES = Set.of(STATUS_ACTIVE, STATUS_DISABLED, STATUS_PENDING);
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
+    private final MemberAuditLogMapper memberAuditLogMapper;
     private final MemberUserMapper memberUserMapper;
     private final MemberWaybillRelationMapper memberWaybillRelationMapper;
     private final WaybillOrderMapper waybillOrderMapper;
@@ -70,6 +84,7 @@ public class MemberService {
     private final RateLimiterService rateLimiterService;
 
     public MemberService(
+        MemberAuditLogMapper memberAuditLogMapper,
         MemberUserMapper memberUserMapper,
         MemberWaybillRelationMapper memberWaybillRelationMapper,
         WaybillOrderMapper waybillOrderMapper,
@@ -80,6 +95,7 @@ public class MemberService {
         PasswordEncoder passwordEncoder,
         RateLimiterService rateLimiterService
     ) {
+        this.memberAuditLogMapper = memberAuditLogMapper;
         this.memberUserMapper = memberUserMapper;
         this.memberWaybillRelationMapper = memberWaybillRelationMapper;
         this.waybillOrderMapper = waybillOrderMapper;
@@ -98,11 +114,10 @@ public class MemberService {
             return List.of();
         }
 
-        // Batch query for waybill counts to avoid N+1
         List<Long> memberIds = members.stream()
             .map(MemberUser::getId)
             .toList();
-        Map<Long, Integer> waybillCountMap = new java.util.HashMap<>();
+        Map<Long, Integer> waybillCountMap = new HashMap<>();
         try {
             List<Map<String, Object>> counts = waybillOrderMapper.countAccessibleByMemberIds(tenantId, memberIds);
             for (Map<String, Object> row : counts) {
@@ -111,8 +126,8 @@ public class MemberService {
                     ((Number) row.get("cnt")).intValue()
                 );
             }
-        } catch (Exception e) {
-            log.warn("Failed to batch query waybill counts for {} members", members.size(), e);
+        } catch (Exception ex) {
+            log.warn("Failed to batch query waybill counts for {} members", members.size(), ex);
         }
 
         Map<Long, Integer> finalCountMap = waybillCountMap;
@@ -140,12 +155,13 @@ public class MemberService {
     @Transactional
     public MemberAdminDetailResponse createAdminMember(MemberAdminSaveRequest request) {
         Long tenantId = TenantContextHolder.requireTenantId();
+        validateProfileFields(request.nickname(), request.fullName(), request.avatarUrl());
         MemberUser existing = memberUserMapper.selectByPhone(tenantId, request.phone().trim());
         if (existing != null) {
-            throw new BusinessException("该手机号已存在");
+            throw new BusinessException(ErrorCode.RESOURCE_CONFLICT, "Phone already exists");
         }
         if (trimToNull(request.password()) == null) {
-            throw new BusinessException("新建会员时必须设置登录密码");
+            throw new BusinessException("Password is required when creating a member");
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -158,27 +174,34 @@ public class MemberService {
         member.setAvatarUrl(trimToEmpty(request.avatarUrl()));
         member.setStatus(normalizeStatus(request.status()));
         member.setRemark(trimToEmpty(request.remark()));
+        member.setRegisterSource(REGISTER_SOURCE_ADMIN_CREATED);
+        member.setRegisterIp("");
+        member.setLastLoginIp("");
+        member.setPasswordUpdatedAt(now);
         member.setDeleted(0);
         member.setCreatedAt(now);
         member.setUpdatedAt(now);
         memberUserMapper.insert(member);
 
         replaceManualWaybillRelations(member.getId(), request.waybillIds());
+        recordMemberAudit(member.getId(), "admin_created", "Member created by admin", "source=admin");
         return toAdminDetail(requireMember(member.getId()));
     }
 
     @Transactional
     public MemberAdminDetailResponse updateAdminMember(Long id, MemberAdminSaveRequest request) {
         Long tenantId = TenantContextHolder.requireTenantId();
+        validateProfileFields(request.nickname(), request.fullName(), request.avatarUrl());
         MemberUser member = requireMember(id);
         MemberUser existing = memberUserMapper.selectByPhone(tenantId, request.phone().trim());
         if (existing != null && !existing.getId().equals(id)) {
-            throw new BusinessException("该手机号已存在");
+            throw new BusinessException(ErrorCode.RESOURCE_CONFLICT, "Phone already exists");
         }
 
         member.setPhone(request.phone().trim());
         if (trimToNull(request.password()) != null) {
             member.setPasswordHash(passwordEncoder.encode(request.password().trim()));
+            member.setPasswordUpdatedAt(LocalDateTime.now());
         }
         member.setNickname(trimToEmpty(request.nickname()));
         member.setFullName(trimToEmpty(request.fullName()));
@@ -189,6 +212,7 @@ public class MemberService {
         memberUserMapper.updateById(member);
 
         replaceManualWaybillRelations(id, request.waybillIds());
+        recordMemberAudit(id, "admin_updated", "Member profile updated by admin", "fields=profile");
         return toAdminDetail(requireMember(id));
     }
 
@@ -198,14 +222,16 @@ public class MemberService {
         member.setStatus(normalizeStatus(status));
         member.setUpdatedAt(LocalDateTime.now());
         memberUserMapper.updateById(member);
+        recordMemberAudit(id, "admin_status_updated", "Member status updated to " + member.getStatus(), "status=" + member.getStatus());
         return toAdminDetail(requireMember(id));
     }
 
     @Transactional
-    public LoginResponse register(MemberRegisterRequest request) {
+    public LoginResponse register(MemberRegisterRequest request, String clientIp) {
         Long tenantId = TenantContextHolder.requireTenantId();
+        validateProfileFields(request.nickname(), request.fullName(), "");
         if (memberUserMapper.selectByPhone(tenantId, request.phone().trim()) != null) {
-            throw new BusinessException("该手机号已注册");
+            throw new BusinessException(ErrorCode.RESOURCE_CONFLICT, "Phone already registered");
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -218,11 +244,15 @@ public class MemberService {
         member.setAvatarUrl("");
         member.setStatus(STATUS_ACTIVE);
         member.setRemark("");
+        member.setRegisterSource(REGISTER_SOURCE_MINIAPP_PHONE);
+        member.setRegisterIp(trimToEmpty(clientIp));
         member.setDeleted(0);
         member.setCreatedAt(now);
         member.setUpdatedAt(now);
-        member.setLastLoginAt(now);
+        member.setPasswordUpdatedAt(now);
+        updateLastLogin(member, clientIp);
         memberUserMapper.insert(member);
+        recordMemberAudit(member.getId(), new AuditActor("guest", null, "guest"), "registered", "Member registered", "source=" + member.getRegisterSource());
 
         String token = createMemberToken(member);
         return new LoginResponse(token, "Bearer");
@@ -234,83 +264,65 @@ public class MemberService {
         String rateLimitKey = "member:" + (clientIp != null ? clientIp : "unknown") + ":" + request.phone();
         if (!rateLimiterService.isAllowed(rateLimitKey)) {
             long remaining = rateLimiterService.getRemainingLockoutSeconds(rateLimitKey);
-            throw new BusinessException("登录尝试过于频繁，请 " + remaining + " 秒后再试");
+            throw new BusinessException(ErrorCode.RATE_LIMITED, "Too many login attempts. Retry after " + remaining + " seconds");
         }
 
         MemberUser member = memberUserMapper.selectByPhone(tenantId, request.phone().trim());
         if (member == null) {
             rateLimiterService.recordFailure(rateLimitKey);
-            throw new BusinessException("手机号或密码错误");
+            throw new BusinessException(ErrorCode.AUTHENTICATION_FAILED, "Phone or password is incorrect");
         }
         String rawPassword = request.password().trim();
         if (!passwordEncoder.matches(rawPassword, member.getPasswordHash())) {
             rateLimiterService.recordFailure(rateLimitKey);
-            throw new BusinessException("手机号或密码错误");
-        }
-        if (STATUS_DISABLED.equals(member.getStatus())) {
-            throw new BusinessException("会员已被停用");
-        }
-        if (STATUS_PENDING.equals(member.getStatus())) {
-            throw new BusinessException("会员待审核，暂不可登录");
+            throw new BusinessException(ErrorCode.AUTHENTICATION_FAILED, "Phone or password is incorrect");
         }
 
+        ensureMemberUsable(member);
         rateLimiterService.recordSuccess(rateLimitKey);
-        LocalDateTime now = LocalDateTime.now();
-        member.setLastLoginAt(now);
-        member.setUpdatedAt(now);
+        updateLastLogin(member, clientIp);
         memberUserMapper.updateById(member);
+        recordMemberAudit(member.getId(), new AuditActor("guest", null, "guest"), "password_login", "Member signed in with password", trimToEmpty(clientIp));
 
         String token = createMemberToken(member);
         return new LoginResponse(token, "Bearer");
     }
 
     @Transactional
-    public LoginResponse wechatLogin(MemberWechatLoginRequest request) {
+    public MemberWechatLoginResponse wechatLogin(MemberWechatLoginRequest request, String clientIp) {
         Long tenantId = TenantContextHolder.requireTenantId();
-        PayMerchantConfig merchantConfig = paymentMerchantService.requireCurrentMerchant();
-        WechatCodeSessionResponse session = wechatPayGateway.exchangeCode(request.code(), merchantConfig);
-        String openid = trimToNull(session.openid());
-        if (openid == null) {
-            throw new BusinessException("未获取到微信 openid，请稍后重试");
+        WechatIdentity identity = resolveWechatIdentityByCode(request.code());
+        MemberUser member = memberUserMapper.selectByWechatOpenid(tenantId, identity.openid());
+        if (member != null) {
+            return authenticateBoundWechatMember(member, clientIp);
         }
 
-        MemberUser member = memberUserMapper.selectByWechatOpenid(tenantId, openid);
-        LocalDateTime now = LocalDateTime.now();
-        if (member == null) {
-            String phone = trimToNull(request.phone());
-            if (phone != null) {
-                member = memberUserMapper.selectByPhone(tenantId, phone);
-            }
-            if (member == null) {
-                member = new MemberUser();
-                member.setTenantId(tenantId);
-                member.setPhone(phone == null ? generateVirtualPhone(openid) : phone);
-                member.setPasswordHash(passwordEncoder.encode(UUID.randomUUID().toString()));
-                member.setNickname(trimToEmpty(request.nickname()));
-                member.setFullName(trimToEmpty(request.fullName()));
-                member.setAvatarUrl("");
-                member.setStatus(STATUS_ACTIVE);
-                member.setRemark("微信登录自动创建");
-                member.setDeleted(0);
-                member.setCreatedAt(now);
-            }
+        String phone = trimToNull(request.phone());
+        if (phone == null) {
+            return MemberWechatLoginResponse.phoneCompletionRequired(createWechatBindTicket(identity));
         }
 
-        ensureMemberUsable(member);
-        member.setWechatOpenid(openid);
-        member.setWechatUnionid(trimToEmpty(session.unionid()));
-        member.setWechatBindTime(now);
-        member.setLastLoginAt(now);
-        member.setUpdatedAt(now);
+        return bindWechatToPhone(
+            identity,
+            phone,
+            request.nickname(),
+            request.fullName(),
+            Boolean.TRUE.equals(request.replaceBinding()),
+            clientIp
+        );
+    }
 
-        if (member.getId() == null) {
-            memberUserMapper.insert(member);
-        } else {
-            memberUserMapper.updateById(member);
-        }
-
-        String token = createMemberToken(member);
-        return new LoginResponse(token, "Bearer");
+    @Transactional
+    public MemberWechatLoginResponse completeWechatLogin(MemberWechatCompleteRequest request, String clientIp) {
+        WechatIdentity identity = resolveWechatIdentityFromTicket(request.bindTicket());
+        return bindWechatToPhone(
+            identity,
+            request.phone(),
+            request.nickname(),
+            request.fullName(),
+            Boolean.TRUE.equals(request.replaceBinding()),
+            clientIp
+        );
     }
 
     public MemberProfileResponse getMemberProfile(Long memberId) {
@@ -323,12 +335,36 @@ public class MemberService {
     public MemberProfileResponse updateMemberProfile(Long memberId, MemberProfileUpdateRequest request) {
         MemberUser member = requireMember(memberId);
         ensureMemberUsable(member);
+        validateProfileFields(request.nickname(), request.fullName(), request.avatarUrl());
         member.setNickname(trimToEmpty(request.nickname()));
         member.setFullName(trimToEmpty(request.fullName()));
         member.setAvatarUrl(trimToEmpty(request.avatarUrl()));
         member.setUpdatedAt(LocalDateTime.now());
         memberUserMapper.updateById(member);
+        recordMemberAudit(memberId, "profile_updated", "Member profile updated", "fields=profile");
         return toProfile(member);
+    }
+
+    @Transactional
+    public void changeMemberPassword(Long memberId, MemberPasswordChangeRequest request) {
+        MemberUser member = requireMember(memberId);
+        ensureMemberUsable(member);
+
+        String currentPassword = request.currentPassword().trim();
+        String newPassword = request.newPassword().trim();
+        if (!passwordEncoder.matches(currentPassword, member.getPasswordHash())) {
+            throw new BusinessException(ErrorCode.AUTHENTICATION_FAILED, "Current password is incorrect");
+        }
+        if (currentPassword.equals(newPassword)) {
+            throw new BusinessException("New password must be different from the current password");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        member.setPasswordHash(passwordEncoder.encode(newPassword));
+        member.setPasswordUpdatedAt(now);
+        member.setUpdatedAt(now);
+        memberUserMapper.updateById(member);
+        recordMemberAudit(memberId, "password_changed", "Member password changed", "");
     }
 
     @Transactional
@@ -337,29 +373,36 @@ public class MemberService {
         MemberUser member = requireMember(memberId);
         ensureMemberUsable(member);
 
-        String code = trimToNull(request.code());
-        if (code == null) {
-            throw new BusinessException("微信授权 code 不能为空");
-        }
-
-        PayMerchantConfig merchantConfig = paymentMerchantService.requireCurrentMerchant();
-        WechatCodeSessionResponse session = wechatPayGateway.exchangeCode(code, merchantConfig);
-        String openid = trimToNull(session.openid());
-        if (openid == null) {
-            throw new BusinessException("未获取到微信身份，请稍后重试");
-        }
-
-        MemberUser existing = memberUserMapper.selectByWechatOpenid(tenantId, openid);
+        WechatIdentity identity = resolveWechatIdentityByCode(request.code());
+        MemberUser existing = memberUserMapper.selectByWechatOpenid(tenantId, identity.openid());
         if (existing != null && !existing.getId().equals(memberId)) {
-            throw new BusinessException("该微信身份已绑定其他会员");
+            throw new BusinessException(ErrorCode.RESOURCE_CONFLICT, "This WeChat account is already bound to another member");
+        }
+
+        String currentOpenid = trimToNull(member.getWechatOpenid());
+        if (currentOpenid != null && !currentOpenid.equals(identity.openid()) && !Boolean.TRUE.equals(request.replaceBinding())) {
+            throw new BusinessException(ErrorCode.RESOURCE_CONFLICT, "Current member is already bound to another WeChat account");
         }
 
         LocalDateTime now = LocalDateTime.now();
-        member.setWechatOpenid(openid);
-        member.setWechatUnionid(trimToEmpty(session.unionid()));
-        member.setWechatBindTime(now);
+        bindWechat(member, identity, now);
         member.setUpdatedAt(now);
         memberUserMapper.updateById(member);
+        recordMemberAudit(memberId, "wechat_bound", "WeChat account bound", "openid=" + identity.openid());
+        return toProfile(member);
+    }
+
+    @Transactional
+    public MemberProfileResponse unbindWechatIdentity(Long memberId) {
+        MemberUser member = requireMember(memberId);
+        ensureMemberUsable(member);
+        LocalDateTime now = LocalDateTime.now();
+        member.setWechatOpenid("");
+        member.setWechatUnionid("");
+        member.setWechatBindTime(null);
+        member.setUpdatedAt(now);
+        memberUserMapper.updateById(member);
+        recordMemberAudit(memberId, "wechat_unbound", "WeChat account unbound", "");
         return toProfile(member);
     }
 
@@ -375,7 +418,7 @@ public class MemberService {
         ensureMemberUsable(member);
         WaybillOrder order = waybillOrderMapper.selectAccessibleDetailByMember(tenantId, waybillId, memberId, member.getPhone());
         if (order == null) {
-            throw new NotFoundException("会员运单不存在");
+            throw new NotFoundException("Member waybill not found");
         }
         List<WaybillLeg> legEntities = waybillService.listLegs(order.getId());
         Map<Long, Integer> legNoMap = new HashMap<>();
@@ -424,11 +467,16 @@ public class MemberService {
             safe(member.getAvatarUrl()),
             member.getStatus(),
             safe(member.getRemark()),
+            safe(member.getRegisterSource()),
+            safe(member.getRegisterIp()),
             formatDateTime(member.getLastLoginAt()),
+            safe(member.getLastLoginIp()),
+            formatDateTime(member.getPasswordUpdatedAt()),
             formatDateTime(member.getCreatedAt()),
             formatDateTime(member.getUpdatedAt()),
             boundWaybillIds,
-            listAccessibleWaybills(member)
+            listAccessibleWaybills(member),
+            toAuditResponses(member.getId())
         );
     }
 
@@ -443,7 +491,28 @@ public class MemberService {
             safe(member.getFullName()),
             safe(member.getAvatarUrl()),
             member.getStatus(),
+            safe(member.getRegisterSource()),
+            formatDateTime(member.getLastLoginAt()),
+            safe(member.getLastLoginIp()),
+            formatDateTime(member.getPasswordUpdatedAt()),
             formatDateTime(member.getCreatedAt())
+        );
+    }
+
+    private List<MemberAuditLogResponse> toAuditResponses(Long memberId) {
+        return memberAuditLogMapper.selectRecentByMemberId(TenantContextHolder.requireTenantId(), memberId, 20).stream()
+            .map(this::toAuditResponse)
+            .toList();
+    }
+
+    private MemberAuditLogResponse toAuditResponse(MemberAuditLog log) {
+        return new MemberAuditLogResponse(
+            log.getId(),
+            log.getActionType(),
+            log.getOperatorType(),
+            log.getOperatorLabel(),
+            log.getSummary(),
+            formatDateTime(log.getCreatedAt())
         );
     }
 
@@ -504,9 +573,9 @@ public class MemberService {
             return;
         }
 
-        List<WaybillOrder> waybills = waybillOrderMapper.selectActiveByIds(TenantContextHolder.requireTenantId(), new ArrayList<>(uniqueIds));
+        List<WaybillOrder> waybills = waybillOrderMapper.selectActiveByIds(tenantId, new ArrayList<>(uniqueIds));
         if (waybills.size() != uniqueIds.size()) {
-            throw new BusinessException("存在无效的运单，无法完成绑定");
+            throw new BusinessException("Some waybills are invalid");
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -529,10 +598,123 @@ public class MemberService {
             .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
+    private MemberWechatLoginResponse bindWechatToPhone(
+        WechatIdentity identity,
+        String phone,
+        String nickname,
+        String fullName,
+        boolean replaceBinding,
+        String clientIp
+    ) {
+        Long tenantId = TenantContextHolder.requireTenantId();
+        validateProfileFields(nickname, fullName, "");
+        MemberUser member = memberUserMapper.selectByPhone(tenantId, phone);
+        LocalDateTime now = LocalDateTime.now();
+        if (member == null) {
+            member = new MemberUser();
+            member.setTenantId(tenantId);
+            member.setPhone(phone);
+            member.setPasswordHash(passwordEncoder.encode(UUID.randomUUID().toString()));
+            member.setNickname(trimToEmpty(nickname));
+            member.setFullName(trimToEmpty(fullName));
+            member.setAvatarUrl("");
+            member.setStatus(STATUS_ACTIVE);
+            member.setRemark("Created by WeChat login");
+            member.setRegisterSource(REGISTER_SOURCE_MINIAPP_WECHAT);
+            member.setRegisterIp(trimToEmpty(clientIp));
+            member.setDeleted(0);
+            member.setCreatedAt(now);
+            member.setPasswordUpdatedAt(now);
+        } else {
+            ensureMemberUsable(member);
+            ensureWechatReplaceAllowed(member, identity.openid(), replaceBinding);
+        }
+
+        bindWechat(member, identity, now);
+        updateLastLogin(member, clientIp);
+        member.setUpdatedAt(now);
+        if (member.getId() == null) {
+            memberUserMapper.insert(member);
+            recordMemberAudit(member.getId(), new AuditActor("guest", null, "guest"), "registered", "Member registered by WeChat login", "source=" + REGISTER_SOURCE_MINIAPP_WECHAT);
+        } else {
+            memberUserMapper.updateById(member);
+        }
+        recordMemberAudit(member.getId(), new AuditActor("guest", null, "guest"), "wechat_login", "Member signed in with WeChat", trimToEmpty(clientIp));
+        return MemberWechatLoginResponse.authenticated(createMemberToken(member), "Bearer");
+    }
+
+    private MemberWechatLoginResponse authenticateBoundWechatMember(MemberUser member, String clientIp) {
+        ensureMemberUsable(member);
+        updateLastLogin(member, clientIp);
+        memberUserMapper.updateById(member);
+        recordMemberAudit(member.getId(), new AuditActor("guest", null, "guest"), "wechat_login", "Member signed in with WeChat", trimToEmpty(clientIp));
+        return MemberWechatLoginResponse.authenticated(createMemberToken(member), "Bearer");
+    }
+
+    private void ensureWechatReplaceAllowed(MemberUser member, String openid, boolean replaceBinding) {
+        String currentOpenid = trimToNull(member.getWechatOpenid());
+        if (currentOpenid == null || currentOpenid.equals(openid)) {
+            return;
+        }
+        if (!replaceBinding) {
+            throw new BusinessException(ErrorCode.RESOURCE_CONFLICT, "Current member is already bound to another WeChat account");
+        }
+    }
+
+    private void bindWechat(MemberUser member, WechatIdentity identity, LocalDateTime now) {
+        member.setWechatOpenid(identity.openid());
+        member.setWechatUnionid(identity.unionid());
+        member.setWechatBindTime(now);
+    }
+
+    private WechatIdentity resolveWechatIdentityByCode(String code) {
+        String normalizedCode = trimToNull(code);
+        if (normalizedCode == null) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED, "WeChat auth code is required");
+        }
+        PayMerchantConfig merchantConfig = paymentMerchantService.requireCurrentMerchant();
+        WechatCodeSessionResponse session = wechatPayGateway.exchangeCode(normalizedCode, merchantConfig);
+        String openid = trimToNull(session.openid());
+        if (openid == null) {
+            throw new BusinessException(ErrorCode.AUTHENTICATION_FAILED, "Unable to resolve WeChat identity");
+        }
+        return new WechatIdentity(openid, trimToEmpty(session.unionid()));
+    }
+
+    private WechatIdentity resolveWechatIdentityFromTicket(String bindTicket) {
+        String normalizedTicket = trimToNull(bindTicket);
+        if (normalizedTicket == null) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED, "WeChat bind ticket is required");
+        }
+        try {
+            JwtTokenService.MemberWechatBindTicket ticket = jwtTokenService.parseMemberWechatBindTicket(normalizedTicket);
+            Long tenantId = TenantContextHolder.requireTenantId();
+            if (ticket.tenantId() != null && !ticket.tenantId().equals(tenantId)) {
+                throw new BusinessException(ErrorCode.AUTHORIZATION_DENIED, "WeChat bind ticket does not belong to the current tenant");
+            }
+            String openid = trimToNull(ticket.openid());
+            if (openid == null) {
+                throw new BusinessException(ErrorCode.AUTHENTICATION_FAILED, "WeChat bind ticket is invalid");
+            }
+            return new WechatIdentity(openid, trimToEmpty(ticket.unionid()));
+        } catch (BusinessException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new BusinessException(ErrorCode.AUTHENTICATION_FAILED, "WeChat bind ticket is invalid or expired");
+        }
+    }
+
+    private String createWechatBindTicket(WechatIdentity identity) {
+        TenantContext tenantContext = TenantContextHolder.get();
+        Long tenantId = TenantContextHolder.requireTenantId();
+        String tenantCode = tenantContext == null ? null : tenantContext.tenantCode();
+        return jwtTokenService.createMemberWechatBindTicket(tenantId, tenantCode, identity.openid(), identity.unionid());
+    }
+
     private MemberUser requireMember(Long id) {
         MemberUser member = memberUserMapper.selectActiveById(TenantContextHolder.requireTenantId(), id);
         if (member == null) {
-            throw new NotFoundException("会员不存在");
+            throw new NotFoundException("Member not found");
         }
         return member;
     }
@@ -546,20 +728,20 @@ public class MemberService {
 
     private void ensureMemberUsable(MemberUser member) {
         if (STATUS_DISABLED.equals(member.getStatus())) {
-            throw new BusinessException("会员已被停用");
+            throw new BusinessException(ErrorCode.STATE_INVALID, "Member is disabled");
         }
         if (STATUS_PENDING.equals(member.getStatus())) {
-            throw new BusinessException("会员待审核，暂不可操作");
+            throw new BusinessException(ErrorCode.STATE_INVALID, "Member is pending review");
         }
     }
 
     private String normalizeStatus(String status) {
         String normalized = trimToNull(status);
         if (normalized == null) {
-            throw new BusinessException("会员状态不能为空");
+            throw new BusinessException("Status is required");
         }
         if (!ALLOWED_STATUSES.contains(normalized)) {
-            throw new BusinessException("会员状态不合法");
+            throw new BusinessException("Invalid member status");
         }
         return normalized;
     }
@@ -584,8 +766,65 @@ public class MemberService {
         return value == null ? "" : value;
     }
 
-    private String generateVirtualPhone(String openid) {
-        int suffix = Math.floorMod(openid.hashCode(), 100000000);
-        return "199" + String.format("%08d", suffix);
+    private void validateProfileFields(String nickname, String fullName, String avatarUrl) {
+        String normalizedNickname = trimToNull(nickname);
+        String normalizedFullName = trimToNull(fullName);
+        String normalizedAvatarUrl = trimToNull(avatarUrl);
+        if (normalizedNickname != null && normalizedNickname.length() > 64) {
+            throw new BusinessException("Nickname must be at most 64 characters");
+        }
+        if (normalizedFullName != null && normalizedFullName.length() > 64) {
+            throw new BusinessException("Full name must be at most 64 characters");
+        }
+        if (normalizedAvatarUrl != null) {
+            if (normalizedAvatarUrl.length() > 500) {
+                throw new BusinessException("Avatar URL must be at most 500 characters");
+            }
+            if (normalizedAvatarUrl.contains(" ")) {
+                throw new BusinessException("Avatar URL must not contain spaces");
+            }
+        }
+    }
+
+    private void updateLastLogin(MemberUser member, String clientIp) {
+        LocalDateTime now = LocalDateTime.now();
+        member.setLastLoginAt(now);
+        member.setLastLoginIp(trimToEmpty(clientIp));
+        member.setUpdatedAt(now);
+    }
+
+    private void recordMemberAudit(Long memberId, String actionType, String summary, String detail) {
+        recordMemberAudit(memberId, resolveAuditActor(), actionType, summary, detail);
+    }
+
+    private void recordMemberAudit(Long memberId, AuditActor actor, String actionType, String summary, String detail) {
+        MemberAuditLog logEntry = new MemberAuditLog();
+        logEntry.setTenantId(TenantContextHolder.requireTenantId());
+        logEntry.setMemberId(memberId);
+        logEntry.setActionType(actionType);
+        logEntry.setOperatorType(actor.operatorType());
+        logEntry.setOperatorId(actor.operatorId());
+        logEntry.setOperatorLabel(actor.operatorLabel());
+        logEntry.setSummary(summary);
+        logEntry.setDetailJson(trimToNull(detail));
+        logEntry.setCreatedAt(LocalDateTime.now());
+        memberAuditLogMapper.insert(logEntry);
+    }
+
+    private AuditActor resolveAuditActor() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof AuthenticatedUser user) {
+            if (JwtTokenService.TOKEN_TYPE_MEMBER.equals(user.tokenType())) {
+                return new AuditActor("member", user.userId(), "member:" + user.userId());
+            }
+            return new AuditActor("admin", user.userId(), user.username());
+        }
+        return new AuditActor("system", null, "system");
+    }
+
+    private record WechatIdentity(String openid, String unionid) {
+    }
+
+    private record AuditActor(String operatorType, Long operatorId, String operatorLabel) {
     }
 }

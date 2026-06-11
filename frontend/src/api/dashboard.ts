@@ -1,14 +1,26 @@
 import { http } from './http'
-
-interface ApiResponse<T> {
-  code: number
-  message: string
-  data: T
-}
+import { unwrapResponse } from './shared'
+import type { ApiResponse } from './shared'
 
 export interface DashboardSummary {
+  tenantId: number
+  tenantCode: string
+  tenantName: string
+  tenantStatus: string
+  timezone: string
+  locale: string
+  enabledDomainCount: number
+  enabledMerchantCount: number
+  memberTotal: number
+  memberEnabled: number
+  memberWechatBound: number
   waybillTotal: number
   waybillInTransit: number
+  payOrderTotal: number
+  payOrderPaying: number
+  payOrderPaid: number
+  refundOrderTotal: number
+  refundProcessing: number
   newsTotal: number
   newsPublished: number
   serviceLineTotal: number
@@ -17,6 +29,5 @@ export interface DashboardSummary {
 }
 
 export async function fetchDashboardSummary(): Promise<DashboardSummary> {
-  const { data } = await http.get<ApiResponse<DashboardSummary>>('/dashboard/summary')
-  return data.data
+  return unwrapResponse(await http.get<ApiResponse<DashboardSummary>>('/dashboard/summary'))
 }

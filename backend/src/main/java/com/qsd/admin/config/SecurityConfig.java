@@ -1,6 +1,8 @@
 package com.qsd.admin.config;
 
 import com.qsd.admin.security.JwtAuthenticationFilter;
+import com.qsd.admin.security.RestAccessDeniedHandler;
+import com.qsd.admin.security.RestAuthenticationEntryPoint;
 import com.qsd.admin.tenant.TenantContextFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -17,6 +19,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -38,12 +41,17 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(
         HttpSecurity http,
         TenantContextFilter tenantContextFilter,
-        JwtAuthenticationFilter jwtAuthenticationFilter
+        JwtAuthenticationFilter jwtAuthenticationFilter,
+        RestAuthenticationEntryPoint authenticationEntryPoint,
+        RestAccessDeniedHandler accessDeniedHandler
     ) throws Exception {
         return http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint(authenticationEntryPoint)
+                .accessDeniedHandler(accessDeniedHandler))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
                     "/api/health",

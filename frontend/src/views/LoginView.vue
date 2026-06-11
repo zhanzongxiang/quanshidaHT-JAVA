@@ -4,8 +4,8 @@
       <template #header>
         <div class="space-y-1">
           <p class="text-xs font-semibold uppercase tracking-[0.3em] text-brand">QSD Admin</p>
-          <h2 class="m-0 text-3xl font-extrabold text-ink">登录后台</h2>
-          <p class="m-0 text-sm text-mist">请输入账号密码进入管理系统。</p>
+          <h2 class="m-0 text-3xl font-extrabold text-ink">Admin Sign In</h2>
+          <p class="m-0 text-sm text-mist">Enter your account credentials to access the operations console.</p>
         </div>
       </template>
 
@@ -17,11 +17,11 @@
         class="space-y-1"
         @submit.prevent="onSubmit"
       >
-        <el-form-item label="用户名" prop="username">
-          <el-input v-model.trim="form.username" placeholder="请输入用户名" maxlength="64" />
+        <el-form-item label="Username" prop="username">
+          <el-input v-model.trim="form.username" placeholder="Enter username" maxlength="64" />
         </el-form-item>
-        <el-form-item label="密码" prop="password">
-          <el-input v-model.trim="form.password" type="password" show-password placeholder="请输入密码" maxlength="64" />
+        <el-form-item label="Password" prop="password">
+          <el-input v-model.trim="form.password" type="password" show-password placeholder="Enter password" maxlength="64" />
         </el-form-item>
         <el-button
           type="primary"
@@ -29,7 +29,7 @@
           :loading="submitting"
           @click="onSubmit"
         >
-          登录
+          Sign In
         </el-button>
       </el-form>
     </el-card>
@@ -51,8 +51,8 @@ const form = reactive({
 })
 
 const rules: FormRules = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
+  username: [{ required: true, message: 'Enter username', trigger: 'blur' }],
+  password: [{ required: true, message: 'Enter password', trigger: 'blur' }],
 }
 
 async function onSubmit() {
@@ -69,11 +69,11 @@ async function onSubmit() {
   try {
     await auth.loginByPassword(form.username, form.password)
     if (!auth.me) {
-      throw new Error('登录成功，但未获取到用户信息')
+      throw new Error('Sign-in succeeded but account details were not loaded')
     }
     window.location.href = '/admin/dashboard'
   } catch (error) {
-    showErrorMessage(error, '登录失败，请检查账号密码或接口状态')
+    showErrorMessage(error, 'Sign-in failed, please verify credentials and service availability')
   } finally {
     submitting.value = false
   }

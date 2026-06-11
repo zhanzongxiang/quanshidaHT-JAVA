@@ -68,10 +68,19 @@ export interface NotifyFailureStat {
   latestCreatedAt: string | null
 }
 
+export interface PaymentOpsAlert {
+  severity: 'critical' | 'warning' | 'info'
+  rule: string
+  title: string
+  message: string
+  suggestedAction: string
+}
+
 export interface PaymentOpsOverview {
   currentMerchantCertificate: MerchantCertificateStatus
   paymentNotifyFailures: NotifyFailureStat[]
   refundNotifyFailures: NotifyFailureStat[]
+  alerts: PaymentOpsAlert[]
 }
 
 export interface ReconcileDiffDetail {

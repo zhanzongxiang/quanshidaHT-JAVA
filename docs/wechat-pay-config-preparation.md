@@ -1,14 +1,14 @@
-# 真实微信支付配置准备说明
+# Real WeChat Pay Configuration Preparation
 
-更新时间：2026-05-09
+Updated: 2026-06-11
 
-## 目标
+## Goal
 
-在不改代码的前提下，通过环境变量切换项目到真实微信支付联调模式。
+Prepare real WeChat Pay configuration by environment variables, without changing application code.
 
-## 配置入口
+## Configuration Inputs
 
-项目当前通过 [application.yml](/E:/me/quanshidaHT-JAVA/backend/src/main/resources/application.yml:1) 读取以下环境变量：
+The backend reads these values from [application.yml](/E:/me/quanshidaHT-JAVA/backend/src/main/resources/application.yml:1):
 
 - `WECHAT_PAY_MOCK_ENABLED`
 - `WECHAT_PAY_AUTO_REFRESH_PLATFORM_CERTIFICATES`
@@ -24,23 +24,23 @@
 - `WECHAT_PAY_MERCHANT_SERIAL_NO`
 - `WECHAT_PAY_PLATFORM_CERTIFICATE_PATH`
 
-对应模板文件：
+Reference template:
 
 - [backend/.env.wechat-pay.example](/E:/me/quanshidaHT-JAVA/backend/.env.wechat-pay.example:1)
 
-## 最关键的开关
+## Required Switch
 
-要启用真实微信支付，必须设置：
+Real payment is only enabled when:
 
 ```env
 WECHAT_PAY_MOCK_ENABLED=false
 ```
 
-如果这个值仍然是 `true`，项目会继续走 `MockWechatPayGateway`，不会打到微信真实接口。
+If this value stays `true`, the system continues to use `MockWechatPayGateway`.
 
-## 必填项
+## Required Fields
 
-以下字段缺一不可，否则真实支付链路无法完整工作：
+The following values must be prepared for a real payment flow:
 
 - `WECHAT_PAY_APP_ID`
 - `WECHAT_PAY_APP_SECRET`
@@ -51,82 +51,82 @@ WECHAT_PAY_MOCK_ENABLED=false
 - `WECHAT_PAY_MERCHANT_SERIAL_NO`
 - `WECHAT_PAY_PLATFORM_CERTIFICATE_PATH`
 
-## 字段说明
+## Field Notes
 
 ### `WECHAT_PAY_APP_ID`
 
-- 小程序 `appId`
-- 必须和发起支付的小程序一致
+- The miniapp `appId`
+- Must match the app that initiates the payment
 
 ### `WECHAT_PAY_APP_SECRET`
 
-- 小程序 `appSecret`
-- 用于 `code2Session`
+- The miniapp `appSecret`
+- Used for `code2Session`
 
 ### `WECHAT_PAY_MCH_ID`
 
-- 微信支付商户号
-- 必须和商户证书、商户私钥对应
+- WeChat Pay merchant ID
+- Must match the merchant certificate and private key
 
 ### `WECHAT_PAY_NOTIFY_URL`
 
-- 支付回调地址
-- 当前代码会基于这个地址推导退款回调地址
-- 如果此值以 `/wechat` 结尾，退款回调会自动使用 `/wechat-refund`
+- Payment callback URL
+- Refund callback is derived from this base URL by the backend
+- Use a public HTTPS endpoint in production
 
 ### `WECHAT_PAY_API_V3_KEY`
 
-- 微信支付 APIv3 Key
-- 应为 32 位字符串
+- WeChat Pay API v3 key
+- Must be exactly 32 characters
 
 ### `WECHAT_PAY_PRIVATE_KEY_PATH`
 
-- 商户私钥文件路径
-- 当前进程必须可读
+- Merchant private key file path
+- Must be readable by the backend process
 
 ### `WECHAT_PAY_MERCHANT_SERIAL_NO`
 
-- 商户证书序列号
+- Merchant certificate serial number
 
 ### `WECHAT_PAY_PLATFORM_CERTIFICATE_PATH`
 
-- 微信平台证书文件路径
-- 当前进程必须可读
+- WeChat platform certificate file path
+- Must be readable by the backend process
 
-## 建议目录
+## Recommended Storage Layout
 
-建议不要把真实证书和私钥直接放在仓库目录里。更稳妥的做法是：
+Do not store real certificates or private keys inside the repo.
 
-- 私钥放在独立安全目录
-- 平台证书放在独立安全目录
-- 只把路径通过环境变量传给应用
+Recommended approach:
 
-示例：
+- Keep private keys in a separate secure directory
+- Keep platform certificates in a separate secure directory
+- Pass only file paths through environment variables
+
+Example:
 
 ```env
 WECHAT_PAY_PRIVATE_KEY_PATH=E:/secure/wechatpay/apiclient_key.pem
 WECHAT_PAY_PLATFORM_CERTIFICATE_PATH=E:/secure/wechatpay/wechatpay_platform.pem
 ```
 
-## 回调地址要求
+## Callback Endpoints
 
-支付回调：
+Payment callback:
 
 - `POST /api/payment/callback/wechat`
 
-退款回调：
+Refund callback:
 
 - `POST /api/payment/callback/wechat-refund`
 
-要求：
+Requirements:
 
-- 必须能被微信公网访问
-- 不能只写本地 `localhost`
-- 反向代理需保留请求头
+- Reachable from the public internet
+- Not `localhost` in production
+- Reverse proxy must preserve request headers
 
-## PowerShell 会话示例
-
-可以在 PowerShell 中手动设置后再启动后端：
+## PowerShell Example
 
 ```powershell
 $env:WECHAT_PAY_MOCK_ENABLED="false"
@@ -143,18 +143,18 @@ cd E:\me\quanshidaHT-JAVA
 .\backend\start-dev.ps1
 ```
 
-## 联调前自检
+## Pre-Flight Check
 
-启动前至少确认：
+Before startup, confirm:
 
 - `WECHAT_PAY_MOCK_ENABLED=false`
-- `notifyUrl` 是公网地址
-- 私钥路径真实存在
-- 平台证书路径真实存在
-- 商户号和证书序列号匹配
-- 当前激活商户在后台页显示为 `Ready`
+- `notifyUrl` is public and valid
+- Private key path exists
+- Platform certificate path exists
+- Merchant ID and serial number match the certificate set
+- The active merchant is shown as `ready` in the admin console
 
-## 相关文档
+## Related Docs
 
-- [真实微信支付上线前检查表](/E:/me/quanshidaHT-JAVA/docs/wechat-pay-production-readiness-checklist.md:1)
-- [小程序与支付联调清单](/E:/me/quanshidaHT-JAVA/docs/mini-program-payment-integration-checklist.md:1)
+- [WeChat Pay Production Readiness Checklist](/E:/me/quanshidaHT-JAVA/docs/wechat-pay-production-readiness-checklist.md:1)
+- [Mini Program Payment Integration Checklist](/E:/me/quanshidaHT-JAVA/docs/mini-program-payment-integration-checklist.md:1)

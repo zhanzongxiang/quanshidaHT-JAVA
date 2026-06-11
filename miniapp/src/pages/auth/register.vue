@@ -1,45 +1,47 @@
 <template>
   <view class="page">
     <view class="card">
-      <text class="section-title">会员注册</text>
-      <text class="section-subtitle">注册完成后会自动登录，并可直接查看会员资料与可见运单。</text>
+      <text class="section-title">Create Member Account</text>
+      <text class="section-subtitle">
+        Registration signs you in immediately, then you can view your profile and accessible waybills.
+      </text>
     </view>
 
     <view class="card form-card">
       <view class="field-stack">
         <view class="field-block">
-          <text class="field-label">手机号</text>
+          <text class="field-label">Phone</text>
           <input
             v-model="form.phone"
             class="input"
             type="number"
             maxlength="11"
-            placeholder="请输入 11 位手机号"
+            placeholder="Enter 11-digit phone"
             @input="handlePhoneInput"
           />
         </view>
         <view class="field-block">
-          <text class="field-label">密码</text>
+          <text class="field-label">Password</text>
           <input
             v-model.trim="form.password"
             class="input"
             password
-            placeholder="请输入至少 6 位密码"
+            placeholder="Enter at least 6 characters"
           />
         </view>
         <view class="field-block">
-          <text class="field-label">昵称</text>
-          <input v-model.trim="form.nickname" class="input" maxlength="20" placeholder="可选，最多 20 个字符" />
+          <text class="field-label">Nickname</text>
+          <input v-model.trim="form.nickname" class="input" maxlength="64" placeholder="Optional nickname" />
         </view>
         <view class="field-block">
-          <text class="field-label">姓名</text>
-          <input v-model.trim="form.fullName" class="input" maxlength="20" placeholder="可选，最多 20 个字符" />
+          <text class="field-label">Full name</text>
+          <input v-model.trim="form.fullName" class="input" maxlength="64" placeholder="Optional full name" />
         </view>
       </view>
 
       <view class="actions top-gap">
-        <button class="button-primary" :loading="submitting" @click="submitRegister">注册并登录</button>
-        <button plain @click="goToLogin">已有账号，去登录</button>
+        <button class="button-primary" :loading="submitting" @click="submitRegister">Create Account</button>
+        <button plain @click="goToLogin">Back to Sign In</button>
       </view>
     </view>
   </view>
@@ -75,12 +77,12 @@ function handlePhoneInput(event: Event) {
 
 function validateRegisterForm() {
   if (!isValidPhone(form.phone)) {
-    showError('请输入正确的 11 位手机号')
+    showError('Please enter a valid 11-digit phone number')
     return false
   }
 
   if (!isValidPassword(form.password)) {
-    showError('密码至少需要 6 位')
+    showError('Password must be at least 6 characters')
     return false
   }
 
@@ -102,7 +104,7 @@ async function submitRegister() {
     })
     navigateAfterAuth(redirectUrl.value)
   } catch (error) {
-    showError(error, '注册失败')
+    showError(error, 'Registration failed')
   } finally {
     submitting.value = false
   }

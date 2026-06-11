@@ -2,9 +2,11 @@ package com.qsd.admin.auth.controller;
 
 import com.qsd.admin.auth.dto.LoginRequest;
 import com.qsd.admin.auth.dto.MeResponse;
+import com.qsd.admin.auth.dto.SwitchTenantRequest;
 import com.qsd.admin.auth.service.AuthService;
 import com.qsd.admin.common.ApiResponse;
 import com.qsd.admin.common.exception.BusinessException;
+import com.qsd.admin.common.exception.ErrorCode;
 import com.qsd.admin.security.AuthenticatedUser;
 import com.qsd.admin.security.JwtAuthenticationFilter;
 import jakarta.servlet.http.Cookie;
@@ -31,14 +33,7 @@ public class AuthController {
     public ApiResponse<Void> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         String clientIp = getClientIp(httpRequest);
         String token = authService.login(request.username(), request.password(), clientIp);
-
-        Cookie cookie = new Cookie(JwtAuthenticationFilter.COOKIE_NAME, token);
-        cookie.setHttpOnly(true);
-        cookie.setPath("/api");
-        cookie.setMaxAge(24 * 60 * 60);
-        cookie.setSecure(httpRequest.isSecure());
-        cookie.setAttribute("SameSite", "Lax");
-        httpResponse.addCookie(cookie);
+        writeAuthCookie(httpRequest, httpResponse, token, 24 * 60 * 60);
 
         return ApiResponse.ok(null);
     }
@@ -56,9 +51,25 @@ public class AuthController {
     @GetMapping("/me")
     public ApiResponse<MeResponse> me(Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof AuthenticatedUser user)) {
-            throw new BusinessException("not logged in");
+            throw new BusinessException(ErrorCode.AUTHENTICATION_REQUIRED, "Authentication required");
         }
         return ApiResponse.ok(authService.me(user));
+    }
+
+    @PostMapping("/switch-tenant")
+    public ApiResponse<Void> switchTenant(
+        @Valid @RequestBody SwitchTenantRequest request,
+        Authentication authentication,
+        HttpServletRequest httpRequest,
+        HttpServletResponse httpResponse
+    ) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof AuthenticatedUser user)) {
+            throw new BusinessException(ErrorCode.AUTHENTICATION_REQUIRED, "Authentication required");
+        }
+
+        String token = authService.switchTenant(user, request.tenantId());
+        writeAuthCookie(httpRequest, httpResponse, token, 24 * 60 * 60);
+        return ApiResponse.ok(null);
     }
 
     private String getClientIp(HttpServletRequest request) {
@@ -67,5 +78,15 @@ public class AuthController {
             return forwarded.split(",")[0].trim();
         }
         return request.getRemoteAddr();
+    }
+
+    private void writeAuthCookie(HttpServletRequest httpRequest, HttpServletResponse httpResponse, String token, int maxAgeSeconds) {
+        Cookie cookie = new Cookie(JwtAuthenticationFilter.COOKIE_NAME, token);
+        cookie.setHttpOnly(true);
+        cookie.setPath("/api");
+        cookie.setMaxAge(maxAgeSeconds);
+        cookie.setSecure(httpRequest.isSecure());
+        cookie.setAttribute("SameSite", "Lax");
+        httpResponse.addCookie(cookie);
     }
 }

@@ -3,10 +3,10 @@ package com.qsd.admin.auth.dto;
 import jakarta.validation.constraints.NotBlank;
 
 public record LoginRequest(
-    @NotBlank(message = "用户名不能为空")
+    @NotBlank(message = "username must not be blank")
     String username,
 
-    @NotBlank(message = "密码不能为空")
+    @NotBlank(message = "password must not be blank")
     String password
 ) {
 }

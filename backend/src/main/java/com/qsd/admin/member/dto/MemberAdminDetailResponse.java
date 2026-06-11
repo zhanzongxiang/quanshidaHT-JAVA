@@ -13,10 +13,15 @@ public record MemberAdminDetailResponse(
     String avatarUrl,
     String status,
     String remark,
+    String registerSource,
+    String registerIp,
     String lastLoginAt,
+    String lastLoginIp,
+    String passwordUpdatedAt,
     String createdAt,
     String updatedAt,
     List<Long> boundWaybillIds,
-    List<MemberWaybillSummaryResponse> waybills
+    List<MemberWaybillSummaryResponse> waybills,
+    List<MemberAuditLogResponse> auditLogs
 ) {
 }
