@@ -26,6 +26,8 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -204,5 +206,54 @@ class PaymentAdminControllerTest {
             .andExpect(jsonPath("$.code").value(0))
             .andExpect(jsonPath("$.data.refundNo").value("RF202605090001"))
             .andExpect(jsonPath("$.data.status").value("processing"));
+    }
+
+    @Test
+    void shouldCreateRefund() throws Exception {
+        when(paymentService.createRefund(
+            org.mockito.ArgumentMatchers.eq(21L),
+            org.mockito.ArgumentMatchers.any())
+        ).thenReturn(
+            new RefundOrderResponse(
+                31L,
+                "RF202606160001",
+                new BigDecimal("29.90"),
+                "processing",
+                "customer request",
+                "wx-rf-001",
+                null,
+                "2026-06-16 10:00:00"
+            )
+        );
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/admin/payments/21/refunds")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "amountRefund": 29.90,
+                      "reason": "customer request"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value(0))
+            .andExpect(jsonPath("$.data.id").value(31))
+            .andExpect(jsonPath("$.data.refundNo").value("RF202606160001"))
+            .andExpect(jsonPath("$.data.status").value("processing"));
+    }
+
+    @Test
+    void shouldRejectInvalidRefundCreateRequest() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/admin/payments/21/refunds")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "amountRefund": 0,
+                      "reason": "customer request"
+                    }
+                    """))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value(40001));
+
+        verify(paymentService, never()).createRefund(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.any());
     }
 }

@@ -137,6 +137,8 @@ class PaymentCallbackControllerTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.code").value("FAIL"))
             .andExpect(jsonPath("$.message").value("merchant mismatch"));
+
+        verify(paymentService).recordPaymentCallbackFailure(any(), any(), any());
     }
 
     @Test
@@ -164,6 +166,8 @@ class PaymentCallbackControllerTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.code").value("FAIL"))
             .andExpect(jsonPath("$.message").value("retry"));
+
+        verify(paymentService).recordRefundCallbackFailure(any(), any(), any());
     }
 
     @Test
@@ -206,6 +210,55 @@ class PaymentCallbackControllerTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.code").value("FAIL"))
             .andExpect(jsonPath("$.message").value("retry"));
+
+        verify(paymentService).recordPaymentCallbackFailure(any(), any(), any());
+    }
+
+    @Test
+    void shouldReturnBusinessFailureMessageForNonRetryableWechatRefundCallbackError() throws Exception {
+        when(wechatPayCallbackParser.parseRefundCallback(any())).thenReturn(
+            new RefundCallbackRequest("RF202605080001", "SUCCESS", "wx-rf-001", "{\"event\":\"refund\"}")
+        );
+        when(wechatPayCallbackParser.parseRefundCallbackContext(any(), any(), any(), any()))
+            .thenReturn(buildCallbackContext());
+        doThrow(new WechatCallbackException("merchant_mismatch", "refund merchant mismatch", false))
+            .when(paymentService).validateRefundCallbackMerchant(any(), any());
+
+        mockMvc.perform(post("/api/payment/callback/wechat-refund")
+                .header("Wechatpay-Timestamp", "1710000000")
+                .header("Wechatpay-Nonce", "nonce-001")
+                .header("Wechatpay-Signature", "signature-001")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "refundNo": "RF202605080001",
+                      "status": "SUCCESS",
+                      "externalRefundNo": "wx-rf-001",
+                      "payload": "{\\\"event\\\":\\\"refund\\\"}"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("FAIL"))
+            .andExpect(jsonPath("$.message").value("refund merchant mismatch"));
+
+        verify(paymentService).recordRefundCallbackFailure(any(), any(), any());
+        verify(paymentService, never()).handleRefundCallback(any());
+    }
+
+    @Test
+    void shouldReturnFailWhenWechatRefundSignatureHeadersAreBlank() throws Exception {
+        mockMvc.perform(post("/api/payment/callback/wechat-refund")
+                .header("Wechatpay-Timestamp", "")
+                .header("Wechatpay-Nonce", " ")
+                .header("Wechatpay-Signature", "")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"event\":\"refund\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("FAIL"))
+            .andExpect(jsonPath("$.message").value("缺少验签参数"));
+
+        verify(wechatPayCallbackParser, never()).parseRefundCallback(any());
+        verify(paymentService, never()).handleRefundCallback(any());
     }
 
     private WechatCallbackContext buildCallbackContext() {

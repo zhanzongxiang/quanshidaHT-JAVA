@@ -9,6 +9,7 @@ import com.qsd.admin.payment.dto.PaymentAdminCreateRequest;
 import com.qsd.admin.payment.dto.PaymentAdminDetailResponse;
 import com.qsd.admin.payment.dto.PaymentStatusUpdateRequest;
 import com.qsd.admin.payment.dto.RefundCallbackRequest;
+import com.qsd.admin.payment.dto.RefundCreateRequest;
 import com.qsd.admin.payment.dto.RefundOrderResponse;
 import com.qsd.admin.payment.dto.WechatMiniProgramPayParams;
 import com.qsd.admin.payment.dto.WechatPayCallbackRequest;
@@ -409,6 +410,69 @@ class PaymentServiceTest {
     }
 
     @Test
+    void shouldTreatSuccessfulRefundCallbackAsIdempotent() {
+        RefundOrder refund = new RefundOrder();
+        refund.setId(56L);
+        refund.setRefundNo("RF202605090010");
+        refund.setPayOrderId(67L);
+        refund.setStatus("succeeded");
+        refund.setExternalRefundNo("wx-rf-existing");
+
+        PayOrder order = new PayOrder();
+        order.setId(67L);
+        order.setStatus("refunded");
+        order.setAmountPaid(new BigDecimal("99.00"));
+
+        when(refundOrderMapper.selectByRefundNo(TENANT_ID, "RF202605090010")).thenReturn(refund);
+        when(payOrderMapper.selectActiveById(TENANT_ID, 67L)).thenReturn(order);
+
+        paymentService.handleRefundCallback(
+            new RefundCallbackRequest("RF202605090010", "SUCCESS", "wx-rf-001", "{\"event\":\"refund\"}")
+        );
+
+        ArgumentCaptor<RefundNotifyLog> refundNotifyLogCaptor = ArgumentCaptor.forClass(RefundNotifyLog.class);
+        verify(refundNotifyLogMapper).insert(refundNotifyLogCaptor.capture());
+        assertEquals(56L, refundNotifyLogCaptor.getValue().getRefundOrderId());
+        assertEquals("SUCCESS", refundNotifyLogCaptor.getValue().getNotifyStatus());
+
+        verify(refundOrderMapper, never()).updateById(any(RefundOrder.class));
+        verify(payOrderMapper, never()).updateById(any(PayOrder.class));
+    }
+
+    @Test
+    void shouldKeepOrderPaidWhenSuccessfulRefundCallbackIsPartial() {
+        RefundOrder refund = new RefundOrder();
+        refund.setId(57L);
+        refund.setRefundNo("RF202605090011");
+        refund.setPayOrderId(68L);
+        refund.setStatus("processing");
+
+        PayOrder order = new PayOrder();
+        order.setId(68L);
+        order.setStatus("refunding");
+        order.setAmountPaid(new BigDecimal("99.00"));
+
+        when(refundOrderMapper.selectByRefundNo(TENANT_ID, "RF202605090011")).thenReturn(refund);
+        when(payOrderMapper.selectActiveById(TENANT_ID, 68L)).thenReturn(order);
+        when(refundOrderMapper.sumSucceededAmountByPayOrderId(TENANT_ID, 68L)).thenReturn(new BigDecimal("29.90"));
+
+        paymentService.handleRefundCallback(
+            new RefundCallbackRequest("RF202605090011", "SUCCESS", "wx-rf-011", "{\"event\":\"refund\"}")
+        );
+
+        ArgumentCaptor<RefundOrder> refundCaptor = ArgumentCaptor.forClass(RefundOrder.class);
+        verify(refundOrderMapper).updateById(refundCaptor.capture());
+        assertEquals("succeeded", refundCaptor.getValue().getStatus());
+        assertEquals("wx-rf-011", refundCaptor.getValue().getExternalRefundNo());
+        assertNotNull(refundCaptor.getValue().getRefundedAt());
+
+        ArgumentCaptor<PayOrder> orderCaptor = ArgumentCaptor.forClass(PayOrder.class);
+        verify(payOrderMapper).updateById(orderCaptor.capture());
+        assertEquals("paid", orderCaptor.getValue().getStatus());
+        assertNull(orderCaptor.getValue().getRefundedAt());
+    }
+
+    @Test
     void shouldRestoreOrderToPaidOnFailedRefundCallback() {
         RefundOrder refund = new RefundOrder();
         refund.setId(77L);
@@ -532,6 +596,58 @@ class PaymentServiceTest {
         assertTrue(ex.getMessage() != null && !ex.getMessage().isBlank());
         verify(wechatPayGateway, never()).createRefund(any(PayOrder.class), any(RefundOrder.class), any(PayMerchantConfig.class));
         verify(refundOrderMapper, never()).insert(any(RefundOrder.class));
+    }
+
+    @Test
+    void shouldCreateRefundAndUpdateOrderStatus() {
+        PayOrder order = new PayOrder();
+        order.setId(69L);
+        order.setOrderNo("PO202606160001");
+        order.setStatus("paid");
+        order.setAmountPaid(new BigDecimal("99.00"));
+        order.setExternalTransactionNo("wx-txn-069");
+        order.setMerchantConfigId(14L);
+
+        PayMerchantConfig merchant = new PayMerchantConfig();
+        merchant.setId(14L);
+        merchant.setMerchantName("Acme Merchant");
+
+        WechatRefundResult refundResult = new WechatRefundResult("wx-rf-069", "processing", "{\"status\":\"processing\"}");
+
+        when(payOrderMapper.selectActiveById(TENANT_ID, 69L)).thenReturn(order);
+        when(refundOrderMapper.sumSucceededAmountByPayOrderId(TENANT_ID, 69L)).thenReturn(new BigDecimal("20.00"));
+        when(paymentMerchantService.requireMerchantById(14L)).thenReturn(merchant);
+        when(wechatPayGateway.createRefund(eq(order), any(RefundOrder.class), eq(merchant))).thenReturn(refundResult);
+
+        RefundOrderResponse response = paymentService.createRefund(
+            69L,
+            new RefundCreateRequest(new BigDecimal("30.00"), "customer request")
+        );
+
+        ArgumentCaptor<RefundOrder> refundCaptor = ArgumentCaptor.forClass(RefundOrder.class);
+        verify(refundOrderMapper).insert(refundCaptor.capture());
+        RefundOrder insertedRefund = refundCaptor.getValue();
+        assertEquals(TENANT_ID, insertedRefund.getTenantId());
+        assertEquals(69L, insertedRefund.getPayOrderId());
+        assertEquals(new BigDecimal("30.00"), insertedRefund.getAmountRefund());
+        assertEquals("processing", insertedRefund.getStatus());
+        assertEquals("customer request", insertedRefund.getReason());
+        assertEquals("wx-rf-069", insertedRefund.getExternalRefundNo());
+
+        ArgumentCaptor<PayOrder> orderCaptor = ArgumentCaptor.forClass(PayOrder.class);
+        verify(payOrderMapper).updateById(orderCaptor.capture());
+        assertEquals("refunding", orderCaptor.getValue().getStatus());
+
+        ArgumentCaptor<PayTransaction> transactionCaptor = ArgumentCaptor.forClass(PayTransaction.class);
+        verify(payTransactionMapper).insert(transactionCaptor.capture());
+        assertEquals(TENANT_ID, transactionCaptor.getValue().getTenantId());
+        assertEquals("refund_apply", transactionCaptor.getValue().getTransactionType());
+        assertEquals("refunding", transactionCaptor.getValue().getTransactionStatus());
+        assertEquals("wx-txn-069", transactionCaptor.getValue().getExternalTransactionNo());
+
+        assertEquals("processing", response.status());
+        assertEquals("customer request", response.reason());
+        assertEquals("wx-rf-069", response.externalRefundNo());
     }
 
     @Test
