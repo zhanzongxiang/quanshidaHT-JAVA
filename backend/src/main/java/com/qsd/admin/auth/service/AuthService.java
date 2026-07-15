@@ -7,6 +7,7 @@ import com.qsd.admin.auth.entity.AdminUser;
 import com.qsd.admin.auth.mapper.AdminMenuMapper;
 import com.qsd.admin.auth.mapper.AdminUserMapper;
 import com.qsd.admin.security.JwtTokenService;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -19,11 +20,18 @@ public class AuthService {
     private final AdminUserMapper adminUserMapper;
     private final AdminMenuMapper adminMenuMapper;
     private final JwtTokenService jwtTokenService;
+    private final PasswordEncoder passwordEncoder;
 
-    public AuthService(AdminUserMapper adminUserMapper, AdminMenuMapper adminMenuMapper, JwtTokenService jwtTokenService) {
+    public AuthService(
+        AdminUserMapper adminUserMapper,
+        AdminMenuMapper adminMenuMapper,
+        JwtTokenService jwtTokenService,
+        PasswordEncoder passwordEncoder
+    ) {
         this.adminUserMapper = adminUserMapper;
         this.adminMenuMapper = adminMenuMapper;
         this.jwtTokenService = jwtTokenService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public LoginResponse login(String username, String password) {
@@ -34,11 +42,11 @@ public class AuthService {
         if (!"ENABLED".equals(user.getStatus())) {
             throw new IllegalArgumentException("账号已禁用");
         }
-        if (!user.getPasswordHash().equals(password)) {
+        if (!passwordMatches(user, password)) {
             throw new IllegalArgumentException("用户名或密码错误");
         }
         List<String> permissions = adminUserMapper.selectPermissionCodes(user.getId());
-        String token = jwtTokenService.createToken(user.getId(), user.getUsername(), permissions);
+        String token = jwtTokenService.createToken(user.getId(), user.getUsername(), permissions, JwtTokenService.USER_TYPE_ADMIN);
         return new LoginResponse(token, "Bearer");
     }
 
@@ -79,5 +87,21 @@ public class AuthService {
             }
         }
         return roots;
+    }
+
+    private boolean passwordMatches(AdminUser user, String rawPassword) {
+        String storedPassword = user.getPasswordHash();
+        if (storedPassword == null || storedPassword.isBlank()) {
+            return false;
+        }
+        if (storedPassword.startsWith("$2a$") || storedPassword.startsWith("$2b$") || storedPassword.startsWith("$2y$")) {
+            return passwordEncoder.matches(rawPassword, storedPassword);
+        }
+        if (!storedPassword.equals(rawPassword)) {
+            return false;
+        }
+        user.setPasswordHash(passwordEncoder.encode(rawPassword));
+        adminUserMapper.updateById(user);
+        return true;
     }
 }

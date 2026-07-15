@@ -6,6 +6,7 @@ import com.qsd.admin.waybill.dto.WaybillSaveRequest;
 import com.qsd.admin.waybill.dto.WaybillSummaryResponse;
 import com.qsd.admin.waybill.service.WaybillService;
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,6 +29,7 @@ public class WaybillAdminController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('USER_TYPE_ADMIN') and hasAuthority('waybill:view')")
     public ApiResponse<List<WaybillSummaryResponse>> list(
         @RequestParam(required = false) String keyword,
         @RequestParam(required = false) String status
@@ -36,21 +38,25 @@ public class WaybillAdminController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('USER_TYPE_ADMIN') and hasAuthority('waybill:view')")
     public ApiResponse<WaybillDetailResponse> getById(@PathVariable Long id) {
         return ApiResponse.ok(waybillService.getById(id));
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('USER_TYPE_ADMIN') and hasAuthority('waybill:edit')")
     public ApiResponse<WaybillDetailResponse> create(@Valid @RequestBody WaybillSaveRequest request) {
         return ApiResponse.ok(waybillService.create(request));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('USER_TYPE_ADMIN') and hasAuthority('waybill:edit')")
     public ApiResponse<WaybillDetailResponse> update(@PathVariable Long id, @Valid @RequestBody WaybillSaveRequest request) {
         return ApiResponse.ok(waybillService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('USER_TYPE_ADMIN') and hasAuthority('waybill:edit')")
     public ApiResponse<Void> delete(@PathVariable Long id) {
         waybillService.delete(id);
         return ApiResponse.ok();

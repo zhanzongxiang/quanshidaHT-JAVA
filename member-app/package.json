@@ -1,0 +1,12 @@
+{
+  "name": "qsd-member-app",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev:h5": "echo \"Please open this project with HBuilderX or use the uni-app CLI toolchain to run H5\"",
+    "build:h5": "echo \"Please build with HBuilderX or the configured uni-app CLI\""
+  },
+  "dependencies": {
+    "vue": "^3.5.13"
+  }
+}

@@ -6,6 +6,7 @@ import com.qsd.admin.content.dto.ServiceLineContentResponse;
 import com.qsd.admin.content.dto.ServiceLineSummaryResponse;
 import com.qsd.admin.content.service.ServiceLineContentService;
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -25,16 +26,19 @@ public class ServiceLineContentController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('USER_TYPE_ADMIN') and hasAuthority('content:view')")
     public ApiResponse<List<ServiceLineSummaryResponse>> listServiceLines() {
         return ApiResponse.ok(serviceLineContentService.listServiceLines());
     }
 
     @GetMapping("/{lineCode}")
+    @PreAuthorize("hasAuthority('USER_TYPE_ADMIN') and hasAuthority('content:view')")
     public ApiResponse<ServiceLineContentResponse> getServiceLine(@PathVariable String lineCode) {
         return ApiResponse.ok(serviceLineContentService.getServiceLine(lineCode));
     }
 
     @PutMapping("/{lineCode}/draft")
+    @PreAuthorize("hasAuthority('USER_TYPE_ADMIN') and hasAuthority('content:edit')")
     public ApiResponse<ServiceLineContentResponse> saveDraft(
         @PathVariable String lineCode,
         @Valid @RequestBody HomeContentSaveRequest request
@@ -43,6 +47,7 @@ public class ServiceLineContentController {
     }
 
     @PutMapping("/{lineCode}/publish")
+    @PreAuthorize("hasAuthority('USER_TYPE_ADMIN') and hasAuthority('content:edit')")
     public ApiResponse<ServiceLineContentResponse> publish(
         @PathVariable String lineCode,
         @Valid @RequestBody HomeContentSaveRequest request

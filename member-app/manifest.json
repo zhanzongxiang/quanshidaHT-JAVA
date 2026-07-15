@@ -1,0 +1,17 @@
+{
+  "name": "QSD会员端",
+  "appid": "__UNI__QSD_MEMBER__",
+  "description": "集运订单系统会员端（uni-app 多端）",
+  "versionName": "0.1.0",
+  "versionCode": "100",
+  "transformPx": false,
+  "app-plus": {
+    "usingComponents": true
+  },
+  "h5": {
+    "title": "QSD会员端"
+  },
+  "mp-weixin": {
+    "appid": ""
+  }
+}

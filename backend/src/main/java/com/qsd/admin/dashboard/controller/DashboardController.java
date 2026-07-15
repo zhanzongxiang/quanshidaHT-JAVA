@@ -3,6 +3,7 @@ package com.qsd.admin.dashboard.controller;
 import com.qsd.admin.common.ApiResponse;
 import com.qsd.admin.dashboard.dto.DashboardSummaryResponse;
 import com.qsd.admin.dashboard.service.DashboardService;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -17,6 +18,7 @@ public class DashboardController {
     }
 
     @GetMapping("/summary")
+    @PreAuthorize("hasAuthority('USER_TYPE_ADMIN')")
     public ApiResponse<DashboardSummaryResponse> getSummary() {
         return ApiResponse.ok(dashboardService.getSummary());
     }

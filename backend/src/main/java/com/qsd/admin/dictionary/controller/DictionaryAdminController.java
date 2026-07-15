@@ -7,6 +7,7 @@ import com.qsd.admin.dictionary.dto.DictionaryItemSaveRequest;
 import com.qsd.admin.dictionary.dto.DictionaryOptionResponse;
 import com.qsd.admin.dictionary.service.DictionaryService;
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,11 +31,13 @@ public class DictionaryAdminController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('USER_TYPE_ADMIN') and hasAuthority('dict:view')")
     public ApiResponse<List<DictionaryGroupResponse>> listGroups() {
         return ApiResponse.ok(dictionaryService.listGroups());
     }
 
     @GetMapping("/options")
+    @PreAuthorize("hasAuthority('USER_TYPE_ADMIN')")
     public ApiResponse<Map<String, List<DictionaryOptionResponse>>> listOptions(
         @RequestParam List<String> types,
         @RequestParam(defaultValue = "true") boolean enabledOnly
@@ -43,11 +46,13 @@ public class DictionaryAdminController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('USER_TYPE_ADMIN') and hasAuthority('dict:edit')")
     public ApiResponse<DictionaryItemResponse> create(@Valid @RequestBody DictionaryItemSaveRequest request) {
         return ApiResponse.ok(dictionaryService.create(request));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('USER_TYPE_ADMIN') and hasAuthority('dict:edit')")
     public ApiResponse<DictionaryItemResponse> update(
         @PathVariable Long id,
         @Valid @RequestBody DictionaryItemSaveRequest request
@@ -56,6 +61,7 @@ public class DictionaryAdminController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('USER_TYPE_ADMIN') and hasAuthority('dict:edit')")
     public ApiResponse<Void> delete(@PathVariable Long id) {
         dictionaryService.delete(id);
         return ApiResponse.ok();

@@ -13,8 +13,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -54,12 +54,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @SuppressWarnings("unchecked")
     private Collection<SimpleGrantedAuthority> extractAuthorities(Claims claims) {
         Object permissionObj = claims.get("permissions");
-        if (!(permissionObj instanceof List<?> permissions)) {
-            return Collections.emptyList();
-        }
-        return permissions.stream()
+        List<SimpleGrantedAuthority> authorities = permissionObj instanceof List<?> permissions
+            ? permissions.stream()
             .map(Object::toString)
             .map(SimpleGrantedAuthority::new)
-            .collect(Collectors.toList());
+            .collect(Collectors.toList())
+            : new ArrayList<>();
+
+        String userType = claims.get("userType", String.class);
+        if (userType != null && !userType.isBlank()) {
+            authorities.add(new SimpleGrantedAuthority("USER_TYPE_" + userType));
+        }
+        return authorities;
     }
 }

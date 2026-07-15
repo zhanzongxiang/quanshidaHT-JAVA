@@ -16,6 +16,9 @@ import java.util.Map;
 
 @Service
 public class JwtTokenService {
+    public static final String USER_TYPE_ADMIN = "ADMIN";
+    public static final String USER_TYPE_MEMBER = "MEMBER";
+
     private final JwtProperties jwtProperties;
     private final SecretKey secretKey;
 
@@ -24,14 +27,14 @@ public class JwtTokenService {
         this.secretKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtProperties.secret()));
     }
 
-    public String createToken(Long userId, String username, List<String> permissions) {
+    public String createToken(Long userId, String username, List<String> permissions, String userType) {
         Instant now = Instant.now();
         return Jwts.builder()
             .issuer(jwtProperties.issuer())
             .subject(username)
             .issuedAt(Date.from(now))
             .expiration(Date.from(now.plus(jwtProperties.expireMinutes(), ChronoUnit.MINUTES)))
-            .claims(Map.of("uid", userId, "permissions", permissions))
+            .claims(Map.of("uid", userId, "permissions", permissions, "userType", userType))
             .signWith(secretKey)
             .compact();
     }

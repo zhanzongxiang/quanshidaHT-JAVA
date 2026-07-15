@@ -6,6 +6,7 @@ import com.qsd.admin.auth.dto.MeResponse;
 import com.qsd.admin.auth.service.AuthService;
 import com.qsd.admin.common.ApiResponse;
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -28,6 +29,7 @@ public class AuthController {
     }
 
     @GetMapping("/me")
+    @PreAuthorize("hasAuthority('USER_TYPE_ADMIN')")
     public ApiResponse<MeResponse> me(Authentication authentication) {
         return ApiResponse.ok(authService.me(authentication.getName()));
     }

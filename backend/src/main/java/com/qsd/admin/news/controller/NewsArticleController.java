@@ -5,6 +5,7 @@ import com.qsd.admin.news.dto.NewsArticleResponse;
 import com.qsd.admin.news.dto.NewsArticleSaveRequest;
 import com.qsd.admin.news.service.NewsArticleService;
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,31 +27,37 @@ public class NewsArticleController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('USER_TYPE_ADMIN') and hasAuthority('news:view')")
     public ApiResponse<List<NewsArticleResponse>> list() {
         return ApiResponse.ok(newsArticleService.list());
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('USER_TYPE_ADMIN') and hasAuthority('news:view')")
     public ApiResponse<NewsArticleResponse> getById(@PathVariable Long id) {
         return ApiResponse.ok(newsArticleService.getById(id));
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('USER_TYPE_ADMIN') and hasAuthority('news:edit')")
     public ApiResponse<NewsArticleResponse> create(@Valid @RequestBody NewsArticleSaveRequest request) {
         return ApiResponse.ok(newsArticleService.create(request));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('USER_TYPE_ADMIN') and hasAuthority('news:edit')")
     public ApiResponse<NewsArticleResponse> update(@PathVariable Long id, @Valid @RequestBody NewsArticleSaveRequest request) {
         return ApiResponse.ok(newsArticleService.update(id, request));
     }
 
     @PostMapping("/{id}/publish")
+    @PreAuthorize("hasAuthority('USER_TYPE_ADMIN') and hasAuthority('news:edit')")
     public ApiResponse<NewsArticleResponse> publish(@PathVariable Long id) {
         return ApiResponse.ok(newsArticleService.publish(id));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('USER_TYPE_ADMIN') and hasAuthority('news:edit')")
     public ApiResponse<Void> delete(@PathVariable Long id) {
         newsArticleService.delete(id);
         return ApiResponse.ok();
