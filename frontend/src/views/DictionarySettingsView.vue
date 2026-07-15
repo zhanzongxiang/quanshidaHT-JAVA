@@ -115,7 +115,6 @@
 
 <script setup lang="ts">
 import type { FormInstance, FormRules } from 'element-plus'
-import { ElMessage, ElMessageBox } from 'element-plus'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   createDictionaryItem,
@@ -125,6 +124,7 @@ import {
 } from '../api/dictionary'
 import { useAuthStore } from '../stores/auth'
 import type { DictionaryGroup, DictionaryItem, DictionaryItemSavePayload } from '../types/dictionary'
+import { confirmAction, showErrorMessage, showSuccessMessage } from '../utils/message'
 
 const auth = useAuthStore()
 const canEdit = computed(() => auth.hasPermission('dict:edit'))
@@ -181,8 +181,8 @@ async function loadGroups() {
   loading.value = true
   try {
     groups.value = await fetchDictionaryGroups()
-  } catch {
-    ElMessage.error('字典数据加载失败。')
+  } catch (error) {
+    showErrorMessage(error, '字典数据加载失败')
   } finally {
     loading.value = false
   }
@@ -227,37 +227,32 @@ async function onSave() {
   try {
     if (editingId.value) {
       await updateDictionaryItem(editingId.value, { ...form })
-      ElMessage.success('字典项更新成功。')
+      showSuccessMessage('字典项更新成功')
     } else {
       await createDictionaryItem({ ...form })
-      ElMessage.success('字典项创建成功。')
+      showSuccessMessage('字典项创建成功')
     }
     dialogVisible.value = false
     await loadGroups()
-  } catch {
-    ElMessage.error('字典项保存失败。')
+  } catch (error) {
+    showErrorMessage(error, '字典项保存失败')
   } finally {
     saving.value = false
   }
 }
 
 async function onDelete(item: DictionaryItem) {
-  try {
-    await ElMessageBox.confirm(`确认删除字典项“${item.itemLabel}”吗？`, '删除字典项', {
-      type: 'warning',
-      confirmButtonText: '删除',
-      cancelButtonText: '取消',
-    })
-  } catch {
+  const confirmed = await confirmAction(`确认删除字典项“${item.itemLabel}”吗？`, '删除字典项', '删除')
+  if (!confirmed) {
     return
   }
 
   try {
     await deleteDictionaryItem(item.id)
-    ElMessage.success('字典项删除成功。')
+    showSuccessMessage('字典项删除成功')
     await loadGroups()
-  } catch {
-    ElMessage.error('字典项删除失败。')
+  } catch (error) {
+    showErrorMessage(error, '字典项删除失败')
   }
 }
 
@@ -269,6 +264,6 @@ function onDialogClosed() {
 }
 
 onMounted(() => {
-  loadGroups()
+  void loadGroups()
 })
 </script>

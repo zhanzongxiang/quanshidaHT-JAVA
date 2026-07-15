@@ -10,6 +10,13 @@ export interface AdminMenu {
 export interface MeInfo {
   userId: number
   username: string
+  tenantId: number
+  tenantCode: string
+  tenantName: string
+  loginTenantId: number
+  loginTenantCode: string
+  loginTenantName: string
+  tenantSwitched: boolean
   permissions: string[]
   menus: AdminMenu[]
 }

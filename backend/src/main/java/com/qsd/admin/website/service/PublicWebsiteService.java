@@ -5,11 +5,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.qsd.admin.common.exception.BusinessException;
 import com.qsd.admin.common.exception.NotFoundException;
 import com.qsd.admin.content.entity.SiteContentPage;
 import com.qsd.admin.content.mapper.SiteContentPageMapper;
 import com.qsd.admin.news.entity.NewsArticle;
 import com.qsd.admin.news.mapper.NewsArticleMapper;
+import com.qsd.admin.tenant.TenantContextHolder;
 import com.qsd.admin.waybill.service.WaybillPublicService;
 import org.springframework.stereotype.Service;
 
@@ -92,7 +94,7 @@ public class PublicWebsiteService {
     }
 
     public JsonNode getHomePage() {
-        ObjectNode root = publicPageCache.get(PAGE_CACHE_PREFIX + "home", () -> readPublishedPage("home")).deepCopy();
+        ObjectNode root = publicPageCache.get(buildTenantCacheKey(PAGE_CACHE_PREFIX + "home"), () -> readPublishedPage("home")).deepCopy();
         root.remove("seo");
         return root;
     }
@@ -241,23 +243,23 @@ public class PublicWebsiteService {
 
     public JsonNode getServiceLinePage(String key) {
         String pageCode = resolveServiceLinePageCode(key);
-        return publicPageCache.get(PAGE_CACHE_PREFIX + pageCode, () -> readPublishedPage(pageCode));
+        return publicPageCache.get(buildTenantCacheKey(PAGE_CACHE_PREFIX + pageCode), () -> readPublishedPage(pageCode));
     }
 
     public JsonNode getNewsListPage(String year, Integer page, Integer pageSize) {
         int safePage = page == null || page < 1 ? 1 : page;
         int safePageSize = pageSize == null || pageSize < 1 ? 10 : Math.min(pageSize, 50);
         String normalizedYear = normalizeYear(year);
-        String cacheKey = NEWS_LIST_CACHE_PREFIX + normalizedYear + ":" + safePage + ":" + safePageSize;
+        String cacheKey = buildTenantCacheKey(NEWS_LIST_CACHE_PREFIX + normalizedYear + ":" + safePage + ":" + safePageSize);
         return publicPageCache.get(cacheKey, () -> buildNewsListPage(normalizedYear, safePage, safePageSize));
     }
 
     public JsonNode getNewsDetailPage(Long id) {
-        return publicPageCache.get(NEWS_DETAIL_CACHE_PREFIX + id, () -> buildNewsDetailPage(id));
+        return publicPageCache.get(buildTenantCacheKey(NEWS_DETAIL_CACHE_PREFIX + id), () -> buildNewsDetailPage(id));
     }
 
     public void evictPublishedPageCache(String pageCode) {
-        publicPageCache.evict(PAGE_CACHE_PREFIX + pageCode);
+        publicPageCache.evict(buildTenantCacheKey(PAGE_CACHE_PREFIX + pageCode));
     }
 
     public void evictNewsCache() {
@@ -266,6 +268,7 @@ public class PublicWebsiteService {
     }
 
     private JsonNode buildNewsListPage(String year, int page, int pageSize) {
+        Long tenantId = TenantContextHolder.requireTenantId();
         LocalDateTime publishedFrom = null;
         LocalDateTime publishedTo = null;
         if (!year.isBlank()) {
@@ -275,9 +278,9 @@ public class PublicWebsiteService {
         }
 
         int offset = (page - 1) * pageSize;
-        long total = newsArticleMapper.countPublished(publishedFrom, publishedTo);
-        List<NewsArticle> pageItems = newsArticleMapper.selectPublishedPageSummaries(publishedFrom, publishedTo, offset, pageSize);
-        List<Integer> yearsFromDb = newsArticleMapper.selectPublishedYears();
+        long total = newsArticleMapper.countPublished(tenantId, publishedFrom, publishedTo);
+        List<NewsArticle> pageItems = newsArticleMapper.selectPublishedPageSummaries(tenantId, publishedFrom, publishedTo, offset, pageSize);
+        List<Integer> yearsFromDb = newsArticleMapper.selectPublishedYears(tenantId);
 
         ObjectNode root = objectMapper.createObjectNode();
         ObjectNode hero = objectMapper.createObjectNode();
@@ -321,7 +324,7 @@ public class PublicWebsiteService {
     }
 
     private JsonNode buildNewsDetailPage(Long id) {
-        NewsArticle article = newsArticleMapper.selectPublishedById(id);
+        NewsArticle article = newsArticleMapper.selectPublishedById(TenantContextHolder.requireTenantId(), id);
         if (article == null) {
             throw new NotFoundException("已发布新闻不存在");
         }
@@ -347,7 +350,7 @@ public class PublicWebsiteService {
     public JsonNode getTrackingResult(String trackingNo) {
         String normalizedNo = trackingNo == null ? "" : trackingNo.trim().toUpperCase(Locale.ROOT);
         if (normalizedNo.isBlank()) {
-            throw new NotFoundException("运单号不能为空");
+            throw new BusinessException("运单号不能为空");
         }
 
         JsonNode actualResult = waybillPublicService.findTrackingResult(normalizedNo);
@@ -355,36 +358,18 @@ public class PublicWebsiteService {
             return actualResult;
         }
 
-        boolean exception = normalizedNo.contains("ERR") || normalizedNo.endsWith("9");
+        // Return not-found instead of fabricated data
         ObjectNode root = objectMapper.createObjectNode();
         root.put("trackingId", normalizedNo);
-        root.put("status", exception ? "运输异常" : "运输中");
-        root.put("origin", "深圳");
-        root.put("destination", resolveTrackingDestination(normalizedNo));
-        root.put("isException", exception);
-
-        ArrayNode steps = objectMapper.createArrayNode();
-        steps.add(createTrackingStep("2026-04-13 09:15:00", "订单创建", "已接收运单信息，等待分配处理。", "深圳"));
-        steps.add(createTrackingStep("2026-04-13 12:40:00", "货物入仓", "货物已入仓并完成基础核验。", "深圳仓"));
-        steps.add(createTrackingStep(
-            "2026-04-13 18:25:00",
-            exception ? "运输异常" : "国际运输中",
-            exception ? "目的港资料待补充，请联系顾问确认。" : "货物已发出，正在运往下一节点。",
-            exception ? "转运中心" : "国际干线"
-        ));
-        steps.add(createTrackingStep(
-            "2026-04-14 10:10:00",
-            exception ? "待处理" : "预计派送",
-            exception ? "等待资料补充后继续推进。" : "清关完成后将安排末端派送。",
-            "目的港"
-        ));
-        root.set("steps", steps);
-
+        root.put("status", "未找到");
+        root.put("found", false);
+        root.put("message", "未查询到该运单信息，请检查单号是否正确或联系客服。");
+        root.set("steps", objectMapper.createArrayNode());
         return root;
     }
 
     private ObjectNode readPublishedPage(String pageCode) {
-        SiteContentPage page = siteContentPageMapper.selectPublishedByPageCode(pageCode);
+        SiteContentPage page = siteContentPageMapper.selectPublishedByPageCode(TenantContextHolder.requireTenantId(), pageCode);
         if (page == null) {
             throw new NotFoundException("已发布页面不存在");
         }
@@ -392,11 +377,11 @@ public class PublicWebsiteService {
         try {
             JsonNode node = objectMapper.readTree(page.getFormJson());
             if (!node.isObject()) {
-                throw new NotFoundException("页面数据格式无效");
+                throw new BusinessException("页面数据格式无效");
             }
             return (ObjectNode) node;
         } catch (JsonProcessingException ex) {
-            throw new NotFoundException("页面数据格式无效");
+            throw new BusinessException("页面数据格式无效");
         }
     }
 
@@ -405,6 +390,10 @@ public class PublicWebsiteService {
             case "taiwan", "feizhou", "international" -> "service-line:" + key;
             default -> throw new NotFoundException("线路页面不存在");
         };
+    }
+
+    private String buildTenantCacheKey(String suffix) {
+        return "tenant:" + TenantContextHolder.requireTenantId() + ":" + suffix;
     }
 
     private String resolveTrackingDestination(String trackingNo) {
@@ -430,7 +419,7 @@ public class PublicWebsiteService {
             return "";
         }
         if (!trimmed.matches("\\d{4}")) {
-            throw new IllegalArgumentException("year must be a 4-digit number");
+            throw new BusinessException("年份必须为 4 位数字");
         }
         return trimmed;
     }

@@ -1,11 +1,7 @@
-﻿import { http } from './http'
+import { http } from './http'
+import { unwrapResponse, withQuery } from './shared'
+import type { ApiResponse } from './shared'
 import type { WaybillDetail, WaybillEvent, WaybillLeg, WaybillSavePayload, WaybillSummary } from '../types/waybill'
-
-interface ApiResponse<T> {
-  code: number
-  message: string
-  data: T
-}
 
 interface WaybillSummaryApiModel {
   id: number
@@ -109,8 +105,8 @@ function toDetail(model: WaybillDetailApiModel): WaybillDetail {
     weightKg: model.weightKg,
     remark: model.remark || '',
     createdAt: model.createdAt,
-    legs: model.legs.map(toLeg),
-    events: model.events.map(toEvent),
+    legs: (model.legs ?? []).map(toLeg),
+    events: (model.events ?? []).map(toEvent),
   }
 }
 
@@ -143,23 +139,20 @@ export function createEmptyWaybillEvent(sortNo = 1): WaybillEvent {
 }
 
 export async function fetchWaybills(params?: { keyword?: string; status?: string }): Promise<WaybillSummary[]> {
-  const { data } = await http.get<ApiResponse<WaybillSummaryApiModel[]>>('/waybills', { params })
-  return data.data.map(toSummary)
+  const response = await http.get<ApiResponse<WaybillSummaryApiModel[]>>('/waybills', withQuery(params))
+  return unwrapResponse(response).map(toSummary)
 }
 
 export async function fetchWaybill(id: number): Promise<WaybillDetail> {
-  const { data } = await http.get<ApiResponse<WaybillDetailApiModel>>(`/waybills/${id}`)
-  return toDetail(data.data)
+  return toDetail(unwrapResponse(await http.get<ApiResponse<WaybillDetailApiModel>>(`/waybills/${id}`)))
 }
 
 export async function createWaybill(payload: WaybillSavePayload): Promise<WaybillDetail> {
-  const { data } = await http.post<ApiResponse<WaybillDetailApiModel>>('/waybills', payload)
-  return toDetail(data.data)
+  return toDetail(unwrapResponse(await http.post<ApiResponse<WaybillDetailApiModel>>('/waybills', payload)))
 }
 
 export async function updateWaybill(id: number, payload: WaybillSavePayload): Promise<WaybillDetail> {
-  const { data } = await http.put<ApiResponse<WaybillDetailApiModel>>(`/waybills/${id}`, payload)
-  return toDetail(data.data)
+  return toDetail(unwrapResponse(await http.put<ApiResponse<WaybillDetailApiModel>>(`/waybills/${id}`, payload)))
 }
 
 export async function deleteWaybill(id: number): Promise<void> {

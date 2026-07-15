@@ -53,10 +53,10 @@
 </template>
 
 <script setup lang="ts">
-import { ElMessage } from 'element-plus'
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { fetchServiceLineSummaries } from '../api/service-line'
+import { showErrorMessage } from '../utils/message'
 import type { ServiceLineCode, ServiceLineSummary } from '../types/service-line'
 
 const router = useRouter()
@@ -70,8 +70,8 @@ async function loadServiceLines() {
   loading.value = true
   try {
     serviceLines.value = await fetchServiceLineSummaries()
-  } catch {
-    ElMessage.error('加载线路页面失败')
+  } catch (error) {
+    showErrorMessage(error, '加载线路页面失败')
   } finally {
     loading.value = false
   }

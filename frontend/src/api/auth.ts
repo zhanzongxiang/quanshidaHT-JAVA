@@ -1,28 +1,29 @@
 import { http } from './http'
+import { unwrapResponse } from './shared'
+import type { ApiResponse } from './shared'
 import type { MeInfo } from '../types/auth'
-
-interface ApiResponse<T> {
-  code: number
-  message: string
-  data: T
-}
 
 export interface LoginPayload {
   username: string
   password: string
 }
 
-export interface LoginResult {
-  accessToken: string
-  tokenType: string
+export interface SwitchTenantPayload {
+  tenantId: number
 }
 
-export async function login(payload: LoginPayload): Promise<LoginResult> {
-  const { data } = await http.post<ApiResponse<LoginResult>>('/auth/login', payload)
-  return data.data
+export async function login(payload: LoginPayload): Promise<void> {
+  await http.post<ApiResponse<void>>('/auth/login', payload)
+}
+
+export async function logout(): Promise<void> {
+  await http.post<ApiResponse<void>>('/auth/logout')
+}
+
+export async function switchTenant(payload: SwitchTenantPayload): Promise<void> {
+  await http.post<ApiResponse<void>>('/auth/switch-tenant', payload)
 }
 
 export async function fetchMe(): Promise<MeInfo> {
-  const { data } = await http.get<ApiResponse<MeInfo>>('/auth/me')
-  return data.data
+  return unwrapResponse(await http.get<ApiResponse<MeInfo>>('/auth/me'))
 }

@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 public class AdminUser {
     @TableId(type = IdType.AUTO)
     private Long id;
+    private Long tenantId;
     private String username;
     private String passwordHash;
     private String status;
@@ -18,6 +19,14 @@ public class AdminUser {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public Long getTenantId() {
+        return tenantId;
+    }
+
+    public void setTenantId(Long tenantId) {
+        this.tenantId = tenantId;
     }
 
     public String getUsername() {

@@ -42,9 +42,9 @@
 </template>
 
 <script setup lang="ts">
-import { ElMessage } from 'element-plus'
 import { onMounted, reactive, ref } from 'vue'
 import { fetchNavigationSettings, saveNavigationSettings } from '../api/site-settings'
+import { showErrorMessage, showSuccessMessage } from '../utils/message'
 import type { NavigationSettings } from '../types/site-settings'
 
 const saving = ref(false)
@@ -55,10 +55,14 @@ const form = reactive<NavigationSettings>({
 })
 
 async function loadSettings() {
-  const data = await fetchNavigationSettings()
-  form.brandName = data.brandName
-  form.logoUrl = data.logoUrl
-  form.items.splice(0, form.items.length, ...data.items.map((item) => ({ ...item })))
+  try {
+    const data = await fetchNavigationSettings()
+    form.brandName = data.brandName
+    form.logoUrl = data.logoUrl
+    form.items.splice(0, form.items.length, ...data.items.map((item) => ({ ...item })))
+  } catch (error) {
+    showErrorMessage(error, '导航设置加载失败')
+  }
 }
 
 async function onSave() {
@@ -69,7 +73,9 @@ async function onSave() {
       logoUrl: form.logoUrl,
       items: form.items.map((item) => ({ ...item })),
     })
-    ElMessage.success('导航设置已保存')
+    showSuccessMessage('导航设置已保存')
+  } catch (error) {
+    showErrorMessage(error, '导航设置保存失败')
   } finally {
     saving.value = false
   }

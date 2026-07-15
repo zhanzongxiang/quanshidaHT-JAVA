@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 public class SiteContentPage {
     @TableId(type = IdType.AUTO)
     private Long id;
+    private Long tenantId;
     private String pageCode;
     private String status;
     private String formJson;
@@ -23,6 +24,14 @@ public class SiteContentPage {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public Long getTenantId() {
+        return tenantId;
+    }
+
+    public void setTenantId(Long tenantId) {
+        this.tenantId = tenantId;
     }
 
     public String getPageCode() {

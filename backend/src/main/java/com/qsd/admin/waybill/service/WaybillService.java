@@ -1,6 +1,8 @@
 package com.qsd.admin.waybill.service;
 
+import com.qsd.admin.common.exception.BusinessException;
 import com.qsd.admin.common.exception.NotFoundException;
+import com.qsd.admin.tenant.TenantContextHolder;
 import com.qsd.admin.waybill.dto.WaybillDetailResponse;
 import com.qsd.admin.waybill.dto.WaybillEventPayload;
 import com.qsd.admin.waybill.dto.WaybillLegPayload;
@@ -41,7 +43,8 @@ public class WaybillService {
     }
 
     public List<WaybillSummaryResponse> list(String keyword, String status) {
-        return waybillOrderMapper.selectActiveList(trimToNull(keyword), trimToNull(status)).stream()
+        Long tenantId = TenantContextHolder.requireTenantId();
+        return waybillOrderMapper.selectActiveList(tenantId, trimToNull(keyword), trimToNull(status)).stream()
             .map(this::toSummaryResponse)
             .toList();
     }
@@ -52,29 +55,33 @@ public class WaybillService {
 
     @Transactional
     public WaybillDetailResponse create(WaybillSaveRequest request) {
-        ensureMainTrackingNoAvailable(request.mainTrackingNo(), null);
+        Long tenantId = TenantContextHolder.requireTenantId();
+        ensureMainTrackingNoAvailable(tenantId, request.mainTrackingNo(), null);
 
         LocalDateTime now = LocalDateTime.now();
         WaybillOrder order = new WaybillOrder();
+        order.setTenantId(tenantId);
         applyRequest(order, request, now);
         order.setDeleted(0);
         order.setCreatedAt(now);
         order.setUpdatedAt(now);
         waybillOrderMapper.insert(order);
 
-        replaceChildren(order.getId(), request);
+        replaceChildren(tenantId, order.getId(), request, now);
         return toDetailResponse(requireWaybill(order.getId()));
     }
 
     @Transactional
     public WaybillDetailResponse update(Long id, WaybillSaveRequest request) {
+        Long tenantId = TenantContextHolder.requireTenantId();
         WaybillOrder order = requireWaybill(id);
-        ensureMainTrackingNoAvailable(request.mainTrackingNo(), id);
+        ensureMainTrackingNoAvailable(tenantId, request.mainTrackingNo(), id);
 
-        applyRequest(order, request, LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        applyRequest(order, request, now);
         waybillOrderMapper.updateById(order);
 
-        replaceChildren(id, request);
+        replaceChildren(tenantId, id, request, now);
         return toDetailResponse(requireWaybill(id));
     }
 
@@ -84,34 +91,33 @@ public class WaybillService {
         order.setDeleted(1);
         order.setUpdatedAt(LocalDateTime.now());
         waybillOrderMapper.updateById(order);
-        waybillLegMapper.deleteByWaybillId(id);
-        waybillTrackEventMapper.deleteByWaybillId(id);
     }
 
     public WaybillOrder findByTrackingNo(String trackingNo) {
+        Long tenantId = TenantContextHolder.requireTenantId();
         String normalized = trimToNull(trackingNo);
         if (normalized == null) {
             return null;
         }
 
-        WaybillOrder order = waybillOrderMapper.selectActiveByMainTrackingNo(normalized);
+        WaybillOrder order = waybillOrderMapper.selectActiveByMainTrackingNo(tenantId, normalized);
         if (order != null) {
             return order;
         }
 
-        WaybillLeg leg = waybillLegMapper.selectByTrackingNo(normalized);
+        WaybillLeg leg = waybillLegMapper.selectByTrackingNo(tenantId, normalized);
         if (leg == null) {
             return null;
         }
-        return waybillOrderMapper.selectActiveById(leg.getWaybillId());
+        return waybillOrderMapper.selectActiveById(tenantId, leg.getWaybillId());
     }
 
     public List<WaybillLeg> listLegs(Long waybillId) {
-        return waybillLegMapper.selectByWaybillId(waybillId);
+        return waybillLegMapper.selectByWaybillId(TenantContextHolder.requireTenantId(), waybillId);
     }
 
     public List<WaybillTrackEvent> listVisibleEvents(Long waybillId) {
-        return waybillTrackEventMapper.selectVisibleByWaybillId(waybillId);
+        return waybillTrackEventMapper.selectVisibleByWaybillId(TenantContextHolder.requireTenantId(), waybillId);
     }
 
     private WaybillSummaryResponse toSummaryResponse(WaybillOrder order) {
@@ -129,7 +135,8 @@ public class WaybillService {
     }
 
     private WaybillDetailResponse toDetailResponse(WaybillOrder order) {
-        List<WaybillLeg> legEntities = waybillLegMapper.selectByWaybillId(order.getId());
+        Long tenantId = TenantContextHolder.requireTenantId();
+        List<WaybillLeg> legEntities = waybillLegMapper.selectByWaybillId(tenantId, order.getId());
         Map<Long, Integer> legNoMap = new HashMap<>();
         for (WaybillLeg legEntity : legEntities) {
             legNoMap.put(legEntity.getId(), legEntity.getLegNo());
@@ -138,7 +145,7 @@ public class WaybillService {
         List<WaybillLegPayload> legs = legEntities.stream()
             .map(this::toLegPayload)
             .toList();
-        List<WaybillEventPayload> events = waybillTrackEventMapper.selectByWaybillId(order.getId()).stream()
+        List<WaybillEventPayload> events = waybillTrackEventMapper.selectByWaybillId(tenantId, order.getId()).stream()
             .map(event -> toEventPayload(event, legNoMap))
             .toList();
 
@@ -151,6 +158,7 @@ public class WaybillService {
             order.getOriginWarehouse(),
             order.getDestinationCountry(),
             order.getDestinationCity(),
+            order.getMemberId(),
             order.getRouteType(),
             order.getCurrentStatus(),
             order.getCurrentNode(),
@@ -195,17 +203,22 @@ public class WaybillService {
     }
 
     private WaybillOrder requireWaybill(Long id) {
-        WaybillOrder order = waybillOrderMapper.selectActiveById(id);
+        WaybillOrder order = waybillOrderMapper.selectActiveById(TenantContextHolder.requireTenantId(), id);
         if (order == null) {
-            throw new NotFoundException("运单不存在");
+            throw new NotFoundException("waybill not found");
         }
         return order;
     }
 
-    private void ensureMainTrackingNoAvailable(String mainTrackingNo, Long currentId) {
-        WaybillOrder existing = waybillOrderMapper.selectActiveByMainTrackingNo(mainTrackingNo.trim());
+    private void ensureMainTrackingNoAvailable(Long tenantId, String mainTrackingNo, Long currentId) {
+        String normalized = trimToNull(mainTrackingNo);
+        if (normalized == null) {
+            throw new BusinessException("main tracking no must not be blank");
+        }
+
+        WaybillOrder existing = waybillOrderMapper.selectByMainTrackingNoIncludingDeleted(tenantId, normalized);
         if (existing != null && !existing.getId().equals(currentId)) {
-            throw new IllegalArgumentException("主运单号已存在");
+            throw new BusinessException("main tracking no already exists");
         }
     }
 
@@ -230,25 +243,72 @@ public class WaybillService {
 
     private void validateRequest(WaybillSaveRequest request) {
         if (request.packageCount() == null || request.packageCount() < 1) {
-            throw new IllegalArgumentException("包裹数量必须大于 0");
+            throw new BusinessException("package count must be greater than 0");
         }
         if (request.legs() == null || request.legs().isEmpty()) {
-            throw new IllegalArgumentException("至少需要填写一个线路分段");
+            throw new BusinessException("at least one leg is required");
         }
         if (request.events() == null || request.events().isEmpty()) {
-            throw new IllegalArgumentException("至少需要填写一个轨迹事件");
+            throw new BusinessException("at least one tracking event is required");
+        }
+
+        validateLegs(request.legs());
+        validateEvents(request.events(), request.legs().size());
+    }
+
+    private void validateLegs(List<WaybillLegPayload> legs) {
+        for (int index = 0; index < legs.size(); index++) {
+            WaybillLegPayload leg = legs.get(index);
+            int rowNo = index + 1;
+
+            if (trimToNull(leg.legType()) == null) {
+                throw new BusinessException("leg type is required at row " + rowNo);
+            }
+            if (trimToNull(leg.trackingNo()) == null) {
+                throw new BusinessException("leg tracking no is required at row " + rowNo);
+            }
+            if (trimToNull(leg.departureTime()) != null && trimToNull(leg.arrivalTime()) != null) {
+                LocalDateTime departureTime = parseDateTime(leg.departureTime());
+                LocalDateTime arrivalTime = parseDateTime(leg.arrivalTime());
+                if (arrivalTime.isBefore(departureTime)) {
+                    throw new BusinessException("leg arrival time cannot be earlier than departure time at row " + rowNo);
+                }
+            }
         }
     }
 
-    private void replaceChildren(Long waybillId, WaybillSaveRequest request) {
-        waybillLegMapper.deleteByWaybillId(waybillId);
-        waybillTrackEventMapper.deleteByWaybillId(waybillId);
+    private void validateEvents(List<WaybillEventPayload> events, int legCount) {
+        for (int index = 0; index < events.size(); index++) {
+            WaybillEventPayload event = events.get(index);
+            int rowNo = index + 1;
+
+            if (trimToNull(event.eventTime()) == null) {
+                throw new BusinessException("event time is required at row " + rowNo);
+            }
+            if (trimToNull(event.eventStatus()) == null) {
+                throw new BusinessException("event status is required at row " + rowNo);
+            }
+            if (trimToNull(event.eventDescription()) == null) {
+                throw new BusinessException("event description is required at row " + rowNo);
+            }
+            parseDateTime(event.eventTime());
+
+            if (event.legId() != null && (event.legId() < 1 || event.legId() > legCount)) {
+                throw new BusinessException("invalid leg reference at event row " + rowNo);
+            }
+        }
+    }
+
+    private void replaceChildren(Long tenantId, Long waybillId, WaybillSaveRequest request, LocalDateTime now) {
+        waybillLegMapper.deleteByWaybillId(tenantId, waybillId);
+        waybillTrackEventMapper.deleteByWaybillId(tenantId, waybillId);
 
         Map<Integer, Long> legIdMap = new HashMap<>();
         for (int index = 0; index < request.legs().size(); index++) {
             WaybillLegPayload legPayload = request.legs().get(index);
             WaybillLeg leg = new WaybillLeg();
             Integer legNo = legPayload.legNo() == null ? index + 1 : legPayload.legNo();
+            leg.setTenantId(tenantId);
             leg.setWaybillId(waybillId);
             leg.setLegNo(legNo);
             leg.setLegType(legPayload.legType().trim());
@@ -261,8 +321,8 @@ public class WaybillService {
             leg.setDepartureTime(parseDateTime(legPayload.departureTime()));
             leg.setArrivalTime(parseDateTime(legPayload.arrivalTime()));
             leg.setRemark(trimToEmpty(legPayload.remark()));
-            leg.setCreatedAt(LocalDateTime.now());
-            leg.setUpdatedAt(LocalDateTime.now());
+            leg.setCreatedAt(now);
+            leg.setUpdatedAt(now);
             waybillLegMapper.insert(leg);
             legIdMap.put(legNo, leg.getId());
         }
@@ -270,6 +330,7 @@ public class WaybillService {
         for (int index = 0; index < request.events().size(); index++) {
             WaybillEventPayload eventPayload = request.events().get(index);
             WaybillTrackEvent event = new WaybillTrackEvent();
+            event.setTenantId(tenantId);
             event.setWaybillId(waybillId);
             event.setLegId(eventPayload.legId() == null ? null : legIdMap.get(eventPayload.legId().intValue()));
             event.setEventTime(parseDateTime(eventPayload.eventTime()));
@@ -278,7 +339,7 @@ public class WaybillService {
             event.setEventLocation(trimToEmpty(eventPayload.eventLocation()));
             event.setVisibleToCustomer(Boolean.FALSE.equals(eventPayload.visibleToCustomer()) ? 0 : 1);
             event.setSortNo(eventPayload.sortNo() == null ? index + 1 : eventPayload.sortNo());
-            event.setCreatedAt(LocalDateTime.now());
+            event.setCreatedAt(now);
             waybillTrackEventMapper.insert(event);
         }
     }
@@ -291,7 +352,7 @@ public class WaybillService {
         try {
             return LocalDateTime.parse(trimmed, DATE_TIME_FORMATTER);
         } catch (DateTimeParseException ex) {
-            throw new IllegalArgumentException("时间格式必须为 yyyy-MM-dd HH:mm:ss");
+            throw new BusinessException("datetime format must be yyyy-MM-dd HH:mm:ss");
         }
     }
 

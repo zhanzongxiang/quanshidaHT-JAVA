@@ -2,130 +2,126 @@
 
 ## 项目定位
 
-这是企业官网配套的后台管理系统，当前重点是支持官网内容运营、新闻管理、线路模板管理、运单管理、基础站点设置和公开数据接口，不以完整 ERP 为目标。
+这是一个以运单管理后台为核心的项目，当前仓库包含：
 
-## 技术约束
+- `backend`：Java Spring Boot 后端
+- `frontend`：Vue 3 管理后台前端
 
-- 后台前端统一使用 `Vue 3 + TypeScript + Vite + Vue Router + Pinia`
-- UI 方案固定为 `Element Plus + Tailwind CSS`
-- 后端统一使用 `Java 21 + Spring Boot 3 + Spring Security + JWT + MyBatis-Plus + Flyway`
-- 前端业务请求统一走 `/api`
-- 开发环境通过 Vite 代理转发到 `VITE_API_PROXY_TARGET`
-- 默认脚手架残留组件、资源和未使用代码不保留，确认无引用后应及时删除
+当前仓库不包含原生 App，也不包含小程序前端页面代码。现阶段“小程序可用”的含义是：
 
-## 后台前端规范
+- 后端提供独立的会员端 API
+- 后台管理端提供会员管理能力
+- 后续小程序可以直接接入这些 API
 
-- 根路由 `/` 默认跳转到 `/dashboard`
-- 未登录访问后台路由时，统一跳转到 `/login?redirect=当前地址`
-- 已登录访问 `/login` 时，直接回到 `/dashboard`
-- 登录成功后必须先完成 `/api/auth/me` 和动态菜单注入，再进入目标页
-- 后台布局保持左侧菜单与右侧内容区等高
-- 只允许右侧内容区内部滚动，不使用全局滚动条
-- 前端开发端口默认使用 `5174`
+## 当前已落地能力
 
-## 首页内容管理规范
+- 后台管理员登录、权限、菜单
+- 站点内容管理、新闻管理、运单管理、字典管理
+- 会员系统后台管理
+- 会员注册、登录、资料维护
+- 会员查询本人可见运单及运单详情
 
-- 首页内容管理页面位于 `frontend/src/views/ContentView.vue`
-- 首页内容持久化使用后端接口：
-  - `GET /api/content/home`
-  - `PUT /api/content/home/draft`
-  - `PUT /api/content/home/publish`
-- 首页数据存储在 `site_content_page` 表中
-- 首页表单当前按以下结构维护：
-  - `hero`
-  - `trackingSection`
-  - `businessSection`
-  - `processSection`
-  - `promiseSection`
-  - `newsPreviewSection`
-  - `seo`
-- 历史草稿升级时必须做字段兼容，不能因旧数据缺字段导致页面渲染失败
+## 会员系统边界
 
-## 新闻管理规范
+- 管理员接口继续使用 `/api/**`
+- 会员端接口使用 `/api/member/**`
+- 管理员 JWT 与会员 JWT 必须严格隔离
+- 小程序不得直接复用后台管理员登录态
 
-- 新闻管理使用区块化表单，不再使用单一大文本正文
-- 当前支持的正文区块类型：
-  - `paragraph`
-  - `heading`
-  - `image`
-  - `image_caption`
-- 后端新闻管理接口保持在 `/api/news/*`
-- 前端区块数据允许序列化到后端 `content` 字段中保存
+当前会员端接口包括：
 
-## 运单与字典规范
+- `POST /api/member/auth/register`
+- `POST /api/member/auth/login`
+- `GET /api/member/profile`
+- `PUT /api/member/profile`
+- `GET /api/member/waybills`
+- `GET /api/member/waybills/{id}`
 
-- 运单管理页面位于 `frontend/src/views/WaybillView.vue`
-- 运单页面、按钮、表格列名、表单项、提示消息统一使用中文
-- 运单状态、线路类型、分段状态等基础枚举统一收敛到字典模块，不再在页面或服务中长期硬编码
-- 数据库存储继续保留稳定英文编码值，例如 `created`、`direct`、`pending`
-- 前后端显示层统一通过字典标签映射成中文
-- 公开运单查询接口返回的状态文案也必须走字典映射
+当前后台会员管理接口包括：
 
-## 字典管理规范
+- `GET /api/admin/members`
+- `GET /api/admin/members/{id}`
+- `POST /api/admin/members`
+- `PUT /api/admin/members/{id}`
+- `PUT /api/admin/members/{id}/status`
 
-- 后台必须提供字典管理页面，支持查看、新增、编辑、删除非内置字典项
-- 字典管理接口位于：
-  - `GET /api/dictionaries`
-  - `GET /api/dictionaries/options`
-  - `POST /api/dictionaries`
-  - `PUT /api/dictionaries/{id}`
-  - `DELETE /api/dictionaries/{id}`
-- 字典表使用 `sys_dict_item`
-- 内置字典项允许编辑标签、排序、启用状态和备注，不允许修改编码值或删除
-- 业务页面优先通过字典接口读取选项
+## 运单与会员协同规则
 
-## 线路模板管理规范
+- 一个会员可关联多条运单
+- 运单可通过 `member_id`、手机号匹配或人工绑定关系归属给会员
+- 会员端只能访问自己的运单
+- 运单状态、线路类型、会员状态等基础枚举统一走字典体系
 
-- 线路页面使用固定模板表单，不允许自由拼装布局
-- 当前线路模板编辑接口位于 `/api/content/service-lines/*`
-- 当前线路模板结构按以下字段维护：
-  - `key`
-  - `eyebrow`
-  - `title`
-  - `subtitle`
-  - `description`
-  - `heroImage`
-  - `heroTags`
-  - `metrics`
-  - `highlights`
-  - `processSteps`
-  - `scope`
-  - `support`
-  - `cta`
-- 保存草稿允许内容不完整
-- 发布时必须通过必填项和模块完整性校验
+## 微信支付接入规范
 
-## 站点设置规范
+如果后续接入微信支付，必须按“会员身份体系扩展 + 支付域独立建模 + 小程序支付链路落地”处理，不能直接在现有会员表上做临时字段拼接。
 
-- 导航、页脚、联系方式属于全局配置，不挂在单页内容表单中
-- 联系方式页面为结构化编辑模块，不是简单键值表单
-- 联系方式模块至少包含：
-  - Hero 文案
-  - 联系卡片
-  - 办公时间
-  - 服务承诺
-  - CTA 按钮
+### 会员身份扩展
 
-## 公开官网接口规范
+- 在会员体系中增加微信身份字段，如 `openid`、`unionid`、`wechat_bind_time`
+- 新增小程序登录/绑定流程，支持 `code2Session`
+- 保留现有手机号登录能力，作为过渡方案或补充登录方式
+- 明确一个微信身份只能绑定一个有效会员
 
-- 官网公开接口与后台 JWT 管理接口必须分离
-- 公开只读接口统一放在：
-  - `/api/site`
-  - `/api/pages/**`
-  - `/api/tracking/**`
-- 公开接口只允许返回已发布数据，不允许暴露草稿
-- 后台管理接口继续要求登录认证
+### 支付域建模
 
-## 安全与迁移规范
+必须新增独立支付模型，至少包括：
 
-- Spring Security 仅放行明确声明的公开接口
-- Flyway 已执行迁移必须保持不可变，不能直接修改历史迁移文件
-- 菜单、权限、文案调整如果影响已执行迁移，必须新增迁移文件
-- 本地 Windows 启动后端优先使用 `backend/start-dev.ps1` 或 `backend/start-dev.cmd`
-- 本地开发使用 `Java 21`
+- `pay_order`：支付单
+- `pay_transaction`：微信下单、查询、支付回执流水
+- `refund_order`：退款单
+- `pay_notify_log`：支付回调日志
+- `refund_notify_log`：退款回调日志
+- `pay_reconcile_record`：对账记录
+
+支付单至少要能关联：
+
+- 会员
+- 运单或业务单据
+- 支付场景
+- 金额币种
+- 支付状态
+- 第三方交易号
+
+### 后端接口规范
+
+- 小程序侧需要新增支付下单、支付结果查询、支付记录查询接口
+- 后端需要新增微信支付回调接口，并完成签名验签、幂等、防重放
+- 后台需要新增支付单查询、退款处理、异常单排查、对账结果查看接口
+- 支付回调不得直接信任前端结果，必须以微信回调或主动查单为准
+
+### 前端后台规范
+
+后台管理端需要新增支付管理能力，至少包括：
+
+- 支付单列表
+- 支付状态筛选
+- 微信交易号查询
+- 运单维度支付记录查看
+- 退款申请/退款结果查看
+- 回调失败与异常支付排查
+- 对账结果查看
+
+## 安全与配置要求
+
+- 微信支付商户号、证书、私钥、APIv3 Key 必须走环境变量或安全配置，不允许写死到仓库
+- 支付回调接口必须记录原始通知内容与处理结果
+- 所有支付相关状态流转必须具备幂等控制
+- Flyway 已执行迁移不可修改，新增支付能力必须追加新迁移文件
 
 ## 验证要求
 
-- 前端改动后至少保证 `npm run build` 通过
-- 后端改动后至少保证 `mvn -DskipTests package` 通过
-- 涉及登录、权限、路由、内容发布、公开接口时，需要做对应功能回归
+会员相关改动至少验证：
+
+- 注册成功
+- 登录成功
+- 禁用会员不可登录
+- 会员只能查看自己的运单
+
+微信支付相关改动至少验证：
+
+- 小程序支付下单成功生成预支付参数
+- 支付回调可重复通知且不会重复入账
+- 主动查单可修正异常状态
+- 后台可查询支付单、退款单、回调日志
+- 对账任务可识别本地与微信侧差异

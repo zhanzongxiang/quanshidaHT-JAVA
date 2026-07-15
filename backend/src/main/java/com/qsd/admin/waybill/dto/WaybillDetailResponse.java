@@ -12,6 +12,7 @@ public record WaybillDetailResponse(
     String originWarehouse,
     String destinationCountry,
     String destinationCity,
+    Long memberId,
     String routeType,
     String currentStatus,
     String currentNode,

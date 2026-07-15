@@ -5,9 +5,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.qsd.admin.common.exception.BusinessException;
 import com.qsd.admin.content.dto.HomeContentResponse;
 import com.qsd.admin.content.entity.SiteContentPage;
 import com.qsd.admin.content.mapper.SiteContentPageMapper;
+import com.qsd.admin.tenant.TenantContext;
+import com.qsd.admin.tenant.TenantContextHolder;
 import com.qsd.admin.website.service.PublicWebsiteService;
 import org.springframework.stereotype.Service;
 
@@ -66,7 +69,8 @@ public class HomeContentService {
     }
 
     private SiteContentPage ensureHomeContent() {
-        SiteContentPage page = siteContentPageMapper.selectByPageCode(HOME_PAGE_CODE);
+        Long tenantId = TenantContextHolder.requireTenantId();
+        SiteContentPage page = siteContentPageMapper.selectByPageCode(tenantId, HOME_PAGE_CODE);
         if (page != null) {
             page.setFormJson(writeFormJson(readFormJson(page.getFormJson())));
             return page;
@@ -74,19 +78,20 @@ public class HomeContentService {
 
         LocalDateTime now = LocalDateTime.now();
         SiteContentPage initial = new SiteContentPage();
+        initial.setTenantId(tenantId);
         initial.setPageCode(HOME_PAGE_CODE);
-        initial.setStatus(STATUS_DRAFT);
+        initial.setStatus(STATUS_PUBLISHED);
         initial.setFormJson(writeFormJson(createDefaultForm()));
         initial.setCreatedAt(now);
         initial.setUpdatedAt(now);
-        initial.setPublishedAt(null);
+        initial.setPublishedAt(now);
         siteContentPageMapper.insert(initial);
         return initial;
     }
 
     private void validateForm(JsonNode form) {
         if (form == null || form.isNull() || !form.isObject()) {
-            throw new IllegalArgumentException("form must be an object");
+            throw new BusinessException("home content form is invalid");
         }
     }
 
@@ -104,7 +109,7 @@ public class HomeContentService {
         try {
             return objectMapper.writeValueAsString(form);
         } catch (JsonProcessingException ex) {
-            throw new IllegalArgumentException("failed to serialize home content");
+            throw new BusinessException("failed to serialize home content");
         }
     }
 
@@ -141,15 +146,15 @@ public class HomeContentService {
                 JsonNode image = images.get(i);
                 ObjectNode slide = normalizeSlide(image);
                 if (i == 0) {
-                    slide.put("title", source.path("hero").path("title").asText(""));
-                    slide.put("subtitle", source.path("hero").path("subtitle").asText(""));
+                    slide.put("title", source.path("hero").path("title").asText(slide.path("title").asText("")));
+                    slide.put("subtitle", source.path("hero").path("subtitle").asText(slide.path("subtitle").asText("")));
                     slide.set("primaryButton", createButtonNode(
-                        source.path("hero").path("primaryButtonText").asText(""),
-                        source.path("hero").path("primaryButtonLink").asText("")
+                        source.path("hero").path("primaryButtonText").asText(slide.path("primaryButton").path("text").asText("")),
+                        source.path("hero").path("primaryButtonLink").asText(slide.path("primaryButton").path("value").asText(""))
                     ));
                     slide.set("secondaryButton", createButtonNode(
-                        source.path("hero").path("secondaryButtonText").asText(""),
-                        source.path("hero").path("secondaryButtonLink").asText("")
+                        source.path("hero").path("secondaryButtonText").asText(slide.path("secondaryButton").path("text").asText("")),
+                        source.path("hero").path("secondaryButtonLink").asText(slide.path("secondaryButton").path("value").asText(""))
                     ));
                 }
                 slides.add(slide);
@@ -158,17 +163,26 @@ public class HomeContentService {
 
         ObjectNode trackingSection = normalized.with("trackingSection");
         JsonNode currentTracking = source.has("trackingSection") ? source.path("trackingSection") : source.path("tracking");
-        trackingSection.put("title", currentTracking.path("title").asText(""));
-        trackingSection.put("inputPlaceholder", currentTracking.path("inputPlaceholder").asText(currentTracking.path("placeholder").asText("")));
-        trackingSection.put("searchButtonText", currentTracking.path("searchButtonText").asText(currentTracking.path("buttonText").asText("")));
-        trackingSection.put("emptyText", currentTracking.path("emptyText").asText(""));
-        trackingSection.put("notFoundText", currentTracking.path("notFoundText").asText(""));
-        trackingSection.put("loadingText", currentTracking.path("loadingText").asText(""));
+        trackingSection.put("title", currentTracking.path("title").asText(trackingSection.path("title").asText("")));
+        trackingSection.put(
+            "inputPlaceholder",
+            currentTracking.path("inputPlaceholder").asText(currentTracking.path("placeholder").asText(trackingSection.path("inputPlaceholder").asText("")))
+        );
+        trackingSection.put(
+            "searchButtonText",
+            currentTracking.path("searchButtonText").asText(currentTracking.path("buttonText").asText(trackingSection.path("searchButtonText").asText("")))
+        );
+        trackingSection.put("emptyText", currentTracking.path("emptyText").asText(trackingSection.path("emptyText").asText("")));
+        trackingSection.put("notFoundText", currentTracking.path("notFoundText").asText(trackingSection.path("notFoundText").asText("")));
+        trackingSection.put("loadingText", currentTracking.path("loadingText").asText(trackingSection.path("loadingText").asText("")));
 
         ObjectNode businessSection = normalized.with("businessSection");
         JsonNode currentBusiness = source.has("businessSection") ? source.path("businessSection") : source.path("servicesSection");
-        businessSection.put("title", currentBusiness.path("title").asText(""));
-        businessSection.put("subtitle", currentBusiness.path("subtitle").asText(currentBusiness.path("description").asText("")));
+        businessSection.put("title", currentBusiness.path("title").asText(businessSection.path("title").asText("")));
+        businessSection.put(
+            "subtitle",
+            currentBusiness.path("subtitle").asText(currentBusiness.path("description").asText(businessSection.path("subtitle").asText("")))
+        );
         ArrayNode businessItems = businessSection.putArray("items");
         if (currentBusiness.path("items").isArray()) {
             for (JsonNode item : currentBusiness.path("items")) {
@@ -183,8 +197,8 @@ public class HomeContentService {
 
         ObjectNode processSection = normalized.with("processSection");
         JsonNode currentProcess = source.path("processSection");
-        processSection.put("title", currentProcess.path("title").asText(""));
-        processSection.put("subtitle", currentProcess.path("subtitle").asText(""));
+        processSection.put("title", currentProcess.path("title").asText(processSection.path("title").asText("")));
+        processSection.put("subtitle", currentProcess.path("subtitle").asText(processSection.path("subtitle").asText("")));
         ArrayNode processSteps = processSection.putArray("steps");
         if (currentProcess.path("steps").isArray()) {
             for (JsonNode step : currentProcess.path("steps")) {
@@ -197,8 +211,8 @@ public class HomeContentService {
 
         ObjectNode promiseSection = normalized.with("promiseSection");
         JsonNode currentPromise = source.path("promiseSection");
-        promiseSection.put("title", currentPromise.path("title").asText(""));
-        promiseSection.put("subtitle", currentPromise.path("subtitle").asText(""));
+        promiseSection.put("title", currentPromise.path("title").asText(promiseSection.path("title").asText("")));
+        promiseSection.put("subtitle", currentPromise.path("subtitle").asText(promiseSection.path("subtitle").asText("")));
         ArrayNode promiseItems = promiseSection.putArray("items");
         if (currentPromise.path("items").isArray()) {
             for (JsonNode item : currentPromise.path("items")) {
@@ -218,10 +232,10 @@ public class HomeContentService {
 
         ObjectNode newsPreviewSection = normalized.with("newsPreviewSection");
         JsonNode currentNewsPreview = source.path("newsPreviewSection");
-        newsPreviewSection.put("title", currentNewsPreview.path("title").asText(""));
-        newsPreviewSection.put("subtitle", currentNewsPreview.path("subtitle").asText(""));
-        newsPreviewSection.put("viewAllText", currentNewsPreview.path("viewAllText").asText(""));
-        newsPreviewSection.put("viewAllUrl", currentNewsPreview.path("viewAllUrl").asText(""));
+        newsPreviewSection.put("title", currentNewsPreview.path("title").asText(newsPreviewSection.path("title").asText("")));
+        newsPreviewSection.put("subtitle", currentNewsPreview.path("subtitle").asText(newsPreviewSection.path("subtitle").asText("")));
+        newsPreviewSection.put("viewAllText", currentNewsPreview.path("viewAllText").asText(newsPreviewSection.path("viewAllText").asText("")));
+        newsPreviewSection.put("viewAllUrl", currentNewsPreview.path("viewAllUrl").asText(newsPreviewSection.path("viewAllUrl").asText("")));
         ArrayNode newsItems = newsPreviewSection.putArray("items");
         if (currentNewsPreview.path("items").isArray()) {
             for (JsonNode item : currentNewsPreview.path("items")) {
@@ -231,9 +245,9 @@ public class HomeContentService {
 
         ObjectNode seo = normalized.with("seo");
         JsonNode currentSeo = source.path("seo");
-        seo.put("title", currentSeo.path("title").asText(""));
-        seo.put("description", currentSeo.path("description").asText(""));
-        seo.put("keywords", currentSeo.path("keywords").asText(""));
+        seo.put("title", currentSeo.path("title").asText(seo.path("title").asText("")));
+        seo.put("description", currentSeo.path("description").asText(seo.path("description").asText("")));
+        seo.put("keywords", currentSeo.path("keywords").asText(seo.path("keywords").asText("")));
 
         return normalized;
     }
@@ -266,64 +280,136 @@ public class HomeContentService {
     }
 
     private ObjectNode createDefaultForm() {
+        String tenantName = currentTenantName();
         ObjectNode root = objectMapper.createObjectNode();
 
         ObjectNode hero = root.putObject("hero");
-        hero.set("slides", objectMapper.createArrayNode());
+        ArrayNode slides = hero.putArray("slides");
+        slides.add(createSlide(
+            "https://images.unsplash.com/photo-1494412651409-8963ce7935a7?auto=format&fit=crop&w=1600&q=80",
+            tenantName + " logistics overview",
+            tenantName + " logistics solutions",
+            "A reusable tenant homepage template for waybill, delivery, and cross-border operations.",
+            "Track Shipment",
+            "/",
+            "Contact Team",
+            "/contact"
+        ));
+        slides.add(createSlide(
+            "https://images.unsplash.com/photo-1570710891163-6d3b5c47248b?auto=format&fit=crop&w=1600&q=80",
+            tenantName + " service network",
+            "Operational visibility from booking to delivery",
+            "Replace this default copy with tenant-specific route, fulfillment, and service-positioning content.",
+            "View Services",
+            "/taiwan",
+            "Latest News",
+            "/news"
+        ));
 
         ObjectNode trackingSection = root.putObject("trackingSection");
-        trackingSection.put("title", "");
-        trackingSection.put("inputPlaceholder", "");
-        trackingSection.put("searchButtonText", "");
-        trackingSection.put("emptyText", "");
-        trackingSection.put("notFoundText", "");
-        trackingSection.put("loadingText", "");
+        trackingSection.put("title", "Shipment Tracking");
+        trackingSection.put("inputPlaceholder", "Enter tracking number or reference number");
+        trackingSection.put("searchButtonText", "Track Now");
+        trackingSection.put("emptyText", "Enter a tracking number to see the latest shipment status.");
+        trackingSection.put("notFoundText", "No shipment was found for the current number.");
+        trackingSection.put("loadingText", "Loading shipment details...");
 
         ObjectNode businessSection = root.putObject("businessSection");
-        businessSection.put("title", "");
-        businessSection.put("subtitle", "");
-        businessSection.set("items", objectMapper.createArrayNode());
+        businessSection.put("title", "Core Services");
+        businessSection.put("subtitle", "A reusable service layout for freight, route delivery, and fulfillment scenarios.");
+        ArrayNode businessItems = businessSection.putArray("items");
+        businessItems.add(createBusinessItem("Regional Line-Haul", "Stable route-based delivery for recurring business flows.", "mdi-truck-fast-outline", "/taiwan"));
+        businessItems.add(createBusinessItem("Cross-Border Delivery", "Template content for cross-border routing, customs, and last-mile execution.", "mdi-earth", "/international"));
+        businessItems.add(createBusinessItem("Warehousing Support", "Use this block to describe storage, sorting, consolidation, or value-added services.", "mdi-warehouse", "/contact"));
 
         ObjectNode processSection = root.putObject("processSection");
-        processSection.put("title", "");
-        processSection.put("subtitle", "");
-        processSection.set("steps", objectMapper.createArrayNode());
+        processSection.put("title", "Delivery Workflow");
+        processSection.put("subtitle", "Default steps that can be customized for each tenant.");
+        ArrayNode processSteps = processSection.putArray("steps");
+        processSteps.add(createStep("Requirement Review", "Confirm shipment profile, destination, and service expectation."));
+        processSteps.add(createStep("Route Planning", "Choose line-haul, customs, and last-mile handling strategy."));
+        processSteps.add(createStep("Shipment Execution", "Create waybill, collect cargo, and start operational handoff."));
+        processSteps.add(createStep("Tracking And Delivery", "Monitor events and close the shipment with delivery confirmation."));
 
         ObjectNode promiseSection = root.putObject("promiseSection");
-        promiseSection.put("title", "");
-        promiseSection.put("subtitle", "");
+        promiseSection.put("title", "Service Commitments");
+        promiseSection.put("subtitle", "Default value propositions ready to be replaced by tenant-specific copy.");
         promiseSection.set("items", createDefaultPromiseItems());
 
         ObjectNode newsPreviewSection = root.putObject("newsPreviewSection");
-        newsPreviewSection.put("title", "");
-        newsPreviewSection.put("subtitle", "");
-        newsPreviewSection.put("viewAllText", "");
-        newsPreviewSection.put("viewAllUrl", "");
+        newsPreviewSection.put("title", "Latest Updates");
+        newsPreviewSection.put("subtitle", "Use this section for operating announcements, line changes, or service news.");
+        newsPreviewSection.put("viewAllText", "View All News");
+        newsPreviewSection.put("viewAllUrl", "/news");
         newsPreviewSection.set("items", objectMapper.createArrayNode());
 
         ObjectNode seo = root.putObject("seo");
-        seo.put("title", "");
-        seo.put("description", "");
-        seo.put("keywords", "");
+        seo.put("title", tenantName + " | Logistics And Waybill Platform");
+        seo.put("description", "Default SEO description for the tenant homepage. Replace with tenant-specific brand positioning.");
+        seo.put("keywords", tenantName + ", logistics, waybill, tracking, delivery");
         return root;
     }
 
     private ArrayNode createDefaultPromiseItems() {
         return objectMapper.createArrayNode()
-            .add(createPromiseItem())
-            .add(createPromiseItem())
-            .add(createPromiseItem())
-            .add(createPromiseItem())
-            .add(createPromiseItem())
-            .add(createPromiseItem());
+            .add(createPromiseItem("Stable Delivery", "Use this slot for the tenant's lead-time commitment.", "mdi-timer-outline"))
+            .add(createPromiseItem("Transparent Tracking", "Describe operational milestones and customer visibility.", "mdi-map-marker-path"))
+            .add(createPromiseItem("Flexible Handling", "Explain special cargo, route, or packaging capability.", "mdi-package-variant-closed"))
+            .add(createPromiseItem("Response Coverage", "Introduce support hours, escalation path, or account service.", "mdi-headset"))
+            .add(createPromiseItem("Operational Quality", "Highlight process control, exception handling, or compliance.", "mdi-shield-check-outline"))
+            .add(createPromiseItem("Scalable Collaboration", "Reserve this area for multi-warehouse or multi-country scale-up messaging.", "mdi-domain"));
     }
 
-    private ObjectNode createPromiseItem() {
+    private ObjectNode createPromiseItem(String title, String description, String icon) {
         ObjectNode item = objectMapper.createObjectNode();
-        item.put("title", "");
-        item.put("description", "");
-        item.put("icon", "");
+        item.put("title", title);
+        item.put("description", description);
+        item.put("icon", icon);
         item.put("imageUrl", "");
         return item;
+    }
+
+    private ObjectNode createSlide(
+        String image,
+        String alt,
+        String title,
+        String subtitle,
+        String primaryText,
+        String primaryValue,
+        String secondaryText,
+        String secondaryValue
+    ) {
+        ObjectNode slide = objectMapper.createObjectNode();
+        slide.put("image", image);
+        slide.put("alt", alt);
+        slide.put("title", title);
+        slide.put("subtitle", subtitle);
+        slide.set("primaryButton", createButtonNode(primaryText, primaryValue));
+        slide.set("secondaryButton", createButtonNode(secondaryText, secondaryValue));
+        return slide;
+    }
+
+    private ObjectNode createBusinessItem(String title, String description, String icon, String url) {
+        ObjectNode item = objectMapper.createObjectNode();
+        item.put("title", title);
+        item.put("description", description);
+        item.put("icon", icon);
+        item.put("url", url);
+        return item;
+    }
+
+    private ObjectNode createStep(String title, String description) {
+        ObjectNode step = objectMapper.createObjectNode();
+        step.put("title", title);
+        step.put("description", description);
+        return step;
+    }
+
+    private String currentTenantName() {
+        TenantContext context = TenantContextHolder.get();
+        if (context != null && context.tenantName() != null && !context.tenantName().isBlank()) {
+            return context.tenantName().trim();
+        }
+        return "Tenant";
     }
 }

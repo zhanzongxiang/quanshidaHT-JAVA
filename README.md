@@ -1,156 +1,92 @@
 # qsd Admin
 
-## 项目简介
+## 项目结构
 
-这是企业官网配套的后台管理系统，当前包含后台登录、菜单权限、首页内容管理、线路模板管理、新闻管理、运单管理、字典管理、全局站点设置，以及一组面向官网前台的公开只读接口。
+- `backend`：Spring Boot 后端，包含管理端、会员端、支付与微信支付集成能力
+- `frontend`：Vue 3 管理后台
+- `miniapp`：新增的 `uni-app` 微信小程序前端骨架，用于会员端与支付端联调
 
-## 技术栈
+当前仓库已经包含一个可构建的 `uni-app` 小程序骨架，但它的定位是联调版，不是最终上线版小程序产品。
 
-### 前端
+## 当前已落地能力
 
-- Vue 3
-- TypeScript
-- Vite
-- Vue Router
-- Pinia
-- Element Plus
-- Tailwind CSS
+- 管理员登录、权限、菜单、内容管理、新闻管理、运单管理、字典管理
+- 会员系统：会员注册、登录、资料维护、会员与运单绑定、会员查看本人运单
+- 支付系统 v1：支付单、退款单、回调日志、对账记录、后台支付管理页
+- 微信支付一期：小程序支付准备、支付回调、退款、对账下载、平台证书刷新
+- 小程序骨架：登录、注册、资料、运单、支付记录、支付准备入口
 
-### 后端
+## 小程序相关接口
 
-- Java 21
-- Spring Boot 3
-- Spring Security
-- JWT
-- MyBatis-Plus
-- Flyway
+- `POST /api/member/auth/register`
+- `POST /api/member/auth/login`
+- `POST /api/member/auth/wechat-login`
+- `GET /api/member/profile`
+- `PUT /api/member/profile`
+- `PUT /api/member/profile/wechat`
+- `GET /api/member/waybills`
+- `GET /api/member/waybills/{id}`
+- `PUT /api/member/payments/prepare`
+- `GET /api/member/payments`
 
-## 当前主要模块
+## 小程序当前状态
 
-- 工作台
-- 页面管理
-  - 首页配置
-  - 线路页面
-  - 新闻资讯
-- 全局配置
-  - 导航设置
-  - 页脚设置
-  - 联系方式
-  - 字典管理
-
-## 管理端接口
-
-### 认证接口
-
-- `POST /api/auth/login`
-- `GET /api/auth/me`
-- `GET /api/health`
-
-### 首页内容管理
-
-- `GET /api/content/home`
-- `PUT /api/content/home/draft`
-- `PUT /api/content/home/publish`
-
-### 线路模板管理
-
-- `GET /api/content/service-lines`
-- `GET /api/content/service-lines/{code}`
-- `PUT /api/content/service-lines/{code}/draft`
-- `PUT /api/content/service-lines/{code}/publish`
-
-### 新闻管理
-
-- `GET /api/news`
-- `GET /api/news/{id}`
-- `POST /api/news`
-- `PUT /api/news/{id}`
-- `DELETE /api/news/{id}`
-
-### 运单管理
-
-- `GET /api/waybills`
-- `GET /api/waybills/{id}`
-- `POST /api/waybills`
-- `PUT /api/waybills/{id}`
-- `DELETE /api/waybills/{id}`
-
-### 字典管理
-
-- `GET /api/dictionaries`
-- `GET /api/dictionaries/options`
-- `POST /api/dictionaries`
-- `PUT /api/dictionaries/{id}`
-- `DELETE /api/dictionaries/{id}`
-
-## 官网公开接口
-
-以下接口供企业官网前台直接读取，不需要 JWT：
-
-- `GET /api/site`
-- `GET /api/pages/home`
-- `GET /api/pages/about`
-- `GET /api/pages/contact`
-- `GET /api/pages/service-line/{key}`
-- `GET /api/pages/news`
-- `GET /api/pages/news/{id}`
-- `GET /api/tracking/{trackingNo}`
-
-说明：
-
-- 公开接口只返回已发布内容
-- 后台管理接口仍然要求登录
-- 运单公开查询的状态文案由字典模块统一映射
+- 小程序目录：`miniapp/`
+- `npm run type-check` 已通过
+- `npm run build:mp-weixin` 已通过
+- 微信小程序构建输出目录：`miniapp/dist/build/mp-weixin`
 
 ## 本地启动
 
-### 前端
+### 后端
 
-```bash
+```powershell
+cd E:\me\quanshidaHT-JAVA
+.\backend\start-dev.ps1
+```
+
+后端构建或测试：
+
+```powershell
+cd backend
+mvn -DskipTests package
+mvn test
+```
+
+### 管理端
+
+```powershell
 cd frontend
 npm install
 npm run dev
 ```
 
-默认开发地址：
-
-- `http://localhost:5174`
-
-### 后端
-
-Windows 环境建议使用项目脚本启动：
+管理端构建：
 
 ```powershell
-cd F:\work\quanshidaHT-JAVA
-.\backend\start-dev.ps1
+cd frontend
+npm run build
 ```
 
-如果 `8080` 已被占用：
+### 小程序
 
 ```powershell
-.\backend\start-dev.ps1 -Port 8081
+cd miniapp
+npm install
+npm run dev:mp-weixin
 ```
 
-也可以使用 Maven 打包验证：
+生成微信小程序构建产物：
 
 ```powershell
-cd backend
-mvn -DskipTests package
+cd miniapp
+npm run build:mp-weixin
 ```
 
-## 数据与迁移
+## 约束
 
-- 首页和线路模板内容存储在 `site_content_page`
-- 新闻存储在 `news_article`
-- 运单存储在 `waybill_order`、`waybill_leg`、`waybill_track_event`
-- 字典存储在 `sys_dict_item`
-- 历史迁移文件必须保持不可变
-
-## 开发约束
-
-- 前端统一走 `/api`，不要在业务代码中写死后端地址
-- 后台 UI 统一使用 `Element Plus + Tailwind CSS`
-- 固定模板页面不要做成自由拼版
-- 新闻正文统一用区块化表单维护
-- 官网不要直接复用后台 JWT 接口
-- 运单状态、线路类型、分段状态等基础枚举统一由字典模块管理
+- 管理端接口使用 `/api/**`
+- 会员端接口使用 `/api/member/**`
+- 会员 JWT 与管理员 JWT 必须隔离
+- Flyway 历史迁移只允许追加，不允许改写已执行版本
+- 支付敏感配置不得硬编码入仓库

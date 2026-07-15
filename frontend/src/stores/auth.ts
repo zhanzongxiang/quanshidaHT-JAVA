@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { fetchMe, login } from '../api/auth'
+import { fetchMe, login, logout, switchTenant } from '../api/auth'
 import type { MeInfo } from '../types/auth'
 
 interface AuthState {
@@ -15,48 +15,56 @@ export const useAuthStore = defineStore('auth', {
     me: null,
   }),
   getters: {
-    token: () => localStorage.getItem('access_token'),
-    isAuthenticated: (state) => Boolean(localStorage.getItem('access_token') && state.me),
+    isAuthenticated: (state) => state.me !== null,
   },
   actions: {
+    clearSession() {
+      this.me = null
+      this.initialized = true
+    },
     async loginByPassword(username: string, password: string) {
       this.loading = true
       try {
-        const result = await login({ username, password })
-        localStorage.setItem('access_token', result.accessToken)
+        await login({ username, password })
         this.me = await fetchMe()
         this.initialized = true
       } catch (error) {
-        localStorage.removeItem('access_token')
-        this.me = null
-        this.initialized = true
+        this.clearSession()
         throw error
       } finally {
         this.loading = false
       }
     },
     async initialize() {
-      if (!localStorage.getItem('access_token')) {
-        this.me = null
-        this.initialized = true
-        return
-      }
-
       this.loading = true
       try {
         this.me = await fetchMe()
       } catch (error) {
-        localStorage.removeItem('access_token')
-        this.me = null
+        this.clearSession()
       } finally {
         this.initialized = true
         this.loading = false
       }
     },
-    logout() {
-      localStorage.removeItem('access_token')
-      this.me = null
-      this.initialized = true
+    async logout() {
+      try {
+        await logout()
+      } catch {
+        // ignore logout API errors
+      }
+      this.clearSession()
+    },
+    async switchTenant(tenantId: number) {
+      this.loading = true
+      try {
+        await switchTenant({ tenantId })
+        this.me = await fetchMe()
+        this.initialized = true
+      } catch (error) {
+        throw error
+      } finally {
+        this.loading = false
+      }
     },
     hasPermission(permission: string) {
       return this.me?.permissions.includes(permission) ?? false
