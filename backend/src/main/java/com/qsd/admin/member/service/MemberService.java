@@ -261,13 +261,13 @@ public class MemberService {
     @Transactional
     public LoginResponse login(MemberLoginRequest request, String clientIp) {
         Long tenantId = TenantContextHolder.requireTenantId();
-        String rateLimitKey = "member:" + (clientIp != null ? clientIp : "unknown") + ":" + request.phone();
+        String rateLimitKey = "member:" + (clientIp != null ? clientIp : "unknown") + ":" + request.account();
         if (!rateLimiterService.isAllowed(rateLimitKey)) {
             long remaining = rateLimiterService.getRemainingLockoutSeconds(rateLimitKey);
             throw new BusinessException(ErrorCode.RATE_LIMITED, "Too many login attempts. Retry after " + remaining + " seconds");
         }
 
-        MemberUser member = memberUserMapper.selectByPhone(tenantId, request.phone().trim());
+        MemberUser member = memberUserMapper.selectByPhone(tenantId, request.account().trim());
         if (member == null) {
             rateLimiterService.recordFailure(rateLimitKey);
             throw new BusinessException(ErrorCode.AUTHENTICATION_FAILED, "Phone or password is incorrect");
