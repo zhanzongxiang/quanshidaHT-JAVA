@@ -4,6 +4,7 @@ import com.qsd.admin.member.entity.MemberPackage;
 import com.qsd.admin.member.entity.MemberShipment;
 import com.qsd.admin.member.entity.MemberUser;
 import com.qsd.admin.member.mapper.MemberShipmentMapper;
+import com.qsd.admin.tenant.TenantContextHolder;
 import com.qsd.admin.waybill.entity.WaybillLeg;
 import com.qsd.admin.waybill.entity.WaybillOrder;
 import com.qsd.admin.waybill.entity.WaybillTrackEvent;
@@ -40,7 +41,8 @@ public class MemberWaybillSyncService {
             return;
         }
 
-        WaybillOrder existing = waybillOrderMapper.selectActiveByMainTrackingNo(shipment.getShipmentNo());
+        Long tenantId = TenantContextHolder.requireTenantId();
+        WaybillOrder existing = waybillOrderMapper.selectActiveByMainTrackingNo(tenantId, shipment.getShipmentNo());
         if (existing != null) {
             shipment.setWaybillId(existing.getId());
             memberShipmentMapper.updateById(shipment);
@@ -48,6 +50,8 @@ public class MemberWaybillSyncService {
         }
 
         WaybillOrder order = new WaybillOrder();
+        order.setTenantId(tenantId);
+        order.setMemberId(member == null ? null : member.getId());
         order.setMainTrackingNo(shipment.getShipmentNo());
         order.setReferenceNo(member == null ? "" : member.getMemberNo());
         order.setCustomerName(defaultValue(shipment.getRecipientName(), member == null ? "会员客户" : member.getUsername()));
@@ -68,6 +72,7 @@ public class MemberWaybillSyncService {
         waybillOrderMapper.insert(order);
 
         WaybillLeg leg = new WaybillLeg();
+        leg.setTenantId(tenantId);
         leg.setWaybillId(order.getId());
         leg.setLegNo(1);
         leg.setLegType("member_consolidation");
@@ -92,7 +97,8 @@ public class MemberWaybillSyncService {
             return;
         }
 
-        WaybillOrder order = waybillOrderMapper.selectActiveById(shipment.getWaybillId());
+        Long tenantId = TenantContextHolder.requireTenantId();
+        WaybillOrder order = waybillOrderMapper.selectActiveById(tenantId, shipment.getWaybillId());
         if (order == null) {
             return;
         }
@@ -102,7 +108,7 @@ public class MemberWaybillSyncService {
         order.setUpdatedAt(now);
         waybillOrderMapper.updateById(order);
 
-        List<WaybillLeg> legs = waybillLegMapper.selectByWaybillId(order.getId());
+        List<WaybillLeg> legs = waybillLegMapper.selectByWaybillId(tenantId, order.getId());
         if (!legs.isEmpty()) {
             WaybillLeg leg = legs.get(0);
             leg.setLegStatus(toLegStatus(shipmentStatus));
@@ -117,6 +123,7 @@ public class MemberWaybillSyncService {
         }
 
         WaybillTrackEvent event = new WaybillTrackEvent();
+        event.setTenantId(tenantId);
         event.setWaybillId(order.getId());
         event.setLegId(legs.isEmpty() ? null : legs.get(0).getId());
         event.setEventTime(now);
@@ -124,7 +131,7 @@ public class MemberWaybillSyncService {
         event.setEventDescription(toEventDescription(shipmentStatus));
         event.setEventLocation(toCurrentNode(shipmentStatus));
         event.setVisibleToCustomer(1);
-        event.setSortNo(waybillTrackEventMapper.selectByWaybillId(order.getId()).size() + 1);
+        event.setSortNo(waybillTrackEventMapper.selectByWaybillId(tenantId, order.getId()).size() + 1);
         event.setCreatedAt(now);
         waybillTrackEventMapper.insert(event);
     }
