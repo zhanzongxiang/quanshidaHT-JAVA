@@ -54,10 +54,10 @@ public class JwtTokenService {
     private byte[] decodeConfiguredSecret(String secret) {
         try {
             return Decoders.BASE64.decode(secret);
-        } catch (IllegalArgumentException ignored) {
+        } catch (RuntimeException ignored) {
             try {
                 return Decoders.BASE64URL.decode(secret);
-            } catch (IllegalArgumentException ignoredUrl) {
+            } catch (RuntimeException ignoredUrl) {
                 byte[] rawBytes = secret.getBytes(StandardCharsets.UTF_8);
                 if (rawBytes.length >= 32) {
                     return rawBytes;
