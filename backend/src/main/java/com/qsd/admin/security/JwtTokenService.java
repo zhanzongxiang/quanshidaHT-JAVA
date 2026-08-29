@@ -14,6 +14,7 @@ import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.nio.charset.StandardCharsets;
 
 @Service
 public class JwtTokenService {
@@ -30,7 +31,43 @@ public class JwtTokenService {
 
     public JwtTokenService(JwtProperties jwtProperties) {
         this.jwtProperties = jwtProperties;
-        this.secretKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtProperties.secret()));
+        this.secretKey = buildSecretKey(jwtProperties.secret());
+    }
+
+    private SecretKey buildSecretKey(String configuredSecret) {
+        String secret = configuredSecret == null ? "" : configuredSecret.trim();
+        if (secret.isBlank() || secret.startsWith("${")) {
+            throw new IllegalStateException(
+                "JWT_SECRET is missing or unresolved. Configure a Base64/Base64URL secret with at least 32 decoded bytes."
+            );
+        }
+
+        byte[] keyBytes = decodeConfiguredSecret(secret);
+        if (keyBytes.length < 32) {
+            throw new IllegalStateException(
+                "JWT_SECRET is too short. Configure a secret with at least 32 decoded bytes (256 bits)."
+            );
+        }
+        return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    private byte[] decodeConfiguredSecret(String secret) {
+        try {
+            return Decoders.BASE64.decode(secret);
+        } catch (IllegalArgumentException ignored) {
+            try {
+                return Decoders.BASE64URL.decode(secret);
+            } catch (IllegalArgumentException ignoredUrl) {
+                byte[] rawBytes = secret.getBytes(StandardCharsets.UTF_8);
+                if (rawBytes.length >= 32) {
+                    return rawBytes;
+                }
+                throw new IllegalStateException(
+                    "JWT_SECRET must be standard Base64, Base64URL, or a raw secret of at least 32 characters.",
+                    ignoredUrl
+                );
+            }
+        }
     }
 
     public String createAdminToken(
