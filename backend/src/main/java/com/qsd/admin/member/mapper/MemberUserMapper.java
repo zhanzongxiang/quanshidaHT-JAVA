@@ -3,17 +3,95 @@ package com.qsd.admin.member.mapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.qsd.admin.member.entity.MemberUser;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+
+import java.util.List;
 
 @Mapper
 public interface MemberUserMapper extends BaseMapper<MemberUser> {
 
     @Select("""
-        select id, member_no, username, mobile, password_hash, nickname, real_name, level_code, status, remark, last_login_at, created_at, updated_at, deleted
+        select id, tenant_id, phone, wechat_openid, wechat_unionid, wechat_bind_time, password_hash, nickname, full_name, avatar_url, status, remark,
+               register_source, register_ip, last_login_at, last_login_ip, password_updated_at, deleted, created_at, updated_at
         from member_user
-        where deleted = 0
-          and (username = #{keyword} or mobile = #{keyword})
+        where tenant_id = #{tenantId}
+          and phone = #{phone}
+          and deleted = 0
         limit 1
         """)
-    MemberUser selectByUsernameOrMobile(String keyword);
+    MemberUser selectByPhone(@Param("tenantId") Long tenantId, @Param("phone") String phone);
+
+    @Select("""
+        select id, tenant_id, phone, wechat_openid, wechat_unionid, wechat_bind_time, password_hash, nickname, full_name, avatar_url, status, remark,
+               register_source, register_ip, last_login_at, last_login_ip, password_updated_at, deleted, created_at, updated_at
+        from member_user
+        where tenant_id = #{tenantId}
+          and id = #{id}
+          and deleted = 0
+        limit 1
+        """)
+    MemberUser selectActiveById(@Param("tenantId") Long tenantId, @Param("id") Long id);
+
+    @Select("""
+        select id, tenant_id, phone, wechat_openid, wechat_unionid, wechat_bind_time, password_hash, nickname, full_name, avatar_url, status, remark,
+               register_source, register_ip, last_login_at, last_login_ip, password_updated_at, deleted, created_at, updated_at
+        from member_user
+        where tenant_id = #{tenantId}
+          and wechat_openid = #{openid}
+          and deleted = 0
+        limit 1
+        """)
+    MemberUser selectByWechatOpenid(@Param("tenantId") Long tenantId, @Param("openid") String openid);
+
+    @Select("""
+        <script>
+        select id, tenant_id, phone, wechat_openid, wechat_unionid, wechat_bind_time, password_hash, nickname, full_name, avatar_url, status, remark,
+               register_source, register_ip, last_login_at, last_login_ip, password_updated_at, deleted, created_at, updated_at
+        from member_user
+        where tenant_id = #{tenantId}
+          and deleted = 0
+          <if test="keyword != null and keyword != ''">
+            and (
+              phone like concat('%', #{keyword}, '%')
+              or coalesce(nickname, '') like concat('%', #{keyword}, '%')
+              or coalesce(full_name, '') like concat('%', #{keyword}, '%')
+            )
+          </if>
+          <if test="status != null and status != ''">
+            and status = #{status}
+          </if>
+        order by updated_at desc, id desc
+        </script>
+        """)
+    List<MemberUser> selectAdminList(
+        @Param("tenantId") Long tenantId,
+        @Param("keyword") String keyword,
+        @Param("status") String status
+    );
+
+    /** Compatibility query for the original member portal endpoints. */
+    @Select("""
+        select id,
+               tenant_id,
+               phone,
+               phone as mobile,
+               phone as username,
+               null as member_no,
+               password_hash,
+               nickname,
+               full_name as real_name,
+               'normal' as level_code,
+               case when status = 'active' then 'ENABLED' else status end as status,
+               remark,
+               last_login_at,
+               created_at,
+               updated_at,
+               deleted
+        from member_user
+        where phone = #{keyword}
+          and deleted = 0
+        limit 1
+        """)
+    MemberUser selectByUsernameOrMobile(@Param("keyword") String keyword);
 }
